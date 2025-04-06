@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { CircleUser, ShoppingCart } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import ProductModel from "@/app/components/animata/image/product-model";
 
 const productData = {
   id: "1",
@@ -42,7 +43,7 @@ export default function ProductDetailPage() {
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* 左側留白 */}
-        <div className="hidden md:block"></div>
+        <ProductModel />
 
         {/* 右上圖片區 */}
         <div className="col-span-2 flex flex-col items-end gap-6">
