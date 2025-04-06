@@ -1,5 +1,5 @@
 import Product from "@/models/product";
-import ProductRepository from "../repository/productRepository";
+import ProductRepository from "../repositories/productRepository";
 
 class ProductService {
     private productRepository: ProductRepository;
@@ -8,7 +8,7 @@ class ProductService {
         this.productRepository = productRepository;
     }
     async listAllProducts(): Promise<Product[]> {
-        return await this.productRepository.findAll();
+        return await this.productRepository.listAll();
     }
 }
 export default ProductService;

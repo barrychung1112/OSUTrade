@@ -1,5 +1,5 @@
 import Product from "@/models/product";
-import ProductService from "../service/productService";
+import ProductService from "../services/productService";
 
 class ProductController {
     private productService: ProductService;

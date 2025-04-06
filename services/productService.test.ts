@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import productService from './productService';
-import { ProductRepositoryMock } from '../repository/productRepository';
+import { ProductRepositoryMock } from '../repositories/productRepository';
 
 const productRepository = new ProductRepositoryMock();
 const sut = new productService(productRepository);

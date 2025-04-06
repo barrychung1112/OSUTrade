@@ -2,7 +2,7 @@ import Product from "../models/product";
 import { createRandomProduct } from "../utils/random";
 
 export default interface ProductRepository {
-    findAll(): Promise<Product[]>;
+    listAll(): Promise<Product[]>;
     create(product: Product): Promise<Product>;
 }
 
@@ -20,7 +20,7 @@ export class ProductRepositoryMock implements ProductRepository {
         }
     }
 
-    async findAll(): Promise<Product[]> {
+    async listAll(): Promise<Product[]> {
         return Array.from(this.products.values());
     }
 

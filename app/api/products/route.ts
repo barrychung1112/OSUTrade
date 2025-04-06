@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server';
 import ProductController from '@/controller/productController';
-import ProductService from '@/service/productService';
-import { ProductRepositoryMock } from '@/repository/productRepository';
+import ProductService from '@/services/productService';
+import { ProductRepositoryMock } from '@/repositories/productRepository';
 
 const productRepositoryMock = new ProductRepositoryMock();
 const productController = new ProductController(new ProductService(productRepositoryMock));
