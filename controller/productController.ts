@@ -1,3 +1,4 @@
+import Product from "@/models/product";
 import ProductService from "../service/productService";
 
 class ProductController {
@@ -7,7 +8,7 @@ class ProductController {
         this.productService = productService;
     }
 
-    async listAllProducts(): Promise<any[]> {
+    async listAllProducts(): Promise<Product[]> {
         return this.productService.listAllProducts();
     }
     
