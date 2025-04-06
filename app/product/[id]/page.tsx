@@ -24,7 +24,7 @@ const productData = {
 
 function GLBModelViewer({ url }: { url: string }) {
   const gltf = useLoader(GLTFLoader, url);
-  return <primitive object={gltf.scene} scale={[0.8, 0.8, 0.8]} position-y={-1} />;
+  return <primitive object={gltf.scene} scale={[0.01, 0.01, 0.01]} position-y={-1} />;
 }
 
 export default function ProductDetailPage() {
@@ -51,8 +51,8 @@ export default function ProductDetailPage() {
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
         {/* 左側展示區（上：3D模型，下：Google Map） */}
-        <div className="flex flex-col gap-4 w-full">
-          <div className="h-[400px]">
+        <div className="flex flex-col gap-6 w-full">
+          <div className="h-[450px]">
             <Canvas camera={{ position: [0, 0, 3] }}>
               <ambientLight intensity={0.7} />
               <directionalLight position={[2, 2, 2]} />
@@ -63,7 +63,7 @@ export default function ProductDetailPage() {
               <OrbitControls enableZoom />
             </Canvas>
           </div>
-          <div className="h-10 w-full">
+          <div className="h-28 w-full">
             <iframe
               title="Product Location"
               width="100%"
