@@ -1,10 +1,10 @@
 import Product from "@/models/product";
-import productRepository from "../repository/productRepository";
+import ProductRepository from "../repository/productRepository";
 
 class ProductService {
-    private productRepository: productRepository;
+    private productRepository: ProductRepository;
 
-    constructor(productRepository: productRepository) {
+    constructor(productRepository: ProductRepository) {
         this.productRepository = productRepository;
     }
     async listAllProducts(): Promise<Product[]> {

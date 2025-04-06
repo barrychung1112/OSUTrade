@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest';
 import productService from './productService';
-import ProductRepository from '../repository/productRepository';
+import { ProductRepositoryMock } from '../repository/productRepository';
 
-const productRepository = new ProductRepository();
+const productRepository = new ProductRepositoryMock();
 const sut = new productService(productRepository);
 
 test('listAllProducts returns array', async () => {

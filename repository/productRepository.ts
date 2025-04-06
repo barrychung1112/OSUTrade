@@ -1,7 +1,13 @@
 import Product from "../models/product";
 import { createRandomProduct } from "../utils/random";
 
-class ProductRepository {
+export default interface ProductRepository {
+    findAll(): Promise<Product[]>;
+    create(product: Product): Promise<Product>;
+}
+
+// This is a mock repository. In a real application, this would interact with a database.
+export class ProductRepositoryMock implements ProductRepository {
     private products: Map<string, Product>;
 
     constructor() {
@@ -24,5 +30,3 @@ class ProductRepository {
     }
     
 }
-export default ProductRepository;
-
