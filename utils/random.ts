@@ -1,5 +1,6 @@
 import Product from "../models/product";
 import User from "../models/user";
+import { generateHashedPassword } from "./password";
 
 export function randomString(n: number): string {
     const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -26,8 +27,9 @@ export function createRandomProduct(): Product {
 
 export function createRandomUser(): User {
     return new User({
+        id: crypto.randomUUID(),
         name: randomString(10),
         email: randomString(5) + "@oregonstate.edu",
-        password: randomString(8),
+        password: generateHashedPassword(randomString(10)),
     });
 }
