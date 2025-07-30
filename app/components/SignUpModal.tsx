@@ -23,6 +23,10 @@ export default function SignUpModal() {
           <Flex direction="column" gap="3" mt="4">
             <input className="px-3 py-2 border rounded" placeholder="Email" />
             <input
+              className="px-3 py-2 border rounded"
+              placeholder="User Name"
+            />
+            <input
               type="password"
               className="px-3 py-2 border rounded"
               placeholder="Password"

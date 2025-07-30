@@ -3,10 +3,14 @@
 
 import { Dialog, Flex, Button } from "@radix-ui/themes";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginModal() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-
+  const handleClick = () => {
+    router.push("/overview"); // 導向 /about 頁面
+  };
   return (
     <>
       <Button
@@ -21,13 +25,18 @@ export default function LoginModal() {
         <Dialog.Content maxWidth="450px">
           <Dialog.Title>Login</Dialog.Title>
           <Flex direction="column" gap="3" mt="4">
-            <input className="px-3 py-2 border rounded" placeholder="Email" />
+            <input
+              className="px-3 py-2 border rounded"
+              placeholder="User Name"
+            />
             <input
               type="password"
               className="px-3 py-2 border rounded"
               placeholder="Password"
             />
-            <Button highContrast>Login</Button>
+            <Button highContrast onClick={handleClick}>
+              Login
+            </Button>
           </Flex>
         </Dialog.Content>
       </Dialog.Root>
