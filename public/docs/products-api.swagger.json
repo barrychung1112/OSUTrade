@@ -1,0 +1,103 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Product API",
+    "version": "1.0.0",
+    "description": "Retrieve product listings with support for search, filtering, sorting, and pagination."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "paths": {
+    "/api/products": {
+      "get": {
+        "summary": "Get all products",
+        "description": "Returns a list of products with optional filters and pagination.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Search by product name (partial match)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter by category (e.g., electronics, clothing, books)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort order by price",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of products per page (default: 12)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "a1b2c3",
+                      "name": "Wireless Headphones",
+                      "price": 89.99,
+                      "category": "electronics",
+                      "imageUrl": "https://example.com/products/1.jpg"
+                    },
+                    {
+                      "id": "d4e5f6",
+                      "name": "Denim Jacket",
+                      "price": 49.99,
+                      "category": "clothing",
+                      "imageUrl": "https://example.com/products/2.jpg"
+                    }
+                  ],
+                  "total": 87,
+                  "page": 1,
+                  "limit": 12
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {}
+}
