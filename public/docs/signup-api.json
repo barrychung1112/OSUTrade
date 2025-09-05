@@ -1,0 +1,100 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "OSUTrade - Sign Up API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/auth/signup": {
+      "post": {
+        "summary": "Register a new account",
+        "description": "Registers a new user. Only emails ending with @oregonstate.edu are allowed.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "username"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@oregonstate.edu"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "yourPassword123"
+                  },
+                  "username": {
+                    "type": "string",
+                    "example": "osu_student"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sign-up successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Signup successful. Please check your email to confirm."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errorCode": {
+                      "type": "string",
+                      "example": "EMAIL_DOMAIN_INVALID"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Only @oregonstate.edu emails are allowed."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Email or Username already in use",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errorCode": {
+                      "type": "string",
+                      "example": "EMAIL_ALREADY_REGISTERED"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This email is already registered."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
