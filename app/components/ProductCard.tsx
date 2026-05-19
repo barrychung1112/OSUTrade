@@ -1,6 +1,7 @@
 // components/ProductCard.tsx
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, Text, Heading, Button } from "@radix-ui/themes";
@@ -19,6 +20,26 @@ export default function ProductCard({
   price,
   imageUrl,
 }: ProductCardProps) {
+  const [adding, setAdding] = useState(false);
+
+  async function addToCart() {
+    setAdding(true);
+    try {
+      await fetch("/api/cart", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: productId,
+          name,
+          price,
+          imageUrl,
+        }),
+      });
+    } finally {
+      setAdding(false);
+    }
+  }
+
   return (
     <Card className="bg-white/70 backdrop-blur-md border border-orange-300 shadow hover:scale-[1.02] transition-transform overflow-hidden flex flex-col">
       <Link href={`/product/${productId}`} className="relative block w-full h-52">
@@ -35,8 +56,10 @@ export default function ProductCard({
             size="2"
             variant="outline"
             className="border-[#d73f09] text-[#d73f09] flex items-center gap-2"
+            onClick={addToCart}
+            disabled={adding}
           >
-            <PlusIcon /> <span>Add to cart</span>
+            <PlusIcon /> <span>{adding ? "Adding..." : "Add to cart"}</span>
           </Button>
           <Text size="3" weight="medium" className="text-gray-700">
             ${price}

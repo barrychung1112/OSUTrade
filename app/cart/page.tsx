@@ -1,31 +1,30 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
-  Theme,
-  Heading,
-  Card,
-  Separator,
-  Button,
-  Text,
   Badge,
+  Button,
+  Card,
+  Heading,
+  Separator,
+  Text,
+  Theme,
 } from "@radix-ui/themes";
 import {
-  TrashIcon,
+  ArrowLeftIcon,
   MinusIcon,
   PlusIcon,
-  ArrowLeftIcon,
+  TrashIcon,
 } from "@radix-ui/react-icons";
-import Link from "next/link";
 
-// ---- types ----
 type CartItem = {
   id: string;
   name: string;
-  price: number; // USD
-  imageUrl?: string;
+  price: number;
+  imageUrl?: string | null;
   quantity: number;
-  category?: string;
+  category?: string | null;
 };
 
 type ItemState = {
@@ -34,48 +33,15 @@ type ItemState = {
   errorMsg?: string;
 };
 
-// ---- helpers ----
 const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
-// ---- mock fetch (你可以接成 /api/cart) ----
-async function fetchCart(): Promise<CartItem[]> {
-  return [
-    {
-      id: "p1",
-      name: "Mini Fridge",
-      price: 49,
-      quantity: 1,
-      category: "electronics",
-      imageUrl:
-        "https://bmelflizqrhydlfuovnv.supabase.co/storage/v1/object/public/products//S__5005327_0.jpg",
-    },
-    {
-      id: "p2",
-      name: "Desk Lamp",
-      price: 19,
-      quantity: 2,
-      category: "home",
-      imageUrl:
-        "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=1200&auto=format&fit=crop",
-    },
-  ];
-}
-
-// 真實情境可改成呼叫 /api/requests
-async function sendRequestAPI(payload: {
-  itemId: string;
-  quantity: number;
-  note: string;
-}) {
-  // DEMO：模擬 800ms 成功、20% 機率失敗
-  await new Promise((r) => setTimeout(r, 800));
-  if (Math.random() < 0.2) {
-    const err = new Error("Network error. Please retry.");
-    // throw err; // 模擬失敗
-    throw err;
-  }
-  return { ok: true };
+async function saveCart(items: CartItem[]) {
+  await fetch("/api/cart", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
 }
 
 export default function CartPage() {
@@ -83,122 +49,130 @@ export default function CartPage() {
   const [states, setStates] = useState<Record<string, ItemState>>({});
   const [loading, setLoading] = useState(true);
 
-  // 載入購物車
   useEffect(() => {
-    fetchCart()
-      .then((data) => {
-        setItems(data);
-        // 初始化每個 item 的獨立狀態
-        const init: Record<string, ItemState> = {};
-        data.forEach((i) => {
-          init[i.id] = { note: "", status: "idle" };
-        });
-        setStates(init);
+    fetch("/api/cart", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((payload) => {
+        const cart = (payload.data ?? []) as CartItem[];
+        setItems(cart);
+        setStates(
+          Object.fromEntries(
+            cart.map((item) => [item.id, { note: "", status: "idle" }])
+          )
+        );
       })
       .finally(() => setLoading(false));
   }, []);
 
-  // 統計
   const subtotal = useMemo(
-    () => items.reduce((acc, it) => acc + it.price * it.quantity, 0),
+    () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
     [items]
   );
   const sentCount = useMemo(
-    () => Object.values(states).filter((s) => s.status === "sent").length,
+    () => Object.values(states).filter((state) => state.status === "sent").length,
     [states]
   );
   const errorCount = useMemo(
-    () => Object.values(states).filter((s) => s.status === "error").length,
+    () => Object.values(states).filter((state) => state.status === "error").length,
     [states]
   );
-  const pendingCount = useMemo(
-    () => Object.values(states).filter((s) => s.status !== "sent").length,
-    [states]
-  );
+  const pendingCount = items.length - sentCount;
 
-  // 動作
-  const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  function replaceItems(nextItems: CartItem[]) {
+    setItems(nextItems);
+    void saveCart(nextItems);
+  }
+
+  function removeItem(id: string) {
+    replaceItems(items.filter((item) => item.id !== id));
     setStates((prev) => {
-      const c = { ...prev };
-      delete c[id];
-      return c;
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
     });
-  };
+  }
 
-  const changeQty = (id: string, delta: number) =>
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i
+  function changeQty(id: string, delta: number) {
+    replaceItems(
+      items.map((item) =>
+        item.id === id
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item
       )
     );
+  }
 
-  const updateNote = (id: string, note: string) =>
+  function updateNote(id: string, note: string) {
     setStates((prev) => ({ ...prev, [id]: { ...prev[id], note } }));
+  }
 
-  const sendRequest = async (id: string) => {
-    const item = items.find((i) => i.id === id);
+  async function sendRequest(id: string) {
+    const item = items.find((candidate) => candidate.id === id);
     if (!item) return;
 
     setStates((prev) => ({
       ...prev,
       [id]: { ...prev[id], status: "sending", errorMsg: undefined },
     }));
-    try {
-      // 真實情境可改成 fetch('/api/requests', { method: 'POST', body: JSON.stringify({...}) })
-      await sendRequestAPI({
+
+    const res = await fetch("/api/requests", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
         itemId: id,
         quantity: item.quantity,
         note: states[id]?.note || "",
-      });
-      setStates((prev) => ({ ...prev, [id]: { ...prev[id], status: "sent" } }));
-    } catch (err: any) {
+      }),
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
       setStates((prev) => ({
         ...prev,
         [id]: {
           ...prev[id],
           status: "error",
-          errorMsg: err?.message || "Failed",
+          errorMsg: payload?.message || "Failed to send request.",
         },
       }));
+      return;
     }
-  };
 
-  const sendAll = async () => {
-    // 逐一送出尚未 sent 的項目
-    for (const it of items) {
-      if (states[it.id]?.status === "sent") continue;
-      // 串行送比較簡單，可以改 Promise.all 並行
-      // eslint-disable-next-line no-await-in-loop
-      await sendRequest(it.id);
+    setStates((prev) => ({ ...prev, [id]: { ...prev[id], status: "sent" } }));
+  }
+
+  async function sendAll() {
+    for (const item of items) {
+      if (states[item.id]?.status !== "sent") {
+        await sendRequest(item.id);
+      }
     }
-  };
+  }
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
       <main className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 py-16">
-        <div className="max-w-7xl mx-auto">
+        <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex items-center justify-between">
             <Heading size="8" className="text-[#333]">
               Your Requests
             </Heading>
 
-            <Link href="/product" className="inline-flex items-center gap-2">
+            <Link href="/overview" className="inline-flex items-center gap-2">
               <Button variant="soft">
                 <ArrowLeftIcon /> Back to Marketplace
               </Button>
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr,380px] gap-8">
-            {/* LEFT: items */}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr,380px]">
             <section className="space-y-4">
               {loading ? (
-                <Card className="p-6 bg-white/60 backdrop-blur-md border border-orange-200 shadow">
+                <Card className="border border-orange-200 bg-white/60 p-6 shadow">
                   <Text>Loading your cart...</Text>
                 </Card>
               ) : items.length === 0 ? (
-                <Card className="p-8 text-center bg-white/60 backdrop-blur-md border border-orange-200 shadow">
+                <Card className="border border-orange-200 bg-white/60 p-8 text-center shadow">
                   <Heading size="5" className="mb-2">
                     Your cart is empty
                   </Heading>
@@ -206,32 +180,29 @@ export default function CartPage() {
                     Add items in Marketplace and send requests to sellers.
                   </Text>
                   <div className="mt-6">
-                    <Link href="/product">
+                    <Link href="/overview">
                       <Button highContrast>Go shopping</Button>
                     </Link>
                   </div>
                 </Card>
               ) : (
-                <>
-                  {items.map((it) => (
-                    <ItemCard
-                      key={it.id}
-                      item={it}
-                      state={states[it.id]}
-                      onNote={(v) => updateNote(it.id, v)}
-                      onRemove={() => removeItem(it.id)}
-                      onMinus={() => changeQty(it.id, -1)}
-                      onPlus={() => changeQty(it.id, +1)}
-                      onSend={() => sendRequest(it.id)}
-                    />
-                  ))}
-                </>
+                items.map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    state={states[item.id]}
+                    onNote={(value) => updateNote(item.id, value)}
+                    onRemove={() => removeItem(item.id)}
+                    onMinus={() => changeQty(item.id, -1)}
+                    onPlus={() => changeQty(item.id, 1)}
+                    onSend={() => sendRequest(item.id)}
+                  />
+                ))
               )}
             </section>
 
-            {/* RIGHT: summary */}
             <aside>
-              <Card className="p-6 bg-white/70 backdrop-blur-md border border-orange-200 shadow rounded-2xl">
+              <Card className="rounded-2xl border border-orange-200 bg-white/70 p-6 shadow">
                 <Heading size="5" className="mb-4">
                   Request Summary
                 </Heading>
@@ -256,7 +227,7 @@ export default function CartPage() {
                   onClick={sendAll}
                   disabled={items.length === 0}
                 >
-                  Send ALL requests
+                  Send all requests
                 </Button>
               </Card>
             </aside>
@@ -267,7 +238,6 @@ export default function CartPage() {
   );
 }
 
-// ---- components ----
 function ItemCard({
   item,
   state,
@@ -279,7 +249,7 @@ function ItemCard({
 }: {
   item: CartItem;
   state?: ItemState;
-  onNote: (v: string) => void;
+  onNote: (value: string) => void;
   onRemove: () => void;
   onMinus: () => void;
   onPlus: () => void;
@@ -288,23 +258,20 @@ function ItemCard({
   const disabled = state?.status === "sending";
 
   return (
-    <Card className="p-4 bg-white/60 backdrop-blur-md border border-orange-200 shadow rounded-2xl">
+    <Card className="rounded-2xl border border-orange-200 bg-white/60 p-4 shadow">
       <div className="flex gap-4">
-        <div className="w-28 h-28 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+        <div className="h-28 w-28 shrink-0 overflow-hidden rounded-lg bg-gray-100">
           <img
-            src={
-              item.imageUrl ||
-              "https://bmelflizqrhydlfuovnv.supabase.co/storage/v1/object/public/products//S__5005327_0.jpg"
-            }
+            src={item.imageUrl || "/images/Bike_0.jpg"}
             alt={item.name}
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
           />
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <Text className="block text-base font-medium truncate">
+              <Text className="block truncate text-base font-medium">
                 {item.name}
               </Text>
               <Text color="gray" size="2">
@@ -314,7 +281,7 @@ function ItemCard({
 
             <button
               onClick={onRemove}
-              className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 transition-colors"
+              className="inline-flex items-center gap-1 text-red-600 transition-colors hover:text-red-700"
               aria-label="Remove item"
               title="Remove item"
             >
@@ -323,10 +290,10 @@ function ItemCard({
           </div>
 
           <div className="mt-3 flex items-center justify-between">
-            <div className="inline-flex items-center rounded-lg border border-gray-300 overflow-hidden bg-white">
+            <div className="inline-flex items-center overflow-hidden rounded-lg border border-gray-300 bg-white">
               <button
                 onClick={onMinus}
-                className="p-2 hover:bg-gray-50 active:scale-95 transition"
+                className="p-2 transition hover:bg-gray-50 active:scale-95"
                 aria-label="Decrease quantity"
               >
                 <MinusIcon />
@@ -334,7 +301,7 @@ function ItemCard({
               <span className="px-4 select-none">{item.quantity}</span>
               <button
                 onClick={onPlus}
-                className="p-2 hover:bg-gray-50 active:scale-95 transition"
+                className="p-2 transition hover:bg-gray-50 active:scale-95"
                 aria-label="Increase quantity"
               >
                 <PlusIcon />
@@ -346,18 +313,17 @@ function ItemCard({
             </Text>
           </div>
 
-          {/* note + status + send */}
           <div className="mt-4 grid gap-2 sm:grid-cols-[1fr,auto] sm:items-end">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
                 Note to seller
               </label>
               <textarea
                 rows={2}
                 value={state?.note ?? ""}
-                onChange={(e) => onNote(e.target.value)}
-                placeholder="e.g., Can we meet at library? Is there any scratch?"
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                onChange={(event) => onNote(event.target.value)}
+                placeholder="e.g., Can we meet at the library?"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 disabled={disabled}
               />
               <div className="mt-2 flex items-center gap-2">
@@ -378,8 +344,8 @@ function ItemCard({
               {state?.status === "sending"
                 ? "Sending..."
                 : state?.status === "sent"
-                ? "Sent"
-                : "Send request"}
+                  ? "Sent"
+                  : "Send request"}
             </Button>
           </div>
         </div>
@@ -389,7 +355,7 @@ function ItemCard({
 }
 
 function StatusBadge({ status }: { status: ItemState["status"] }) {
-  if (status === "sending") return <Badge color="amber">Sending…</Badge>;
+  if (status === "sending") return <Badge color="amber">Sending</Badge>;
   if (status === "sent") return <Badge color="green">Sent</Badge>;
   if (status === "error") return <Badge color="red">Error</Badge>;
   return <Badge color="gray">Idle</Badge>;

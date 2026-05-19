@@ -24,6 +24,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>(fallbackImage);
   const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,6 +65,27 @@ export default function ProductDetailPage() {
         <p className="mt-2 text-gray-600">{error || "This item was not found."}</p>
       </div>
     );
+  }
+
+  async function addToCart() {
+    if (!product) return;
+
+    setAdding(true);
+    try {
+      await fetch("/api/cart", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          imageUrl: product.imageUrl,
+          category: product.category,
+        }),
+      });
+    } finally {
+      setAdding(false);
+    }
   }
 
   return (
@@ -151,10 +173,11 @@ export default function ProductDetailPage() {
             </div>
 
             <button
-              onClick={() => alert("Added to cart")}
+              onClick={addToCart}
+              disabled={adding}
               className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-white transition hover:bg-indigo-700"
             >
-              <ShoppingCart size={20} /> Add to Cart
+              <ShoppingCart size={20} /> {adding ? "Adding..." : "Add to Cart"}
             </button>
           </div>
         </div>
