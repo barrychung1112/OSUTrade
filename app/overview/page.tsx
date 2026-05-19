@@ -8,6 +8,7 @@ import { MixerHorizontalIcon } from "@radix-ui/react-icons";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { useProducts } from "../hook/useProducts";
 import type { Product } from "../lib/products";
+import Link from "next/link";
 
 function sortProductsByPrice(products: Product[], order: string) {
   if (order === "asc") {
@@ -71,6 +72,9 @@ export default function ProductListPage() {
               >
                 {loading ? "Refreshing..." : "Refresh"}
               </Button>
+              <Link href="/sell">
+                <Button highContrast>List Item</Button>
+              </Link>
             </div>
           </div>
 

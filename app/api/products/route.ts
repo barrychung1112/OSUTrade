@@ -75,3 +75,52 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to list an item." },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const name = String(body.name ?? "").trim();
+    const category = String(body.category ?? "").trim();
+    const imageUrl = String(body.imageUrl ?? "").trim();
+    const price = Number(body.price);
+
+    if (!name || !Number.isFinite(price) || price <= 0) {
+      return NextResponse.json(
+        { message: "Name and a valid price are required." },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from("products")
+      .insert({
+        name,
+        price,
+        category: category || "general",
+        image_url: imageUrl || null,
+      })
+      .select("product_id, name, price, category, image_url")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json(toProduct(data), { status: 201 });
+  } catch (error) {
+    console.error(error);
+    const errorMessage =
+      error instanceof Error ? error.message : "An unexpected error occurred.";
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
+  }
+}
