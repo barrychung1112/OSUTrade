@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { auth } from "@/auth";
 import { createClient } from "@/utils/supabase/server";
 import { filterDemoProducts } from "@/app/lib/demoProducts";
 
@@ -93,16 +94,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: authData } = await supabase.auth.getUser();
+    const session = await auth();
 
-    if (!authData.user) {
+    if (!session?.user) {
       return NextResponse.json(
         { message: "You must be logged in to list an item." },
         { status: 401 }
       );
     }
 
+    const supabase = await createClient();
     const body = await request.json();
     const name = String(body.name ?? "").trim();
     const category = String(body.category ?? "").trim();
