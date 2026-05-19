@@ -26,3 +26,19 @@ export async function fetchProducts(signal?: AbortSignal): Promise<Product[]> {
   const payload = (await res.json()) as ProductListResponse;
   return payload.data ?? [];
 }
+
+export async function fetchProduct(
+  id: string | number,
+  signal?: AbortSignal
+): Promise<Product> {
+  const res = await fetch(`/api/products/${id}`, {
+    signal,
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to load product: HTTP ${res.status}`);
+  }
+
+  return (await res.json()) as Product;
+}
