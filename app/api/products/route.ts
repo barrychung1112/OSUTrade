@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { filterDemoProducts } from "@/app/lib/demoProducts";
 
 type ProductRow = {
   product_id: string | number;
@@ -70,9 +71,23 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error(error);
-    const errorMessage =
-      error instanceof Error ? error.message : "An unexpected error occurred.";
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    const searchParams = request.nextUrl.searchParams;
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "12", 10);
+
+    return NextResponse.json(
+      {
+        ...filterDemoProducts({
+          name: searchParams.get("name"),
+          category: searchParams.get("category"),
+          sort: searchParams.get("sort"),
+          page,
+          limit,
+        }),
+        source: "demo",
+      },
+      { status: 200 }
+    );
   }
 }
 

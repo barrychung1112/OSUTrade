@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { findDemoProduct } from "@/app/lib/demoProducts";
 
 type ProductRow = {
   product_id: string | number;
@@ -44,8 +45,13 @@ export async function GET(
     return NextResponse.json(toProduct(data), { status: 200 });
   } catch (error) {
     console.error(error);
-    const errorMessage =
-      error instanceof Error ? error.message : "An unexpected error occurred.";
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    const { id } = await params;
+    const product = findDemoProduct(id);
+
+    if (!product) {
+      return NextResponse.json({ message: "Product not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({ ...product, source: "demo" }, { status: 200 });
   }
 }
