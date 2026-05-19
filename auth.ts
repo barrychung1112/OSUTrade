@@ -4,16 +4,18 @@ import Credentials from "next-auth/providers/credentials";
 type User = { id: string; email: string; name?: string; role?: string };
 
 function getBaseUrl() {
-  return (
+  const baseUrl =
     process.env.AUTH_BASE_URL ||
     process.env.NEXTAUTH_URL ||
-    "http://localhost:3000"
-  );
+    "http://localhost:3000";
+
+  return baseUrl.replace(/\/$/, "");
 }
 
 export const { auth, handlers } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/" },
+  trustHost: true,
   providers: [
     Credentials({
       id: "login",
@@ -96,5 +98,5 @@ export const { auth, handlers } = NextAuth({
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
 });
