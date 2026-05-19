@@ -1,0 +1,28 @@
+export type Product = {
+  id: string | number;
+  name: string;
+  price: number;
+  category?: string | null;
+  imageUrl?: string | null;
+};
+
+export type ProductListResponse = {
+  data: Product[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export async function fetchProducts(signal?: AbortSignal): Promise<Product[]> {
+  const res = await fetch("/api/products", {
+    signal,
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to load products: HTTP ${res.status}`);
+  }
+
+  const payload = (await res.json()) as ProductListResponse;
+  return payload.data ?? [];
+}

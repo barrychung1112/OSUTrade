@@ -1,46 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import { Heading, Theme, Button, Separator } from "@radix-ui/themes";
 import { MixerHorizontalIcon } from "@radix-ui/react-icons";
 import * as SelectPrimitive from "@radix-ui/react-select";
+import { useProducts } from "../hook/useProducts";
+import type { Product } from "../lib/products";
 
-function sortProductsByPrice(products: any[], order: string) {
+function sortProductsByPrice(products: Product[], order: string) {
   if (order === "asc") {
-    return products.sort((a, b) => a.price - b.price);
+    return [...products].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
   } else if (order === "desc") {
-    return products.sort((a, b) => b.price - a.price);
+    return [...products].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
   }
   return products;
 }
 
 export default function ProductListPage() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+  const { products, loading, error, refetch } = useProducts();
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [priceSort, setPriceSort] = useState("none");
   const [showSidebar, setShowSidebar] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/products")
-      .then((res) => res.json())
-      .then((data) => {
-        setProducts(data);
-        setFilteredProducts(data);
-      })
-      .catch((err) => console.error("Failed to load products:", err));
-  }, []);
-
-  useEffect(() => {
-    let updated = [...products];
+  const filteredProducts = useMemo(() => {
+    let updated = products;
 
     if (search) {
-      updated = updated.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase())
-      );
+      const q = search.toLowerCase();
+      updated = updated.filter((p) => p.name?.toLowerCase().includes(q));
     }
 
     if (category !== "all") {
@@ -48,9 +39,8 @@ export default function ProductListPage() {
     }
 
     updated = sortProductsByPrice(updated, priceSort);
-
-    setFilteredProducts(updated);
-  }, [search, category, priceSort, products]);
+    return updated;
+  }, [products, search, category, priceSort]);
 
   return (
     <Theme
@@ -63,15 +53,32 @@ export default function ProductListPage() {
         <Header />
 
         <div className="relative z-10 max-w-7xl mx-auto">
-          <Heading size="8" className="mb-10 text-center text-[#333]">
+          <Heading
+            size="8"
+            className="text-[#333] text-center mb-10 font-mono font-bold text-3xl"
+          >
             Marketplace
           </Heading>
-
-          <div className="mb-6 text-right">
-            <Button variant="soft" onClick={() => setShowSidebar(!showSidebar)}>
-              <MixerHorizontalIcon />
-            </Button>
+          <div className="flex justify-end mb-10">
+            <div className="flex items-center gap-2">
+              <Button variant="soft" onClick={() => setShowSidebar((s) => !s)}>
+                <MixerHorizontalIcon />
+              </Button>
+              <Button
+                variant="soft"
+                onClick={() => refetch()}
+                disabled={loading}
+              >
+                {loading ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
           </div>
+
+          {error && (
+            <p className="mb-4 text-sm text-red-600">
+              Failed to load products: {error.message}
+            </p>
+          )}
 
           <div className="flex">
             {showSidebar && (
@@ -187,11 +194,15 @@ export default function ProductListPage() {
             )}
 
             <div className="flex-1 grid gap-10 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {filteredProducts.length > 0 ? (
+              {loading ? (
+                <p className="text-center col-span-full text-gray-500">
+                  Loading…
+                </p>
+              ) : filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
-                    id={product.id}
+                    productId={product.id}
                     name={product.name}
                     price={product.price}
                     imageUrl={

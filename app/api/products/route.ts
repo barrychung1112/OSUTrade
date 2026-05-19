@@ -1,61 +1,77 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { NextResponse, type NextRequest } from "next/server";
+import { createClient } from "@/utils/supabase/server";
+
+type ProductRow = {
+  product_id: string | number;
+  name: string;
+  price: number;
+  category: string | null;
+  image_url: string | null;
+};
+
+function toProduct(row: ProductRow) {
+  return {
+    id: row.product_id,
+    name: row.name,
+    price: row.price,
+    category: row.category,
+    imageUrl: row.image_url,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();  // Make instance of createClient
+    const supabase = await createClient();
 
-    // 1. Get parameters from URL
-    const searchParams = request.nextUrl.searchParams;  // Get parameters after ?
-    const name = searchParams.get('name');
-    const category = searchParams.get('category'); 
-    const sort = searchParams.get('sort'); 
+    const searchParams = request.nextUrl.searchParams;
+    const name = searchParams.get("name");
+    const category = searchParams.get("category");
+    const sort = searchParams.get("sort");
 
-    // Get pagination or set default 
-    const page = parseInt(searchParams.get('page') || '1', 10);   // 10 stands for deciaml sys
-    const limit = parseInt(searchParams.get('limit') || '12', 10);
-    const rangeFrom = (page - 1) * limit;               // ex, (Page(1) - 1) * 12 = 0, which means 0 item 
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "12", 10);
+    const rangeFrom = (page - 1) * limit;
     const rangeTo = rangeFrom + limit - 1;
 
-    // 2. Build a Supabase query
-    // Make basic query
-    // Using { count: 'exact' }, get all prodocts
-    let query = supabase         // Make query objest
-      .from('products')
-      .select('product_id, name, price, category, image_url', { count: 'exact' });
+    let query = supabase
+      .from("products")
+      .select("product_id, name, price, category, image_url", {
+        count: "exact",
+      });
 
     if (name) {
-      query = query.ilike('name', `%${name}%`); // % is wildcard that stands for more than 0 character?
+      query = query.ilike("name", `%${name}%`);
     }
 
     if (category) {
-      query = query.eq('category', category); 
+      query = query.eq("category", category);
     }
 
-    if (sort === 'asc' || sort === 'desc') {
-      query = query.order('price', { ascending: sort === 'asc' }); // if true, it's ascending
+    if (sort === "asc" || sort === "desc") {
+      query = query.order("price", { ascending: sort === "asc" });
     }
 
     query = query.range(rangeFrom, rangeTo);
 
-    // 3. run query
-    const { data, error, count } = await query;  //Destructuring Assignment
+    const { data, error, count } = await query;
 
     if (error) {
       throw error;
     }
 
-    // 4. Return data
-    return NextResponse.json({
-      data: data, 
-      total: count, 
-      page: page,
-      limit: limit,
-    }, { status: 200 });
-
+    return NextResponse.json(
+      {
+        data: (data ?? []).map(toProduct),
+        total: count ?? 0,
+        page,
+        limit,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error(error);
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+    const errorMessage =
+      error instanceof Error ? error.message : "An unexpected error occurred.";
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
