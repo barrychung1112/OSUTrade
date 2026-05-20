@@ -1,17 +1,14 @@
-// File: app/auth/signup/route.ts
-
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-
   try {
-    // The request body still sends "username" as per your API spec
-    const { email, password, username } = await request.json(); // awit means all procee should wait untill this completes
+    const supabase = await createClient();
+    const { email, password, username } = await request.json();
+    const normalizedEmail = String(email ?? "").trim().toLowerCase();
+    const normalizedUsername = String(username ?? "").trim();
 
-    // Requirement: 400 Validation error for email domain
-    if (!email || !email.endsWith("@oregonstate.edu")) {
+    if (!normalizedEmail.endsWith("@oregonstate.edu")) {
       return NextResponse.json(
         {
           errorCode: "EMAIL_DOMAIN_INVALID",
@@ -21,13 +18,25 @@ export async function POST(request: Request) {
       );
     }
 
-    // Requirement: 409 Conflict for username
-    // We check the 'users' table and the 'name' column.
-    const { data: existingUser } = await supabase
+    if (!normalizedUsername || !password) {
+      return NextResponse.json(
+        {
+          errorCode: "SIGNUP_FIELDS_REQUIRED",
+          message: "Username, email, and password are required.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { data: existingUser, error: userLookupError } = await supabase
       .from("users")
       .select("name")
-      .eq("name", username)
-      .single();
+      .eq("name", normalizedUsername)
+      .maybeSingle();
+
+    if (userLookupError) {
+      throw userLookupError;
+    }
 
     if (existingUser) {
       return NextResponse.json(
@@ -39,21 +48,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Attempt to sign up the user. Check duplicate email, enough long password
     const { data, error } = await supabase.auth.signUp({
-      email: email,
+      email: normalizedEmail,
       password: password,
       options: {
         data: {
-          // Pass the 'username' from the request as 'name' in the metadata. We can use this name when i create table automatically
-          name: username,
+          name: normalizedUsername,
         },
       },
     });
 
-    // Requirement: 409 Conflict for email (handled by Supabase)
     if (error) {
-      // Check if a email is not duplicate email
       if (error.message.includes("User already registered")) {
         return NextResponse.json(
           {
@@ -64,7 +69,6 @@ export async function POST(request: Request) {
         );
       }
 
-      // Check if a passward is long enough, which means it's more than 6 characters
       if (error.message.toLowerCase().includes("password should be at least")) {
         return NextResponse.json(
           {
@@ -79,24 +83,40 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           errorCode: "AUTH_ERROR",
-          message: error.message, // Rerurn original messgage from Supabase
+          message: error.message,
         },
         { status: 400 }
       );
     }
+
     const u = data.user;
-    // Requirement: 200 Sign-up successful
+
+    if (!u) {
+      return NextResponse.json(
+        {
+          status: "confirmation_required",
+          email: normalizedEmail,
+          name: normalizedUsername,
+          message: "Please check your OSU email to confirm your account.",
+        },
+        { status: 202 }
+      );
+    }
+
     return NextResponse.json(
       {
         id: u.id,
         email: u.email,
-        name: u.user_metadata?.full_name ?? u.email?.split("@")[0] ?? "User",
+        name:
+          u.user_metadata?.name ??
+          u.user_metadata?.full_name ??
+          u.email?.split("@")[0] ??
+          "User",
         role: u.user_metadata?.role ?? "user",
       },
       { status: 200 }
     );
   } catch (e) {
-    // Handle unexpected server errors
     console.error(e);
     return NextResponse.json(
       { message: "An unexpected error occurred." },

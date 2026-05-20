@@ -4,6 +4,14 @@ import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
 
+type SignupResponse = {
+  id?: string;
+  email?: string;
+  message?: string;
+  errorCode?: string;
+  status?: "confirmation_required";
+};
+
 export default function SignUpModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -11,23 +19,43 @@ export default function SignUpModal() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setSuccess(null);
     setLoading(true);
 
-    const result = await signIn("signup", {
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username, email, password }),
+    });
+    const payload = (await res.json().catch(() => ({}))) as SignupResponse;
+
+    if (!res.ok && res.status !== 202) {
+      setLoading(false);
+      setError(payload.message || "Sign up failed. Check your OSU email and password.");
+      return;
+    }
+
+    if (res.status === 202 || payload.status === "confirmation_required") {
+      setLoading(false);
+      setSuccess(payload.message || "Please check your OSU email to confirm your account.");
+      return;
+    }
+
+    const loginResult = await signIn("login", {
       redirect: false,
-      username,
       email,
       password,
     });
 
     setLoading(false);
 
-    if (result?.error) {
-      setError("Sign up failed. Check your OSU email and password.");
+    if (loginResult?.error) {
+      setSuccess("Account created. Please log in after confirming your OSU email.");
       return;
     }
 
@@ -82,6 +110,11 @@ export default function SignUpModal() {
               {error && (
                 <p className="text-red-600 text-sm" role="alert">
                   {error}
+                </p>
+              )}
+              {success && (
+                <p className="text-green-700 text-sm" role="status">
+                  {success}
                 </p>
               )}
 
