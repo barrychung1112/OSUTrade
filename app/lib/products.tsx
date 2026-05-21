@@ -4,6 +4,8 @@ export type Product = {
   price: number;
   category?: string | null;
   imageUrl?: string | null;
+  sellerId?: string | null;
+  status?: string | null;
 };
 
 export type ProductListResponse = {
