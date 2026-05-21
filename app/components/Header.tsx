@@ -55,6 +55,12 @@ export default function Header() {
           Sell
         </Link>
         <Link
+          href="/seller"
+          className="text-sm font-medium text-gray-700 hover:text-[#d73f09]"
+        >
+          Seller
+        </Link>
+        <Link
           href="/cart"
           className="flex items-center text-sm font-medium text-gray-700 hover:text-[#d73f09]"
         >
