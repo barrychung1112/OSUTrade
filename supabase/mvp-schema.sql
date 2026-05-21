@@ -1,5 +1,35 @@
 create extension if not exists pgcrypto;
 
+alter table public.products
+  add column if not exists seller_id uuid references auth.users(id) on delete set null,
+  add column if not exists status text not null default 'available' check (status in ('available', 'pending', 'sold', 'removed')),
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table public.products enable row level security;
+
+drop policy if exists "Anyone can read available products" on public.products;
+create policy "Anyone can read available products"
+  on public.products
+  for select
+  to anon, authenticated
+  using (status = 'available');
+
+drop policy if exists "Sellers can create their products" on public.products;
+create policy "Sellers can create their products"
+  on public.products
+  for insert
+  to authenticated
+  with check (seller_id = auth.uid());
+
+drop policy if exists "Sellers can update their products" on public.products;
+create policy "Sellers can update their products"
+  on public.products
+  for update
+  to authenticated
+  using (seller_id = auth.uid())
+  with check (seller_id = auth.uid());
+
 create table if not exists public.trade_requests (
   request_id uuid primary key default gen_random_uuid(),
   product_id text not null,

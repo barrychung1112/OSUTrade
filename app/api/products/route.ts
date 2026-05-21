@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { filterDemoProducts } from "@/app/lib/demoProducts";
 
@@ -9,6 +10,8 @@ type ProductRow = {
   price: number;
   category: string | null;
   image_url: string | null;
+  seller_id: string | null;
+  status: string | null;
 };
 
 function toProduct(row: ProductRow) {
@@ -18,6 +21,8 @@ function toProduct(row: ProductRow) {
     price: row.price,
     category: row.category,
     imageUrl: row.image_url,
+    sellerId: row.seller_id,
+    status: row.status ?? "available",
   };
 }
 
@@ -37,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("products")
-      .select("product_id, name, price, category, image_url", {
+      .select("product_id, name, price, category, image_url, seller_id, status", {
         count: "exact",
       });
 
@@ -96,14 +101,14 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { message: "You must be logged in to list an item." },
         { status: 401 }
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const body = await request.json();
     const name = String(body.name ?? "").trim();
     const category = String(body.category ?? "").trim();
@@ -124,8 +129,10 @@ export async function POST(request: NextRequest) {
         price,
         category: category || "general",
         image_url: imageUrl || null,
+        seller_id: session.user.id,
+        status: "available",
       })
-      .select("product_id, name, price, category, image_url")
+      .select("product_id, name, price, category, image_url, seller_id, status")
       .single();
 
     if (error) {
