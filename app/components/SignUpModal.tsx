@@ -36,13 +36,13 @@ export default function SignUpModal() {
 
     if (!res.ok && res.status !== 202) {
       setLoading(false);
-      setError(payload.message || "Sign up failed. Check your OSU email and password.");
+      setError(payload.message || "Sign up failed. Check your email and password.");
       return;
     }
 
     if (res.status === 202 || payload.status === "confirmation_required") {
       setLoading(false);
-      setSuccess(payload.message || "Please check your OSU email to confirm your account.");
+      setSuccess(payload.message || "Please check your email to confirm your account.");
       return;
     }
 
@@ -55,7 +55,7 @@ export default function SignUpModal() {
     setLoading(false);
 
     if (loginResult?.error) {
-      setSuccess("Account created. Please log in after confirming your OSU email.");
+      setSuccess("Account created. Please log in after confirming your email.");
       return;
     }
 
