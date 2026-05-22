@@ -26,63 +26,71 @@ export default function Header() {
 
   const fallback = user?.name?.[0] || user?.email?.[0] || "U";
   const navLinkClass =
-    "rounded-md px-2 py-1 text-sm font-medium text-gray-700 transition hover:bg-orange-50 hover:text-[#d73f09]";
+    "whitespace-nowrap rounded-md px-2.5 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-orange-50 hover:text-[#d73f09]";
 
   return (
     <motion.header
-      className="fixed top-0 z-50 w-full border-b border-orange-100 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-md"
+      className="fixed top-0 z-50 w-full border-b border-orange-100 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-md"
       initial={{ y: -50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-        <Link href="/" className="text-xl font-bold text-[#d73f09] sm:text-2xl">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <Link
+          href="/"
+          className="shrink-0 text-xl font-bold text-[#d73f09] sm:text-2xl"
+        >
           OSUTrade
         </Link>
 
-        <nav className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
-          <Link href="/" className={navLinkClass}>
-            {t("nav.home")}
-          </Link>
-          <Link href="/overview" className={navLinkClass}>
-            {t("nav.marketplace")}
-          </Link>
-          <Link href="/sell" className={navLinkClass}>
-            {t("nav.sell")}
-          </Link>
-          <Link href="/seller" className={navLinkClass}>
-            {t("nav.seller")}
-          </Link>
-          <Link href="/requests" className={navLinkClass}>
-            {t("nav.requests")}
-          </Link>
-          <Link href="/cart" className={`${navLinkClass} inline-flex items-center`}>
-            <RocketIcon className="mr-1" /> {t("nav.cart")}
-          </Link>
-          <LanguageToggle />
+        <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 lg:justify-end">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 lg:justify-end">
+            <Link href="/" className={navLinkClass}>
+              {t("nav.home")}
+            </Link>
+            <Link href="/overview" className={navLinkClass}>
+              {t("nav.marketplace")}
+            </Link>
+            <Link href="/sell" className={navLinkClass}>
+              {t("nav.sell")}
+            </Link>
+            <Link href="/seller" className={navLinkClass}>
+              {t("nav.seller")}
+            </Link>
+            <Link href="/requests" className={navLinkClass}>
+              {t("nav.requests")}
+            </Link>
+            <Link href="/cart" className={`${navLinkClass} inline-flex items-center`}>
+              <RocketIcon className="mr-1 shrink-0" /> {t("nav.cart")}
+            </Link>
+          </div>
 
-          {!user ? (
-            <LoginModal />
-          ) : (
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger>
-                <Avatar
-                  fallback={fallback.toUpperCase()}
-                  size="2"
-                  className="cursor-pointer border border-gray-300"
-                />
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Content align="end">
-                <DropdownMenu.Item disabled>
-                  {user.name || user.email || "Profile"}
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator />
-                <DropdownMenu.Item color="red" onClick={() => signOut()}>
-                  {t("nav.logout")}
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Root>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            <LanguageToggle />
+
+            {!user ? (
+              <LoginModal />
+            ) : (
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger>
+                  <Avatar
+                    fallback={fallback.toUpperCase()}
+                    size="2"
+                    className="cursor-pointer border border-gray-300"
+                  />
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content align="end">
+                  <DropdownMenu.Item disabled>
+                    {user.name || user.email || "Profile"}
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Separator />
+                  <DropdownMenu.Item color="red" onClick={() => signOut()}>
+                    {t("nav.logout")}
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
+            )}
+          </div>
         </nav>
       </div>
     </motion.header>
