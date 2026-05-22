@@ -4,8 +4,10 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
+import { useI18n } from "../i18n";
 
 export default function LoginModal() {
+  const { t } = useI18n();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -27,7 +29,7 @@ export default function LoginModal() {
     setLoading(false);
 
     if (result?.error) {
-      setError("The email or password is incorrect.");
+      setError(t("auth.loginError"));
       return;
     }
 
@@ -44,16 +46,16 @@ export default function LoginModal() {
         className="border-[#d73f09] text-[#d73f09]"
         onClick={() => setIsOpen(true)}
       >
-        Login
+        {t("auth.login")}
       </Button>
       <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
         <Dialog.Content maxWidth="450px">
-          <Dialog.Title>Login</Dialog.Title>
+          <Dialog.Title>{t("auth.login")}</Dialog.Title>
           <form onSubmit={onSubmit}>
             <Flex direction="column" gap="3" mt="4">
               <input
                 className="px-3 py-2 border rounded"
-                placeholder="Email"
+                placeholder={t("auth.email")}
                 type="email"
                 autoComplete="email"
                 value={email}
@@ -63,7 +65,7 @@ export default function LoginModal() {
               <input
                 type="password"
                 className="px-3 py-2 border rounded"
-                placeholder="Password"
+                placeholder={t("auth.password")}
                 autoComplete="current-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -75,7 +77,7 @@ export default function LoginModal() {
                 </p>
               )}
               <Button highContrast type="submit" disabled={loading}>
-                {loading ? "Logging in..." : "Login"}
+                {loading ? t("auth.loggingIn") : t("auth.login")}
               </Button>
             </Flex>
           </form>

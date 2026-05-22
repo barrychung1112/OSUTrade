@@ -2,12 +2,15 @@
 "use client";
 
 import { Card, Heading } from "@radix-ui/themes";
+import { useI18n } from "../i18n";
 
 export default function ProductListCard() {
+  const { t } = useI18n();
+
   return (
     <Card className="bg-white/70 backdrop-blur-md p-4 border border-orange-300 shadow hover:scale-[1.02] transition-transform">
       <Heading size="5" mb="3">
-        On Sell Products
+        {t("home.onSale")}
       </Heading>
       <ul className="text-sm text-gray-700 space-y-2">
         <li>

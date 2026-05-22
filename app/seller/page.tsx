@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon, CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
+import { useI18n } from "../i18n";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
@@ -39,6 +40,7 @@ const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 export default function SellerPage() {
+  const { t } = useI18n();
   const [products, setProducts] = useState<SellerProduct[]>([]);
   const [requests, setRequests] = useState<SellerRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,21 +120,24 @@ export default function SellerPage() {
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
               <Heading size="8" className="text-[#333]">
-                Seller Dashboard
+                {t("seller.title")}
               </Heading>
               <Text color="gray">
-                {products.length} listings, {pendingRequests} pending requests
+                {t("seller.counts", {
+                  listings: products.length,
+                  pending: pendingRequests,
+                })}
               </Text>
             </div>
 
             <div className="flex gap-3">
               <Link href="/overview">
                 <Button variant="soft">
-                  <ArrowLeftIcon /> Marketplace
+                  <ArrowLeftIcon /> {t("nav.marketplace")}
                 </Button>
               </Link>
               <Link href="/sell">
-                <Button highContrast>List Item</Button>
+                <Button highContrast>{t("marketplace.listItem")}</Button>
               </Link>
             </div>
           </div>
@@ -146,14 +151,14 @@ export default function SellerPage() {
           <div className="grid gap-6 lg:grid-cols-[1fr,1.1fr]">
             <section>
               <Heading size="5" className="mb-4">
-                My Listings
+                {t("seller.myListings")}
               </Heading>
               <div className="space-y-4">
                 {loading ? (
-                  <Card className="p-5">Loading listings...</Card>
+                  <Card className="p-5">{t("seller.loadingListings")}</Card>
                 ) : products.length === 0 ? (
                   <Card className="p-5">
-                    <Text color="gray">No listings yet.</Text>
+                    <Text color="gray">{t("seller.noListings")}</Text>
                   </Card>
                 ) : (
                   products.map((product) => (
@@ -161,6 +166,7 @@ export default function SellerPage() {
                       key={product.id}
                       product={product}
                       onStatus={(status) => updateProduct(product.id, status)}
+                      t={t}
                     />
                   ))
                 )}
@@ -169,14 +175,14 @@ export default function SellerPage() {
 
             <section>
               <Heading size="5" className="mb-4">
-                Buyer Requests
+                {t("seller.buyerRequests")}
               </Heading>
               <div className="space-y-4">
                 {loading ? (
-                  <Card className="p-5">Loading requests...</Card>
+                  <Card className="p-5">{t("seller.loadingRequests")}</Card>
                 ) : requests.length === 0 ? (
                   <Card className="p-5">
-                    <Text color="gray">No buyer requests yet.</Text>
+                    <Text color="gray">{t("seller.noRequests")}</Text>
                   </Card>
                 ) : (
                   requests.map((request) => (
@@ -184,6 +190,7 @@ export default function SellerPage() {
                       key={request.id}
                       request={request}
                       onUpdate={(status) => updateRequest(request.id, status)}
+                      t={t}
                     />
                   ))
                 )}
@@ -199,9 +206,11 @@ export default function SellerPage() {
 function ProductRow({
   product,
   onStatus,
+  t,
 }: {
   product: SellerProduct;
   onStatus: (status: ProductStatus) => void;
+  t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
     <Card className="border border-orange-200 bg-white/70 p-4 shadow">
@@ -216,7 +225,10 @@ function ProductRow({
             <div>
               <Text className="block font-medium">{product.name}</Text>
               <Text color="gray" size="2">
-                {product.category || "general"} - {currency(product.price)}
+              {product.category
+                ? t(`common.category.${product.category}` as any)
+                : t("common.category.general")}{" "}
+              - {currency(product.price)}
               </Text>
             </div>
             <StatusBadge status={product.status} />
@@ -229,7 +241,7 @@ function ProductRow({
               onClick={() => onStatus("available")}
               disabled={product.status === "available"}
             >
-              Available
+              {t("seller.available")}
             </Button>
             <Button
               size="2"
@@ -237,7 +249,7 @@ function ProductRow({
               onClick={() => onStatus("pending")}
               disabled={product.status === "pending"}
             >
-              Pending
+              {t("seller.pending")}
             </Button>
             <Button
               size="2"
@@ -245,7 +257,7 @@ function ProductRow({
               onClick={() => onStatus("sold")}
               disabled={product.status === "sold"}
             >
-              Sold
+              {t("seller.sold")}
             </Button>
           </div>
         </div>
@@ -257,9 +269,11 @@ function ProductRow({
 function RequestRow({
   request,
   onUpdate,
+  t,
 }: {
   request: SellerRequest;
   onUpdate: (status: RequestStatus) => void;
+  t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
     <Card className="border border-orange-200 bg-white/70 p-4 shadow">
@@ -269,7 +283,8 @@ function RequestRow({
             {request.product?.name || `Item ${request.itemId}`}
           </Text>
           <Text color="gray" size="2">
-            Qty {request.quantity} - Buyer {request.buyerId.slice(0, 8)}
+            {t("requests.qty", { quantity: request.quantity })} -{" "}
+            {t("seller.buyer", { id: request.buyerId.slice(0, 8) })}
           </Text>
         </div>
         <StatusBadge status={request.status} />
@@ -283,14 +298,14 @@ function RequestRow({
 
       {request.status === "accepted" && request.buyerEmail ? (
         <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-          Buyer contact:{" "}
+          {t("seller.buyerContact")}{" "}
           <a className="font-medium underline" href={`mailto:${request.buyerEmail}`}>
             {request.buyerEmail}
           </a>
         </div>
       ) : (
         <Text className="mt-3 block" color="gray" size="2">
-          Buyer email appears after you accept the request.
+          {t("seller.emailAfterAccept")}
         </Text>
       )}
 
@@ -301,7 +316,7 @@ function RequestRow({
           onClick={() => onUpdate("accepted")}
           disabled={request.status === "accepted"}
         >
-          <CheckIcon /> Accept
+          <CheckIcon /> {t("seller.accept")}
         </Button>
         <Button
           size="2"
@@ -310,7 +325,7 @@ function RequestRow({
           onClick={() => onUpdate("declined")}
           disabled={request.status === "declined"}
         >
-          <Cross2Icon /> Decline
+          <Cross2Icon /> {t("seller.decline")}
         </Button>
       </div>
     </Card>
