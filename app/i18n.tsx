@@ -360,6 +360,12 @@ export function LanguageToggle() {
   return (
     <div
       className="inline-flex min-w-[96px] shrink-0 rounded-md border border-orange-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm"
+      style={{
+        flexShrink: 0,
+        minWidth: "96px",
+        width: "96px",
+        boxSizing: "border-box",
+      }}
       aria-label={t("common.language")}
     >
       <button
