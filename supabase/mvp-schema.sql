@@ -1,5 +1,44 @@
 create extension if not exists pgcrypto;
 
+create table if not exists public.users (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  name text not null unique,
+  role text not null default 'user',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.users
+  add column if not exists email text,
+  add column if not exists name text,
+  add column if not exists role text not null default 'user',
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+create unique index if not exists users_email_unique_idx
+  on public.users (lower(email));
+
+create unique index if not exists users_name_unique_idx
+  on public.users (lower(name));
+
+alter table public.users enable row level security;
+
+drop policy if exists "Users can read their profile" on public.users;
+create policy "Users can read their profile"
+  on public.users
+  for select
+  to authenticated
+  using (id = auth.uid());
+
+drop policy if exists "Users can update their profile" on public.users;
+create policy "Users can update their profile"
+  on public.users
+  for update
+  to authenticated
+  using (id = auth.uid())
+  with check (id = auth.uid());
+
 insert into storage.buckets (id, name, public)
 values ('product-images', 'product-images', true)
 on conflict (id) do update set public = excluded.public;
