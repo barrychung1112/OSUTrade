@@ -91,10 +91,26 @@ export async function PATCH(request: Request) {
     }
 
     const supabase = createAdminClient();
+    const { data: existing, error: lookupError } = await supabase
+      .from("products")
+      .select("product_id, quantity")
+      .eq("product_id", productId)
+      .eq("seller_id", session.user.id)
+      .single();
+
+    if (lookupError) {
+      throw lookupError;
+    }
+
+    const currentQuantity = Number(existing.quantity ?? 0);
     const nextValues =
       status === "sold"
         ? { status, quantity: 0, updated_at: new Date().toISOString() }
-        : { status, updated_at: new Date().toISOString() };
+        : {
+            status,
+            quantity: Math.max(1, currentQuantity),
+            updated_at: new Date().toISOString(),
+          };
 
     const { data, error } = await supabase
       .from("products")
