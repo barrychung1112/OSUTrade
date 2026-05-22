@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
 export async function POST(request: Request) {
@@ -28,10 +29,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: existingUser, error: userLookupError } = await supabase
+    const admin = createAdminClient();
+    const { data: existingUser, error: userLookupError } = await admin
       .from("users")
       .select("name")
-      .eq("name", normalizedUsername)
+      .ilike("name", normalizedUsername)
       .maybeSingle();
 
     if (userLookupError) {
@@ -103,15 +105,32 @@ export async function POST(request: Request) {
       );
     }
 
+    const displayName =
+      u.user_metadata?.name ??
+      u.user_metadata?.full_name ??
+      u.email?.split("@")[0] ??
+      normalizedUsername;
+
+    const { error: profileError } = await admin.from("users").upsert(
+      {
+        id: u.id,
+        email: u.email ?? normalizedEmail,
+        name: displayName,
+        role: u.user_metadata?.role ?? "user",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+
+    if (profileError) {
+      throw profileError;
+    }
+
     return NextResponse.json(
       {
         id: u.id,
         email: u.email,
-        name:
-          u.user_metadata?.name ??
-          u.user_metadata?.full_name ??
-          u.email?.split("@")[0] ??
-          "User",
+        name: displayName,
         role: u.user_metadata?.role ?? "user",
       },
       { status: 200 }
