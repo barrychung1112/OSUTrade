@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("products")
       .select("*", { count: "exact" })
-      .eq("status", "available");
+      .eq("status", "available")
+      .gt("quantity", 0);
 
     if (name) {
       query = query.ilike("name", `%${name}%`);
@@ -69,9 +70,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        data: (data ?? [])
-          .map(toProduct)
-          .filter((product) => (product.quantity ?? 1) > 0),
+        data: (data ?? []).map(toProduct),
         total: count ?? 0,
         page,
         limit,

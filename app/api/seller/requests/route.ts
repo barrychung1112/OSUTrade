@@ -192,6 +192,9 @@ export async function PATCH(request: Request) {
       (item) => String(item.product_id) === String(existing.product_id)
     );
 
+    const updatedAt = new Date().toISOString();
+    let responseProduct = product;
+
     if (status === "accepted") {
       if (existing.status !== "sent") {
         return NextResponse.json(
@@ -213,15 +216,33 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const { data, error } = await supabase
+    const requestUpdateQuery = supabase
       .from("trade_requests")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("request_id", requestId)
+      .update({ status, updated_at: updatedAt })
+      .eq("request_id", requestId);
+
+    if (status === "accepted") {
+      requestUpdateQuery.eq("status", "sent");
+    }
+
+    const { data, error } = await requestUpdateQuery
       .select("request_id, product_id, buyer_id, quantity, note, status, created_at")
-      .single();
+      .maybeSingle();
 
     if (error) {
       throw error;
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        {
+          message:
+            status === "accepted"
+              ? "Only pending requests can be accepted."
+              : "Request not found.",
+        },
+        { status: status === "accepted" ? 409 : 404 }
+      );
     }
 
     if (status === "accepted") {
@@ -229,22 +250,80 @@ export async function PATCH(request: Request) {
       const remainingQuantity = availableQuantity - data.quantity;
       const nextProductStatus = remainingQuantity > 0 ? "available" : "sold";
 
-      await supabase
+      const { data: updatedProduct, error: productUpdateError } = await supabase
         .from("products")
         .update({
           quantity: remainingQuantity,
           status: nextProductStatus,
-          updated_at: new Date().toISOString(),
+          updated_at: updatedAt,
         })
         .eq("product_id", data.product_id)
-        .eq("seller_id", session.user.id);
+        .eq("seller_id", session.user.id)
+        .eq("status", "available")
+        .eq("quantity", availableQuantity)
+        .gte("quantity", data.quantity)
+        .select("*")
+        .maybeSingle();
+
+      if (productUpdateError) {
+        const { error: revertError } = await supabase
+          .from("trade_requests")
+          .update({ status: "sent", updated_at: updatedAt })
+          .eq("request_id", requestId)
+          .eq("status", "accepted");
+
+        if (revertError) {
+          throw revertError;
+        }
+
+        throw productUpdateError;
+      }
+
+      if (!updatedProduct) {
+        const { error: revertError } = await supabase
+          .from("trade_requests")
+          .update({ status: "sent", updated_at: updatedAt })
+          .eq("request_id", requestId)
+          .eq("status", "accepted");
+
+        if (revertError) {
+          throw revertError;
+        }
+
+        const { data: latestProduct, error: latestProductError } = await supabase
+          .from("products")
+          .select("quantity")
+          .eq("product_id", data.product_id)
+          .eq("seller_id", session.user.id)
+          .maybeSingle();
+
+        if (latestProductError) {
+          throw latestProductError;
+        }
+
+        const latestAvailableQuantity = Number(latestProduct?.quantity ?? 0);
+
+        return NextResponse.json(
+          {
+            message: `Only ${latestAvailableQuantity} item(s) are available.`,
+            availableQuantity: latestAvailableQuantity,
+          },
+          { status: 409 }
+        );
+      }
+
+      responseProduct = updatedProduct;
 
       if (remainingQuantity === 0) {
-        await supabase
+        const { error: declinePendingError } = await supabase
           .from("trade_requests")
-          .update({ status: "declined", updated_at: new Date().toISOString() })
+          .update({ status: "declined", updated_at: updatedAt })
           .eq("product_id", data.product_id)
           .eq("status", "sent");
+
+        if (declinePendingError) {
+          throw declinePendingError;
+        }
       }
     }
 
@@ -252,7 +331,7 @@ export async function PATCH(request: Request) {
       data.status === "accepted" ? await getEmailByUserId(data.buyer_id) : null;
 
     return NextResponse.json({
-      request: toSellerRequest(data, product, buyerEmail),
+      request: toSellerRequest(data, responseProduct, buyerEmail),
     });
   } catch (error) {
     console.error(error);
