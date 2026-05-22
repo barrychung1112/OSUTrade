@@ -23,79 +23,65 @@ export default function Header() {
   }, []);
 
   const fallback = user?.name?.[0] || user?.email?.[0] || "U";
+  const navLinkClass =
+    "rounded-md px-2 py-1 text-sm font-medium text-gray-700 transition hover:bg-orange-50 hover:text-[#d73f09]";
 
   return (
     <motion.header
-      className="fixed top-0 z-50 flex w-full items-center justify-between px-6 py-4 backdrop-blur-md"
+      className="fixed top-0 z-50 w-full border-b border-orange-100 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-md"
       initial={{ y: -50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <Link href="/" className="text-2xl font-bold text-[#d73f09]">
-        OSUTrade
-      </Link>
-
-      <nav className="flex items-center gap-6">
-        <Link
-          href="/"
-          className="text-sm font-medium text-gray-700 hover:text-[#d73f09]"
-        >
-          Home
-        </Link>
-        <Link
-          href="/overview"
-          className="text-sm font-medium text-gray-700 hover:text-[#d73f09]"
-        >
-          Marketplace
-        </Link>
-        <Link
-          href="/sell"
-          className="text-sm font-medium text-gray-700 hover:text-[#d73f09]"
-        >
-          Sell
-        </Link>
-        <Link
-          href="/seller"
-          className="text-sm font-medium text-gray-700 hover:text-[#d73f09]"
-        >
-          Seller
-        </Link>
-        <Link
-          href="/requests"
-          className="text-sm font-medium text-gray-700 hover:text-[#d73f09]"
-        >
-          Requests
-        </Link>
-        <Link
-          href="/cart"
-          className="flex items-center text-sm font-medium text-gray-700 hover:text-[#d73f09]"
-        >
-          <RocketIcon className="mr-1" /> Cart
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+        <Link href="/" className="text-xl font-bold text-[#d73f09] sm:text-2xl">
+          OSUTrade
         </Link>
 
-        {!user ? (
-          <LoginModal />
-        ) : (
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger>
-              <Avatar
-                fallback={fallback.toUpperCase()}
-                size="2"
-                className="cursor-pointer border border-gray-300"
-              />
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Content align="end">
-              <DropdownMenu.Item disabled>
-                {user.name || user.email || "Profile"}
-              </DropdownMenu.Item>
-              <DropdownMenu.Separator />
-              <DropdownMenu.Item color="red" onClick={() => signOut()}>
-                Logout
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Root>
-        )}
-      </nav>
+        <nav className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
+          <Link href="/" className={navLinkClass}>
+            Home
+          </Link>
+          <Link href="/overview" className={navLinkClass}>
+            Marketplace
+          </Link>
+          <Link href="/sell" className={navLinkClass}>
+            Sell
+          </Link>
+          <Link href="/seller" className={navLinkClass}>
+            Seller
+          </Link>
+          <Link href="/requests" className={navLinkClass}>
+            Requests
+          </Link>
+          <Link href="/cart" className={`${navLinkClass} inline-flex items-center`}>
+            <RocketIcon className="mr-1" /> Cart
+          </Link>
+
+          {!user ? (
+            <LoginModal />
+          ) : (
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger>
+                <Avatar
+                  fallback={fallback.toUpperCase()}
+                  size="2"
+                  className="cursor-pointer border border-gray-300"
+                />
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content align="end">
+                <DropdownMenu.Item disabled>
+                  {user.name || user.email || "Profile"}
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator />
+                <DropdownMenu.Item color="red" onClick={() => signOut()}>
+                  Logout
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>
+          )}
+        </nav>
+      </div>
     </motion.header>
   );
 }

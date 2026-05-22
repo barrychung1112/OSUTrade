@@ -1,19 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { Button, Heading, Theme } from "@radix-ui/themes";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
-import { Heading, Theme, Button, Separator } from "@radix-ui/themes";
-import { MixerHorizontalIcon } from "@radix-ui/react-icons";
-import * as SelectPrimitive from "@radix-ui/react-select";
 import { useProducts } from "../hook/useProducts";
 import type { Product } from "../lib/products";
-import Link from "next/link";
+
+const categories = ["all", "electronics", "clothing", "books", "home", "general"];
 
 function sortProductsByPrice(products: Product[], order: string) {
   if (order === "asc") {
     return [...products].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-  } else if (order === "desc") {
+  }
+  if (order === "desc") {
     return [...products].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
   }
   return products;
@@ -25,13 +26,12 @@ export default function ProductListPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [priceSort, setPriceSort] = useState("none");
-  const [showSidebar, setShowSidebar] = useState(false);
 
   const filteredProducts = useMemo(() => {
     let updated = products;
 
-    if (search) {
-      const q = search.toLowerCase();
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
       updated = updated.filter((p) => p.name?.toLowerCase().includes(q));
     }
 
@@ -39,189 +39,144 @@ export default function ProductListPage() {
       updated = updated.filter((p) => p.category === category);
     }
 
-    updated = sortProductsByPrice(updated, priceSort);
-    return updated;
+    return sortProductsByPrice(updated, priceSort);
   }, [products, search, category, priceSort]);
 
+  const hasFilters = search.trim() || category !== "all" || priceSort !== "none";
+
+  function clearFilters() {
+    setSearch("");
+    setCategory("all");
+    setPriceSort("none");
+  }
+
   return (
-    <Theme
-      appearance="light"
-      accentColor="orange"
-      grayColor="sand"
-      radius="large"
-    >
-      <main className="min-h-screen relative bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 py-20">
+    <Theme appearance="light" accentColor="orange" grayColor="sand" radius="large">
+      <main className="relative min-h-screen bg-gradient-to-br from-white via-[#fff6f1] to-[#ffe7df] px-4 py-24">
         <Header />
 
-        <div className="relative z-10 max-w-7xl mx-auto">
-          <Heading
-            size="8"
-            className="text-[#333] text-center mb-10 font-mono font-bold text-3xl"
-          >
-            Marketplace
-          </Heading>
-          <div className="flex justify-end mb-10">
-            <div className="flex items-center gap-2">
-              <Button variant="soft" onClick={() => setShowSidebar((s) => !s)}>
-                <MixerHorizontalIcon />
-              </Button>
-              <Button
-                variant="soft"
-                onClick={() => refetch()}
-                disabled={loading}
-              >
+        <div className="relative z-10 mx-auto max-w-7xl">
+          <section className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#d73f09]">
+                Marketplace
+              </p>
+              <Heading size="8" className="text-3xl font-bold text-gray-900 sm:text-4xl">
+                Find campus deals faster.
+              </Heading>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600 sm:text-base">
+                Browse available listings, filter by category, and add items to
+                your request cart when you are ready to contact the seller.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button variant="soft" onClick={() => refetch()} disabled={loading}>
                 {loading ? "Refreshing..." : "Refresh"}
               </Button>
               <Link href="/sell">
                 <Button highContrast>List Item</Button>
               </Link>
             </div>
-          </div>
+          </section>
 
           {error && (
-            <p className="mb-4 text-sm text-red-600">
+            <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               Failed to load products: {error.message}
-            </p>
+            </div>
           )}
 
-          <div className="flex">
-            {showSidebar && (
-              <aside className="w-full max-w-xs bg-white shadow-xl rounded-xl p-6 mr-6 space-y-6 border border-gray-200">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <span role="img" aria-label="search">
-                      🔍
-                    </span>{" "}
-                    Search Products
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Search by name"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
-                  />
-                </div>
+          <section className="mb-6 rounded-lg border border-orange-100 bg-white/80 p-4 shadow-sm backdrop-blur">
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px_auto] md:items-end">
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-gray-700">
+                  Search
+                </span>
+                <input
+                  type="search"
+                  placeholder="Search by item name"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100"
+                />
+              </label>
 
-                <Separator my="2" size="4" />
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-gray-700">
+                  Category
+                </span>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm capitalize outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100"
+                >
+                  {categories.map((item) => (
+                    <option key={item} value={item}>
+                      {item === "all" ? "All categories" : item}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <span role="img" aria-label="category">
-                      🗂️
-                    </span>{" "}
-                    Category
-                  </label>
-                  <SelectPrimitive.Root
-                    value={category}
-                    onValueChange={setCategory}
-                  >
-                    <SelectPrimitive.Trigger className="w-full px-4 py-2 border border-gray-300 rounded-md text-left bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-                      <span>
-                        {category === "all" ? "All Categories" : category}
-                      </span>
-                    </SelectPrimitive.Trigger>
-                    <SelectPrimitive.Content className="bg-white border border-gray-300 rounded-md shadow-lg">
-                      <SelectPrimitive.Item
-                        value="all"
-                        className="px-4 py-2 hover:bg-gray-100"
-                      >
-                        All Categories
-                      </SelectPrimitive.Item>
-                      <SelectPrimitive.Item
-                        value="electronics"
-                        className="px-4 py-2 hover:bg-gray-100"
-                      >
-                        Electronics
-                      </SelectPrimitive.Item>
-                      <SelectPrimitive.Item
-                        value="clothing"
-                        className="px-4 py-2 hover:bg-gray-100"
-                      >
-                        Clothing
-                      </SelectPrimitive.Item>
-                      <SelectPrimitive.Item
-                        value="books"
-                        className="px-4 py-2 hover:bg-gray-100"
-                      >
-                        Books
-                      </SelectPrimitive.Item>
-                    </SelectPrimitive.Content>
-                  </SelectPrimitive.Root>
-                </div>
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-gray-700">
+                  Sort
+                </span>
+                <select
+                  value={priceSort}
+                  onChange={(e) => setPriceSort(e.target.value)}
+                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100"
+                >
+                  <option value="none">Newest first</option>
+                  <option value="asc">Price: low to high</option>
+                  <option value="desc">Price: high to low</option>
+                </select>
+              </label>
 
-                <Separator my="2" size="4" />
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <span role="img" aria-label="price">
-                      💲
-                    </span>{" "}
-                    Sort by Price
-                  </label>
-                  <SelectPrimitive.Root
-                    value={priceSort}
-                    onValueChange={setPriceSort}
-                  >
-                    <SelectPrimitive.Trigger className="w-full px-4 py-2 border border-gray-300 rounded-md text-left bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-                      <span>
-                        {priceSort === "asc"
-                          ? "Price: Low to High"
-                          : priceSort === "desc"
-                          ? "Price: High to Low"
-                          : "No Sorting"}
-                      </span>
-                    </SelectPrimitive.Trigger>
-                    <SelectPrimitive.Content className="bg-white border border-gray-300 rounded-md shadow-lg">
-                      <SelectPrimitive.Item
-                        value="none"
-                        className="px-4 py-2 hover:bg-gray-100"
-                      >
-                        No Sorting
-                      </SelectPrimitive.Item>
-                      <SelectPrimitive.Item
-                        value="asc"
-                        className="px-4 py-2 hover:bg-gray-100"
-                      >
-                        Price: Low to High
-                      </SelectPrimitive.Item>
-                      <SelectPrimitive.Item
-                        value="desc"
-                        className="px-4 py-2 hover:bg-gray-100"
-                      >
-                        Price: High to Low
-                      </SelectPrimitive.Item>
-                    </SelectPrimitive.Content>
-                  </SelectPrimitive.Root>
-                </div>
-              </aside>
-            )}
-
-            <div className="flex-1 grid gap-10 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {loading ? (
-                <p className="text-center col-span-full text-gray-500">
-                  Loading…
-                </p>
-              ) : filteredProducts.length > 0 ? (
-                filteredProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    productId={product.id}
-                    name={product.name}
-                    price={product.price}
-                    imageUrl={
-                      product.imageUrl ||
-                      "https://bmelflizqrhydlfuovnv.supabase.co/storage/v1/object/public/products//S__5005327_0.jpg"
-                    }
-                  />
-                ))
-              ) : (
-                <p className="text-center col-span-full text-gray-500">
-                  No products available.
-                </p>
-              )}
+              <Button
+                variant="soft"
+                onClick={clearFilters}
+                disabled={!hasFilters}
+                className="h-10"
+              >
+                Clear
+              </Button>
             </div>
-          </div>
+
+            <div className="mt-3 text-sm text-gray-600">
+              Showing {filteredProducts.length} of {products.length} listings
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {loading ? (
+              <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/60 px-6 py-12 text-center text-gray-600">
+                Loading listings...
+              </div>
+            ) : filteredProducts.length > 0 ? (
+              filteredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  productId={product.id}
+                  name={product.name}
+                  price={product.price}
+                  imageUrl={
+                    product.imageUrl ||
+                    "https://placehold.co/800x600/f9fafb/d73f09?text=OSUTrade"
+                  }
+                />
+              ))
+            ) : (
+              <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/60 px-6 py-12 text-center">
+                <Heading size="4" className="text-gray-900">
+                  No matching listings
+                </Heading>
+                <p className="mt-2 text-sm text-gray-600">
+                  Try clearing filters or list the first item in this category.
+                </p>
+              </div>
+            )}
+          </section>
         </div>
       </main>
     </Theme>

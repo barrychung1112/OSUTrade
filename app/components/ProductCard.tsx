@@ -21,11 +21,16 @@ export default function ProductCard({
   imageUrl,
 }: ProductCardProps) {
   const [adding, setAdding] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
 
   async function addToCart() {
     setAdding(true);
+    setFeedback(null);
     try {
-      await fetch("/api/cart", {
+      const response = await fetch("/api/cart", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -35,13 +40,25 @@ export default function ProductCard({
           imageUrl,
         }),
       });
+      if (!response.ok) {
+        throw new Error("Failed to add item");
+      }
+      setFeedback({
+        tone: "success",
+        message: "Added to request cart.",
+      });
+    } catch {
+      setFeedback({
+        tone: "error",
+        message: "Could not add item. Please try again.",
+      });
     } finally {
       setAdding(false);
     }
   }
 
   return (
-    <Card className="bg-white/70 backdrop-blur-md border border-orange-300 shadow hover:scale-[1.02] transition-transform overflow-hidden flex flex-col">
+    <Card className="flex flex-col overflow-hidden border border-orange-200 bg-white/80 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md">
       <Link href={`/product/${productId}`} className="relative block w-full h-52">
         <Image src={imageUrl} alt={name} fill className="object-cover" />
       </Link>
@@ -65,6 +82,14 @@ export default function ProductCard({
             ${price}
           </Text>
         </div>
+        <p
+          className={`mt-3 min-h-5 text-xs ${
+            feedback?.tone === "error" ? "text-red-600" : "text-green-700"
+          }`}
+          aria-live="polite"
+        >
+          {feedback?.message}
+        </p>
       </div>
     </Card>
   );
