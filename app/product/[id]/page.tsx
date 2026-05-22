@@ -68,6 +68,7 @@ export default function ProductDetailPage() {
           price: product.price,
           imageUrl: product.imageUrl || fallbackImage,
           category: product.category,
+          availableQuantity: product.quantity ?? 1,
         }),
       });
 
@@ -117,7 +118,8 @@ export default function ProductDetailPage() {
   }
 
   const status = product.status || "available";
-  const isAvailable = status === "available";
+  const availableQuantity = product.quantity ?? 1;
+  const isAvailable = status === "available" && availableQuantity > 0;
 
   return (
     <main className="min-h-screen bg-[#fff8f4] px-4 py-16">
@@ -183,6 +185,9 @@ export default function ProductDetailPage() {
             <h1 className="text-3xl font-bold text-gray-950">{product.name}</h1>
             <p className="mt-3 text-3xl font-bold text-[#d73f09]">
               ${Number(product.price).toLocaleString()}
+            </p>
+            <p className="mt-2 text-sm font-medium text-gray-600">
+              {t("product.stock", { quantity: availableQuantity })}
             </p>
 
             <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">

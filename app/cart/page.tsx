@@ -25,6 +25,7 @@ type CartItem = {
   price: number;
   imageUrl?: string | null;
   quantity: number;
+  availableQuantity?: number | null;
   category?: string | null;
 };
 
@@ -98,7 +99,13 @@ export default function CartPage() {
     replaceItems(
       items.map((item) =>
         item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          ? {
+              ...item,
+              quantity: Math.min(
+                item.availableQuantity ?? Number.MAX_SAFE_INTEGER,
+                Math.max(1, item.quantity + delta)
+              ),
+            }
           : item
       )
     );
@@ -306,6 +313,10 @@ function ItemCard({
               <span className="px-4 select-none">{item.quantity}</span>
               <button
                 onClick={onPlus}
+                disabled={
+                  Number.isInteger(item.availableQuantity) &&
+                  item.quantity >= Number(item.availableQuantity)
+                }
                 className="p-2 transition hover:bg-gray-50 active:scale-95"
                 aria-label={t("cart.increase")}
               >
@@ -317,6 +328,9 @@ function ItemCard({
               {currency(item.price * item.quantity)}
             </Text>
           </div>
+          <Text as="p" color="gray" size="1" className="mt-2">
+            {t("product.stock", { quantity: item.availableQuantity ?? 1 })}
+          </Text>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-[1fr,auto] sm:items-end">
             <div>

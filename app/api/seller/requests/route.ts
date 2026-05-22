@@ -9,6 +9,7 @@ type ProductRow = {
   name: string;
   price: number;
   image_url: string | null;
+  quantity?: number | null;
 };
 
 type RequestRow = {
@@ -61,6 +62,7 @@ function toSellerRequest(
           name: product.name,
           price: product.price,
           imageUrl: product.image_url,
+          quantity: product.quantity ?? 1,
         }
       : null,
   };
@@ -70,7 +72,7 @@ async function getSellerProducts(sellerId: string) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("products")
-    .select("product_id, name, price, image_url")
+    .select("*")
     .eq("seller_id", sellerId);
 
   if (error) {
@@ -171,7 +173,7 @@ export async function PATCH(request: Request) {
 
     const { data: existing, error: lookupError } = await supabase
       .from("trade_requests")
-      .select("request_id, product_id")
+      .select("request_id, product_id, quantity, status")
       .eq("request_id", requestId)
       .single();
 
@@ -186,6 +188,31 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const product = products.find(
+      (item) => String(item.product_id) === String(existing.product_id)
+    );
+
+    if (status === "accepted") {
+      if (existing.status !== "sent") {
+        return NextResponse.json(
+          { message: "Only pending requests can be accepted." },
+          { status: 409 }
+        );
+      }
+
+      const availableQuantity = Number(product?.quantity ?? 1);
+
+      if (existing.quantity > availableQuantity) {
+        return NextResponse.json(
+          {
+            message: `Only ${availableQuantity} item(s) are available.`,
+            availableQuantity,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const { data, error } = await supabase
       .from("trade_requests")
       .update({ status, updated_at: new Date().toISOString() })
@@ -197,16 +224,28 @@ export async function PATCH(request: Request) {
       throw error;
     }
 
-    const product = products.find(
-      (item) => String(item.product_id) === String(data.product_id)
-    );
-
     if (status === "accepted") {
+      const availableQuantity = Number(product?.quantity ?? 1);
+      const remainingQuantity = availableQuantity - data.quantity;
+      const nextProductStatus = remainingQuantity > 0 ? "available" : "sold";
+
       await supabase
         .from("products")
-        .update({ status: "pending", updated_at: new Date().toISOString() })
+        .update({
+          quantity: remainingQuantity,
+          status: nextProductStatus,
+          updated_at: new Date().toISOString(),
+        })
         .eq("product_id", data.product_id)
         .eq("seller_id", session.user.id);
+
+      if (remainingQuantity === 0) {
+        await supabase
+          .from("trade_requests")
+          .update({ status: "declined", updated_at: new Date().toISOString() })
+          .eq("product_id", data.product_id)
+          .eq("status", "sent");
+      }
     }
 
     const buyerEmail =

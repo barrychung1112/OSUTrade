@@ -12,6 +12,7 @@ type ProductRow = {
   image_url: string | null;
   seller_id: string | null;
   status: string | null;
+  quantity: number | null;
 };
 
 function toProduct(row: ProductRow) {
@@ -23,6 +24,7 @@ function toProduct(row: ProductRow) {
     imageUrl: row.image_url,
     sellerId: row.seller_id,
     status: row.status ?? "available",
+    quantity: row.quantity ?? 1,
   };
 }
 
@@ -42,9 +44,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("products")
-      .select("product_id, name, price, category, image_url, seller_id, status", {
-        count: "exact",
-      })
+      .select("*", { count: "exact" })
       .eq("status", "available");
 
     if (name) {
@@ -69,7 +69,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        data: (data ?? []).map(toProduct),
+        data: (data ?? [])
+          .map(toProduct)
+          .filter((product) => (product.quantity ?? 1) > 0),
         total: count ?? 0,
         page,
         limit,
@@ -122,10 +124,18 @@ export async function POST(request: NextRequest) {
     const category = String(body.category ?? "").trim();
     const imageUrl = String(body.imageUrl ?? "").trim();
     const price = Number(body.price);
+    const quantity = Number(body.quantity ?? 1);
 
     if (!name || !Number.isFinite(price) || price <= 0) {
       return NextResponse.json(
         { message: "Name and a valid price are required." },
+        { status: 400 }
+      );
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      return NextResponse.json(
+        { message: "Quantity must be at least 1." },
         { status: 400 }
       );
     }
@@ -138,9 +148,10 @@ export async function POST(request: NextRequest) {
         category: category || "general",
         image_url: imageUrl || null,
         seller_id: session.user.id,
+        quantity,
         status: "available",
       })
-      .select("product_id, name, price, category, image_url, seller_id, status")
+      .select("product_id, name, price, category, image_url, seller_id, status, quantity")
       .single();
 
     if (error) {

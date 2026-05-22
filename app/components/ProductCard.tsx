@@ -13,6 +13,7 @@ interface ProductCardProps {
   name: string;
   price: number;
   imageUrl: string;
+  quantity?: number | null;
 }
 
 export default function ProductCard({
@@ -20,6 +21,7 @@ export default function ProductCard({
   name,
   price,
   imageUrl,
+  quantity,
 }: ProductCardProps) {
   const { t } = useI18n();
   const [adding, setAdding] = useState(false);
@@ -40,6 +42,7 @@ export default function ProductCard({
           name,
           price,
           imageUrl,
+          availableQuantity: quantity ?? 1,
         }),
       });
       if (!response.ok) {
@@ -84,6 +87,9 @@ export default function ProductCard({
             ${price}
           </Text>
         </div>
+        <Text size="1" color="gray" className="mt-2">
+          {t("product.stock", { quantity: quantity ?? 1 })}
+        </Text>
         <p
           className={`mt-3 min-h-5 text-xs ${
             feedback?.tone === "error" ? "text-red-600" : "text-green-700"

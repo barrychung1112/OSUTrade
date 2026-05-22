@@ -6,6 +6,7 @@ export type Product = {
   imageUrl?: string | null;
   sellerId?: string | null;
   status?: string | null;
+  quantity?: number | null;
 };
 
 export type ProductListResponse = {

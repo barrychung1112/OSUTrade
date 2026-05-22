@@ -6,8 +6,17 @@ type CartItem = {
   price: number;
   imageUrl?: string | null;
   quantity: number;
+  availableQuantity?: number | null;
   category?: string | null;
 };
+
+function normalizeQuantity(quantity: number, availableQuantity?: number | null) {
+  const requested = Math.max(1, Math.floor(Number(quantity) || 1));
+  if (!Number.isInteger(availableQuantity) || availableQuantity < 1) {
+    return requested;
+  }
+  return Math.min(requested, availableQuantity);
+}
 
 const cartCookieName = "osutrade_cart";
 
@@ -43,6 +52,11 @@ export async function POST(request: NextRequest) {
   const id = String(body.id ?? "").trim();
   const name = String(body.name ?? "").trim();
   const price = Number(body.price);
+  const availableQuantity = Number(body.availableQuantity ?? body.quantityAvailable ?? 1);
+  const maxQuantity =
+    Number.isInteger(availableQuantity) && availableQuantity > 0
+      ? availableQuantity
+      : 1;
 
   if (!id || !name || !Number.isFinite(price)) {
     return NextResponse.json(
@@ -55,7 +69,8 @@ export async function POST(request: NextRequest) {
   const existing = cart.find((item) => item.id === id);
 
   if (existing) {
-    existing.quantity += 1;
+    existing.availableQuantity = maxQuantity;
+    existing.quantity = normalizeQuantity(existing.quantity + 1, maxQuantity);
   } else {
     cart.push({
       id,
@@ -64,6 +79,7 @@ export async function POST(request: NextRequest) {
       imageUrl: body.imageUrl ?? null,
       category: body.category ?? "general",
       quantity: 1,
+      availableQuantity: maxQuantity,
     });
   }
 
@@ -81,7 +97,17 @@ export async function PUT(request: NextRequest) {
       price: Number(item.price),
       imageUrl: item.imageUrl ?? null,
       category: item.category ?? "general",
-      quantity: Math.max(1, Number(item.quantity) || 1),
+      availableQuantity:
+        Number.isInteger(Number(item.availableQuantity)) &&
+        Number(item.availableQuantity) > 0
+          ? Number(item.availableQuantity)
+          : null,
+      quantity: normalizeQuantity(
+        Number(item.quantity),
+        Number.isInteger(Number(item.availableQuantity))
+          ? Number(item.availableQuantity)
+          : null
+      ),
     }))
     .filter((item) => item.id && item.name && Number.isFinite(item.price));
 

@@ -12,6 +12,7 @@ type ProductRow = {
   image_url: string | null;
   seller_id: string | null;
   status: ProductStatus | null;
+  quantity: number | null;
   created_at: string | null;
 };
 
@@ -31,6 +32,7 @@ function toProduct(row: ProductRow) {
     imageUrl: row.image_url,
     sellerId: row.seller_id,
     status: row.status ?? "available",
+    quantity: row.quantity ?? 1,
     createdAt: row.created_at,
   };
 }
@@ -49,9 +51,7 @@ export async function GET() {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("products")
-      .select(
-        "product_id, name, price, category, image_url, seller_id, status, created_at"
-      )
+      .select("*")
       .eq("seller_id", session.user.id)
       .order("created_at", { ascending: false });
 
@@ -91,14 +91,17 @@ export async function PATCH(request: Request) {
     }
 
     const supabase = createAdminClient();
+    const nextValues =
+      status === "sold"
+        ? { status, quantity: 0, updated_at: new Date().toISOString() }
+        : { status, updated_at: new Date().toISOString() };
+
     const { data, error } = await supabase
       .from("products")
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(nextValues)
       .eq("product_id", productId)
       .eq("seller_id", session.user.id)
-      .select(
-        "product_id, name, price, category, image_url, seller_id, status, created_at"
-      )
+      .select("*")
       .single();
 
     if (error) {

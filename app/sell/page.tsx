@@ -14,6 +14,7 @@ export default function SellPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [category, setCategory] = useState("general");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -53,6 +54,7 @@ export default function SellPage() {
       body: JSON.stringify({
         name,
         price: Number(price),
+        quantity: Number(quantity),
         category,
         imageUrl: nextImageUrl,
       }),
@@ -104,6 +106,21 @@ export default function SellPage() {
                   step="0.01"
                   value={price}
                   onChange={(event) => setPrice(event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="block">
+                <Text as="span" size="2" weight="medium">
+                  {t("sell.quantity")}
+                </Text>
+                <input
+                  className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
                   required
                 />
               </label>
