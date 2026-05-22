@@ -9,6 +9,7 @@ type ProductRow = {
   name: string;
   price: number;
   image_url: string | null;
+  quantity?: number | null;
 };
 
 type RequestRow = {
@@ -61,6 +62,7 @@ function toSellerRequest(
           name: product.name,
           price: product.price,
           imageUrl: product.image_url,
+          quantity: product.quantity ?? 1,
         }
       : null,
   };
@@ -70,7 +72,7 @@ async function getSellerProducts(sellerId: string) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("products")
-    .select("product_id, name, price, image_url")
+    .select("*")
     .eq("seller_id", sellerId);
 
   if (error) {
@@ -171,7 +173,7 @@ export async function PATCH(request: Request) {
 
     const { data: existing, error: lookupError } = await supabase
       .from("trade_requests")
-      .select("request_id, product_id")
+      .select("request_id, product_id, quantity, status")
       .eq("request_id", requestId)
       .single();
 
@@ -186,34 +188,150 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const { data, error } = await supabase
+    const product = products.find(
+      (item) => String(item.product_id) === String(existing.product_id)
+    );
+
+    const updatedAt = new Date().toISOString();
+    let responseProduct = product;
+
+    if (status === "accepted") {
+      if (existing.status !== "sent") {
+        return NextResponse.json(
+          { message: "Only pending requests can be accepted." },
+          { status: 409 }
+        );
+      }
+
+      const availableQuantity = Number(product?.quantity ?? 1);
+
+      if (existing.quantity > availableQuantity) {
+        return NextResponse.json(
+          {
+            message: `Only ${availableQuantity} item(s) are available.`,
+            availableQuantity,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    const requestUpdateQuery = supabase
       .from("trade_requests")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("request_id", requestId)
+      .update({ status, updated_at: updatedAt })
+      .eq("request_id", requestId);
+
+    if (status === "accepted") {
+      requestUpdateQuery.eq("status", "sent");
+    }
+
+    const { data, error } = await requestUpdateQuery
       .select("request_id, product_id, buyer_id, quantity, note, status, created_at")
-      .single();
+      .maybeSingle();
 
     if (error) {
       throw error;
     }
 
-    const product = products.find(
-      (item) => String(item.product_id) === String(data.product_id)
-    );
+    if (!data) {
+      return NextResponse.json(
+        {
+          message:
+            status === "accepted"
+              ? "Only sent requests can be accepted."
+              : "Request not found.",
+        },
+        { status: status === "accepted" ? 409 : 404 }
+      );
+    }
 
     if (status === "accepted") {
-      await supabase
+      const availableQuantity = Number(product?.quantity ?? 1);
+      const remainingQuantity = availableQuantity - data.quantity;
+      const nextProductStatus = remainingQuantity > 0 ? "available" : "sold";
+
+      const { data: updatedProduct, error: productUpdateError } = await supabase
         .from("products")
-        .update({ status: "pending", updated_at: new Date().toISOString() })
+        .update({
+          quantity: remainingQuantity,
+          status: nextProductStatus,
+          updated_at: updatedAt,
+        })
         .eq("product_id", data.product_id)
-        .eq("seller_id", session.user.id);
+        .eq("seller_id", session.user.id)
+        .eq("status", "available")
+        .eq("quantity", availableQuantity)
+        .gte("quantity", data.quantity)
+        .select("*")
+        .maybeSingle();
+
+      if (productUpdateError) {
+        const { error: revertError } = await supabase
+          .from("trade_requests")
+          .update({ status: "sent", updated_at: updatedAt })
+          .eq("request_id", requestId)
+          .eq("status", "accepted");
+
+        if (revertError) {
+          throw revertError;
+        }
+
+        throw productUpdateError;
+      }
+
+      if (!updatedProduct) {
+        const { error: revertError } = await supabase
+          .from("trade_requests")
+          .update({ status: "sent", updated_at: updatedAt })
+          .eq("request_id", requestId)
+          .eq("status", "accepted");
+
+        if (revertError) {
+          throw revertError;
+        }
+
+        const { data: latestProduct, error: latestProductError } = await supabase
+          .from("products")
+          .select("quantity")
+          .eq("product_id", data.product_id)
+          .eq("seller_id", session.user.id)
+          .maybeSingle();
+
+        if (latestProductError) {
+          throw latestProductError;
+        }
+
+        const latestAvailableQuantity = Number(latestProduct?.quantity ?? 0);
+
+        return NextResponse.json(
+          {
+            message: `Request quantity exceeds available stock. Only ${latestAvailableQuantity} item(s) are available.`,
+            availableQuantity: latestAvailableQuantity,
+          },
+          { status: 409 }
+        );
+      }
+
+      responseProduct = updatedProduct;
+
+      if (remainingQuantity === 0) {
+        const { error: declinePendingError } = await supabase
+          .from("trade_requests")
+          .update({ status: "declined", updated_at: updatedAt })
+          .eq("product_id", data.product_id)
+          .eq("status", "sent");
+
+        if (declinePendingError) {
+          throw declinePendingError;
+        }
+      }
     }
 
     const buyerEmail =
       data.status === "accepted" ? await getEmailByUserId(data.buyer_id) : null;
 
     return NextResponse.json({
-      request: toSellerRequest(data, product, buyerEmail),
+      request: toSellerRequest(data, responseProduct, buyerEmail),
     });
   } catch (error) {
     console.error(error);

@@ -10,6 +10,7 @@ type ProductRow = {
   image_url: string | null;
   seller_id: string | null;
   status: string | null;
+  quantity: number | null;
 };
 
 function toProduct(row: ProductRow) {
@@ -21,6 +22,7 @@ function toProduct(row: ProductRow) {
     imageUrl: row.image_url,
     sellerId: row.seller_id,
     status: row.status ?? "available",
+    quantity: row.quantity ?? 1,
   };
 }
 
@@ -34,7 +36,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from("products")
-      .select("product_id, name, price, category, image_url, seller_id, status")
+      .select("*")
       .eq("product_id", id)
       .single();
 

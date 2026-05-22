@@ -166,6 +166,7 @@ export default function ProductListPage() {
                   productId={product.id}
                   name={product.name}
                   price={product.price}
+                  quantity={product.quantity}
                   imageUrl={
                     product.imageUrl ||
                     "https://placehold.co/800x600/f9fafb/d73f09?text=OSUTrade"

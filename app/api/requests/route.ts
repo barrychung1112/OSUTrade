@@ -19,6 +19,7 @@ type ProductRow = {
   image_url: string | null;
   seller_id: string | null;
   status?: string | null;
+  quantity?: number | null;
 };
 
 function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) {
@@ -37,6 +38,7 @@ function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) 
           name: product.name,
           price: product.price,
           imageUrl: product.image_url,
+          quantity: product.quantity ?? 1,
         }
       : null,
   };
@@ -82,7 +84,7 @@ export async function GET() {
     const { data: products, error: productError } = productIds.length
       ? await supabase
           .from("products")
-          .select("product_id, name, price, image_url, seller_id")
+          .select("*")
           .in("product_id", productIds)
       : { data: [], error: null };
 
@@ -212,7 +214,7 @@ export async function POST(request: Request) {
     const supabase = createAdminClient();
     const { data: product, error: productError } = await supabase
       .from("products")
-      .select("product_id, seller_id, status")
+      .select("*")
       .eq("product_id", itemId)
       .single();
 
@@ -227,9 +229,21 @@ export async function POST(request: Request) {
       );
     }
 
-    if (product.status !== "available") {
+    const availableQuantity = Number(product.quantity ?? 1);
+
+    if (product.status !== "available" || availableQuantity < 1) {
       return NextResponse.json(
         { message: "This item is no longer available for requests." },
+        { status: 409 }
+      );
+    }
+
+    if (quantity > availableQuantity) {
+      return NextResponse.json(
+        {
+          message: `Only ${availableQuantity} item(s) are available.`,
+          availableQuantity,
+        },
         { status: 409 }
       );
     }

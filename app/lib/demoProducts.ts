@@ -4,6 +4,7 @@ export type DemoProduct = {
   price: number;
   category: string;
   imageUrl: string;
+  quantity: number;
 };
 
 export const demoProducts: DemoProduct[] = [
@@ -13,6 +14,7 @@ export const demoProducts: DemoProduct[] = [
     price: 85,
     category: "general",
     imageUrl: "/images/Bike_0.jpg",
+    quantity: 1,
   },
   {
     id: "demo-dell-monitor",
@@ -20,6 +22,7 @@ export const demoProducts: DemoProduct[] = [
     price: 70,
     category: "electronics",
     imageUrl: "/images/DellMonitor_0.jpg",
+    quantity: 2,
   },
   {
     id: "demo-mini-fridge",
@@ -27,6 +30,7 @@ export const demoProducts: DemoProduct[] = [
     price: 95,
     category: "electronics",
     imageUrl: "/images/Fridge1_0.jpg",
+    quantity: 1,
   },
   {
     id: "demo-led-lamp",
@@ -34,6 +38,7 @@ export const demoProducts: DemoProduct[] = [
     price: 18,
     category: "home",
     imageUrl: "/images/LED lamp_0.jpg",
+    quantity: 3,
   },
   {
     id: "demo-bookshelf",
@@ -41,6 +46,7 @@ export const demoProducts: DemoProduct[] = [
     price: 35,
     category: "home",
     imageUrl: "/images/shelf_0.jpg",
+    quantity: 1,
   },
   {
     id: "demo-study-table",
@@ -48,6 +54,7 @@ export const demoProducts: DemoProduct[] = [
     price: 55,
     category: "home",
     imageUrl: "/images/table_0.jpg",
+    quantity: 1,
   },
   {
     id: "demo-textbook",
@@ -55,6 +62,7 @@ export const demoProducts: DemoProduct[] = [
     price: 30,
     category: "books",
     imageUrl: "/images/Fridge2_0.jpg",
+    quantity: 4,
   },
   {
     id: "demo-bike-helmet",
@@ -62,6 +70,7 @@ export const demoProducts: DemoProduct[] = [
     price: 20,
     category: "clothing",
     imageUrl: "/images/Bike2_0.jpg",
+    quantity: 1,
   },
 ];
 

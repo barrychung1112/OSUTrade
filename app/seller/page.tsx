@@ -17,6 +17,7 @@ type SellerProduct = {
   category?: string | null;
   imageUrl?: string | null;
   status: ProductStatus;
+  quantity?: number | null;
 };
 
 type SellerRequest = {
@@ -93,6 +94,9 @@ export default function SellerPage() {
       setRequests((current) =>
         current.map((item) => (item.id === requestId ? payload.request : item))
       );
+      if (status === "accepted") {
+        await loadSellerData();
+      }
     }
   }
 
@@ -225,10 +229,11 @@ function ProductRow({
             <div>
               <Text className="block font-medium">{product.name}</Text>
               <Text color="gray" size="2">
-              {product.category
-                ? t(`common.category.${product.category}` as any)
-                : t("common.category.general")}{" "}
-              - {currency(product.price)}
+                {product.category
+                  ? t(`common.category.${product.category}` as any)
+                  : t("common.category.general")}{" "}
+                - {currency(product.price)} -{" "}
+                {t("product.stock", { quantity: product.quantity ?? 1 })}
               </Text>
             </div>
             <StatusBadge status={product.status} />
