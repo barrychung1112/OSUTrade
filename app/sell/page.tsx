@@ -14,6 +14,7 @@ export default function SellPage() {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("general");
   const [imageUrl, setImageUrl] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +23,28 @@ export default function SellPage() {
     setLoading(true);
     setError(null);
 
+    let nextImageUrl = imageUrl.trim();
+
+    if (imageFile) {
+      const uploadForm = new FormData();
+      uploadForm.append("image", imageFile);
+
+      const uploadRes = await fetch("/api/products/images", {
+        method: "POST",
+        body: uploadForm,
+      });
+
+      if (!uploadRes.ok) {
+        const payload = await uploadRes.json().catch(() => null);
+        setLoading(false);
+        setError(payload?.message || "Failed to upload image.");
+        return;
+      }
+
+      const uploadPayload = await uploadRes.json();
+      nextImageUrl = uploadPayload.imageUrl;
+    }
+
     const res = await fetch("/api/products", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -29,7 +52,7 @@ export default function SellPage() {
         name,
         price: Number(price),
         category,
-        imageUrl,
+        imageUrl: nextImageUrl,
       }),
     });
 
@@ -102,13 +125,29 @@ export default function SellPage() {
 
               <label className="block">
                 <Text as="span" size="2" weight="medium">
-                  Image URL
+                  Product image
+                </Text>
+                <input
+                  className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
+                />
+                <Text as="p" size="1" color="gray" className="mt-1">
+                  JPG, PNG, or WebP up to 5 MB.
+                </Text>
+              </label>
+
+              <label className="block">
+                <Text as="span" size="2" weight="medium">
+                  Image URL fallback
                 </Text>
                 <input
                   className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                   type="url"
                   value={imageUrl}
                   onChange={(event) => setImageUrl(event.target.value)}
+                  disabled={!!imageFile}
                   placeholder="https://..."
                 />
               </label>

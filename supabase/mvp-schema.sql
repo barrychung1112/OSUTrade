@@ -1,5 +1,9 @@
 create extension if not exists pgcrypto;
 
+insert into storage.buckets (id, name, public)
+values ('product-images', 'product-images', true)
+on conflict (id) do update set public = excluded.public;
+
 alter table public.products
   add column if not exists seller_id uuid references auth.users(id) on delete set null,
   add column if not exists status text not null default 'available' check (status in ('available', 'pending', 'sold', 'removed')),
