@@ -1,23 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { CircleUser, ShoppingCart } from "lucide-react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, useGLTF } from "@react-three/drei";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { ArrowLeft, CheckCircle2, ShoppingCart, Store } from "lucide-react";
 import { fetchProduct, type Product } from "@/app/lib/products";
 
-const fallbackImage =
-  "https://bmelflizqrhydlfuovnv.supabase.co/storage/v1/object/public/products//S__5005327_0.jpg";
+const fallbackImage = "https://placehold.co/1000x750/f9fafb/d73f09?text=OSUTrade";
 
-function GLBModelViewer({ url }: { url: string }) {
-  const gltf = useGLTF(url);
-  return (
-    <primitive object={gltf.scene} scale={[0.01, 0.01, 0.01]} position-y={-1} />
-  );
-}
+type Feedback = {
+  tone: "success" | "error";
+  message: string;
+};
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +21,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -33,6 +29,7 @@ export default function ProductDetailPage() {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
+    setFeedback(null);
 
     fetchProduct(id, controller.signal)
       .then((data) => {
@@ -54,134 +51,187 @@ export default function ProductDetailPage() {
     [product?.imageUrl]
   );
 
-  if (loading) {
-    return <p className="p-6 text-center text-gray-500">Loading...</p>;
-  }
-
-  if (error || !product) {
-    return (
-      <div className="mx-auto max-w-screen-md px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-gray-800">Product unavailable</h1>
-        <p className="mt-2 text-gray-600">{error || "This item was not found."}</p>
-      </div>
-    );
-  }
-
   async function addToCart() {
     if (!product) return;
 
     setAdding(true);
+    setFeedback(null);
     try {
-      await fetch("/api/cart", {
+      const response = await fetch("/api/cart", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           id: product.id,
           name: product.name,
           price: product.price,
-          imageUrl: product.imageUrl,
+          imageUrl: product.imageUrl || fallbackImage,
           category: product.category,
         }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add item");
+      }
+
+      setFeedback({
+        tone: "success",
+        message: "Added to request cart. You can review it before sending.",
+      });
+    } catch {
+      setFeedback({
+        tone: "error",
+        message: "Could not add this item. Please try again.",
       });
     } finally {
       setAdding(false);
     }
   }
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="mx-auto max-w-screen-xl px-4 py-6"
-    >
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-10">
-        <div className="flex w-full flex-col gap-6">
-          <div className="h-[450px]">
-            <Canvas camera={{ position: [0, 0, 3] }}>
-              <ambientLight intensity={0.7} />
-              <directionalLight position={[2, 2, 2]} />
-              <Suspense fallback={null}>
-                <GLBModelViewer url="/models/bicycle.glb" />
-                <Environment preset="sunset" />
-              </Suspense>
-              <OrbitControls enableZoom />
-            </Canvas>
-          </div>
-          <div className="h-28 w-full">
-            <iframe
-              title="Product Location"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              loading="lazy"
-              allowFullScreen
-              referrerPolicy="no-referrer-when-downgrade"
-              src="https://www.google.com/maps/embed/v1/place?key=AIzaSyAjy0A2mdJ2mkGNmHr5X5yxxQwdE7sV5UQ&q=Kelly+Engineering+Center,+Oregon+State+University"
-            />
-          </div>
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#fff8f4] px-4 py-16">
+        <div className="mx-auto max-w-5xl rounded-lg border border-orange-100 bg-white p-8 text-center text-gray-600 shadow-sm">
+          Loading item...
         </div>
+      </main>
+    );
+  }
 
-        <div className="flex w-full flex-col gap-4">
-          <motion.div
-            key={selectedImage}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="w-full overflow-hidden rounded-lg shadow-md"
+  if (error || !product) {
+    return (
+      <main className="min-h-screen bg-[#fff8f4] px-4 py-16">
+        <div className="mx-auto max-w-3xl rounded-lg border border-red-100 bg-white p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-bold text-gray-900">Product unavailable</h1>
+          <p className="mt-2 text-gray-600">{error || "This item was not found."}</p>
+          <Link
+            href="/overview"
+            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#d73f09] px-4 py-2 text-sm font-semibold text-white"
           >
-            <Image
-              src={selectedImage}
-              alt={product.name}
-              width={500}
-              height={500}
-              className="h-auto w-full object-cover"
-            />
-          </motion.div>
+            <ArrowLeft size={16} /> Back to marketplace
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
-          <div className="flex gap-2">
-            {images.map((img, idx) => (
-              <button
-                key={img}
-                onClick={() => setSelectedImage(img)}
-                className={`h-20 w-20 overflow-hidden rounded border-2 ${
-                  selectedImage === img ? "border-indigo-600" : "border-transparent"
+  const status = product.status || "available";
+  const isAvailable = status === "available";
+
+  return (
+    <main className="min-h-screen bg-[#fff8f4] px-4 py-16">
+      <div className="mx-auto max-w-6xl">
+        <Link
+          href="/overview"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#d73f09] hover:text-[#b43305]"
+        >
+          <ArrowLeft size={16} /> Back to marketplace
+        </Link>
+
+        <section className="grid gap-8 rounded-xl border border-orange-100 bg-white p-4 shadow-sm md:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] md:p-6">
+          <div>
+            <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-100">
+              <Image
+                src={selectedImage}
+                alt={product.name}
+                fill
+                sizes="(min-width: 768px) 55vw, 100vw"
+                className="object-cover"
+                priority
+              />
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              {images.map((img, idx) => (
+                <button
+                  key={img}
+                  onClick={() => setSelectedImage(img)}
+                  className={`relative h-20 w-20 overflow-hidden rounded-md border-2 bg-gray-100 ${
+                    selectedImage === img ? "border-[#d73f09]" : "border-transparent"
+                  }`}
+                  aria-label={`View image ${idx + 1}`}
+                >
+                  <Image
+                    src={img}
+                    alt={`${product.name} thumbnail ${idx + 1}`}
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#d73f09]">
+                {product.category || "general"}
+              </span>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                  isAvailable
+                    ? "bg-green-50 text-green-700"
+                    : "bg-gray-100 text-gray-600"
                 }`}
               >
-                <Image
-                  src={img}
-                  alt={`${product.name} thumbnail ${idx + 1}`}
-                  width={80}
-                  height={80}
-                  className="h-full w-full object-cover"
-                />
-              </button>
-            ))}
-          </div>
+                {status}
+              </span>
+            </div>
 
-          <div>
-            <p className="text-sm uppercase tracking-wide text-gray-500">
-              {product.category || "general"}
-            </p>
-            <h1 className="text-2xl font-bold text-gray-800">{product.name}</h1>
-            <p className="mt-1 text-lg font-semibold text-indigo-600">
+            <h1 className="text-3xl font-bold text-gray-950">{product.name}</h1>
+            <p className="mt-3 text-3xl font-bold text-[#d73f09]">
               ${Number(product.price).toLocaleString()}
             </p>
 
-            <div className="mt-4 flex items-center gap-3">
-              <CircleUser className="text-gray-500" size={24} />
-              <p className="font-medium text-gray-700">Seller: OSUTrade user</p>
+            <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center gap-3 text-gray-800">
+                <Store size={20} className="text-[#d73f09]" />
+                <div>
+                  <p className="font-semibold">Seller</p>
+                  <p className="text-sm text-gray-600">
+                    Contact is handled after you send a request.
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <button
-              onClick={addToCart}
-              disabled={adding}
-              className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-white transition hover:bg-indigo-700"
-            >
-              <ShoppingCart size={20} /> {adding ? "Adding..." : "Add to Cart"}
-            </button>
+            <div className="mt-6 space-y-3 text-sm text-gray-600">
+              <div className="flex gap-2">
+                <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-green-600" />
+                <p>Add the item to your request cart, then send one request with notes.</p>
+              </div>
+              <div className="flex gap-2">
+                <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-green-600" />
+                <p>The seller can accept or decline from their seller dashboard.</p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-8">
+              <button
+                onClick={addToCart}
+                disabled={adding || !isAvailable}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d73f09] px-5 py-3 font-semibold text-white transition hover:bg-[#b43305] disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                <ShoppingCart size={20} />
+                {adding ? "Adding..." : isAvailable ? "Add to request cart" : "Unavailable"}
+              </button>
+
+              {feedback && (
+                <p
+                  className={`mt-3 rounded-md px-3 py-2 text-sm ${
+                    feedback.tone === "error"
+                      ? "bg-red-50 text-red-700"
+                      : "bg-green-50 text-green-700"
+                  }`}
+                  aria-live="polite"
+                >
+                  {feedback.message}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        </section>
       </div>
-    </motion.div>
+    </main>
   );
 }
