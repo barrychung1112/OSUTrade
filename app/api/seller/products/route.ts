@@ -105,6 +105,14 @@ export async function PATCH(request: Request) {
       throw error;
     }
 
+    if (status === "sold") {
+      await supabase
+        .from("trade_requests")
+        .update({ status: "declined", updated_at: new Date().toISOString() })
+        .eq("product_id", productId)
+        .eq("status", "sent");
+    }
+
     return NextResponse.json({ product: toProduct(data) });
   } catch (error) {
     console.error(error);

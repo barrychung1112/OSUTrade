@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
       .from("products")
       .select("product_id, name, price, category, image_url, seller_id, status", {
         count: "exact",
-      });
+      })
+      .eq("status", "available");
 
     if (name) {
       query = query.ilike("name", `%${name}%`);

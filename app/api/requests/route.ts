@@ -18,6 +18,7 @@ type ProductRow = {
   price: number;
   image_url: string | null;
   seller_id: string | null;
+  status?: string | null;
 };
 
 function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) {
@@ -123,6 +124,68 @@ export async function GET() {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { message: "You must be logged in to update your requests." },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const requestId = String(body.requestId ?? "").trim();
+    const status = String(body.status ?? "").trim();
+
+    if (!requestId || status !== "cancelled") {
+      return NextResponse.json(
+        { message: "Request id and cancelled status are required." },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createAdminClient();
+    const { data: existing, error: lookupError } = await supabase
+      .from("trade_requests")
+      .select("request_id, buyer_id, status")
+      .eq("request_id", requestId)
+      .eq("buyer_id", session.user.id)
+      .single();
+
+    if (lookupError) {
+      throw lookupError;
+    }
+
+    if (existing.status !== "sent") {
+      return NextResponse.json(
+        { message: "Only pending requests can be cancelled." },
+        { status: 409 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from("trade_requests")
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("request_id", requestId)
+      .eq("buyer_id", session.user.id)
+      .select("request_id, product_id, buyer_id, quantity, note, status, created_at")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ request: toRequest(data) });
+  } catch (error) {
+    console.error(error);
+    const message =
+      error instanceof Error ? error.message : "Failed to update request.";
+    return NextResponse.json({ message }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -147,6 +210,30 @@ export async function POST(request: Request) {
     }
 
     const supabase = createAdminClient();
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("product_id, seller_id, status")
+      .eq("product_id", itemId)
+      .single();
+
+    if (productError) {
+      throw productError;
+    }
+
+    if (product.seller_id === session.user.id) {
+      return NextResponse.json(
+        { message: "You cannot request your own listing." },
+        { status: 409 }
+      );
+    }
+
+    if (product.status !== "available") {
+      return NextResponse.json(
+        { message: "This item is no longer available for requests." },
+        { status: 409 }
+      );
+    }
+
     const { data, error } = await supabase
       .from("trade_requests")
       .insert({
