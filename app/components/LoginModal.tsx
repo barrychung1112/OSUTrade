@@ -43,7 +43,7 @@ export default function LoginModal() {
       <Button
         size="3"
         variant="outline"
-        className="border-[#d73f09] text-[#d73f09]"
+        className="min-w-[76px] shrink-0 whitespace-nowrap border-[#d73f09] px-3 text-[#d73f09]"
         onClick={() => setIsOpen(true)}
       >
         {t("auth.login")}

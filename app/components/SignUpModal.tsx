@@ -69,7 +69,7 @@ export default function SignUpModal() {
       <Button
         size="3"
         highContrast
-        className="bg-[#1a1a1a] text-white hover:bg-[#333]"
+        className="min-w-[92px] shrink-0 whitespace-nowrap bg-[#1a1a1a] px-3 text-white hover:bg-[#333]"
         onClick={() => setIsOpen(true)}
       >
         {t("auth.signup")}

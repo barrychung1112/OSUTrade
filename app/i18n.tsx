@@ -359,7 +359,7 @@ export function LanguageToggle() {
 
   return (
     <div
-      className="inline-flex rounded-md border border-orange-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm"
+      className="inline-flex min-w-[96px] shrink-0 rounded-md border border-orange-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm"
       aria-label={t("common.language")}
     >
       <button
