@@ -44,6 +44,12 @@ export default function LoginModal() {
         size="3"
         variant="outline"
         className="min-w-[76px] shrink-0 whitespace-nowrap border-[#d73f09] px-3 text-[#d73f09]"
+        style={{
+          flexShrink: 0,
+          minWidth: "76px",
+          width: "auto",
+          whiteSpace: "nowrap",
+        }}
         onClick={() => setIsOpen(true)}
       >
         {t("auth.login")}

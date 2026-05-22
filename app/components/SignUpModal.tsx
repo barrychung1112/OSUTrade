@@ -70,6 +70,12 @@ export default function SignUpModal() {
         size="3"
         highContrast
         className="min-w-[92px] shrink-0 whitespace-nowrap bg-[#1a1a1a] px-3 text-white hover:bg-[#333]"
+        style={{
+          flexShrink: 0,
+          minWidth: "92px",
+          width: "auto",
+          whiteSpace: "nowrap",
+        }}
         onClick={() => setIsOpen(true)}
       >
         {t("auth.signup")}
