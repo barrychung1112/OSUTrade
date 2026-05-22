@@ -200,6 +200,15 @@ export async function PATCH(request: Request) {
     const product = products.find(
       (item) => String(item.product_id) === String(data.product_id)
     );
+
+    if (status === "accepted") {
+      await supabase
+        .from("products")
+        .update({ status: "pending", updated_at: new Date().toISOString() })
+        .eq("product_id", data.product_id)
+        .eq("seller_id", session.user.id);
+    }
+
     const buyerEmail =
       data.status === "accepted" ? await getEmailByUserId(data.buyer_id) : null;
 

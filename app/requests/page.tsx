@@ -48,6 +48,21 @@ export default function RequestsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  async function cancelRequest(requestId: string) {
+    const res = await fetch("/api/requests", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ requestId, status: "cancelled" }),
+    });
+
+    if (res.ok) {
+      const payload = await res.json();
+      setRequests((current) =>
+        current.map((item) => (item.id === requestId ? payload.request : item))
+      );
+    }
+  }
+
   const acceptedCount = useMemo(
     () => requests.filter((request) => request.status === "accepted").length,
     [requests]
@@ -101,7 +116,11 @@ export default function RequestsPage() {
               </Card>
             ) : (
               requests.map((request) => (
-                <RequestCard key={request.id} request={request} />
+                <RequestCard
+                  key={request.id}
+                  request={request}
+                  onCancel={() => cancelRequest(request.id)}
+                />
               ))
             )}
           </div>
@@ -111,7 +130,13 @@ export default function RequestsPage() {
   );
 }
 
-function RequestCard({ request }: { request: BuyerRequest }) {
+function RequestCard({
+  request,
+  onCancel,
+}: {
+  request: BuyerRequest;
+  onCancel: () => void;
+}) {
   return (
     <Card className="border border-orange-200 bg-white/70 p-4 shadow">
       <div className="flex gap-4">
@@ -151,6 +176,12 @@ function RequestCard({ request }: { request: BuyerRequest }) {
             <Text className="mt-3 block" color="gray" size="2">
               Contact details appear after the seller accepts your request.
             </Text>
+          )}
+
+          {request.status === "sent" && (
+            <Button className="mt-4" color="red" variant="soft" onClick={onCancel}>
+              Cancel request
+            </Button>
           )}
         </div>
       </div>
