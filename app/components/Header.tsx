@@ -35,7 +35,7 @@ export default function Header() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mx-auto flex w-full max-w-none flex-col gap-3 px-2 lg:flex-row lg:items-center lg:justify-between">
         <Link
           href="/"
           className="shrink-0 text-xl font-bold text-[#d73f09] sm:text-2xl"
@@ -43,7 +43,7 @@ export default function Header() {
           OSUTrade
         </Link>
 
-        <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 lg:justify-end">
+        <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 lg:justify-end">
             <Link href="/" className={navLinkClass}>
               {t("nav.home")}
@@ -65,7 +65,7 @@ export default function Header() {
             </Link>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex min-w-max shrink-0 items-center justify-end gap-2">
             <LanguageToggle />
 
             {!user ? (
