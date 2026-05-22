@@ -28,11 +28,29 @@ const requestStatuses = new Set<RequestStatus>([
   "cancelled",
 ]);
 
-function toSellerRequest(row: RequestRow, product?: ProductRow) {
+async function getEmailByUserId(userId: string | null | undefined) {
+  if (!userId) return null;
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+
+  if (error) {
+    throw error;
+  }
+
+  return data.user?.email ?? null;
+}
+
+function toSellerRequest(
+  row: RequestRow,
+  product?: ProductRow,
+  buyerEmail?: string | null
+) {
   return {
     id: row.request_id,
     itemId: row.product_id,
     buyerId: row.buyer_id,
+    buyerEmail: row.status === "accepted" ? buyerEmail ?? null : null,
     quantity: row.quantity,
     note: row.note ?? "",
     status: row.status,
@@ -94,10 +112,25 @@ export async function GET() {
     const productsById = new Map(
       products.map((product) => [String(product.product_id), product])
     );
+    const buyerEmailById = new Map<string, string | null>();
+
+    for (const request of data ?? []) {
+      if (request.status !== "accepted") continue;
+      if (!buyerEmailById.has(request.buyer_id)) {
+        buyerEmailById.set(
+          request.buyer_id,
+          await getEmailByUserId(request.buyer_id)
+        );
+      }
+    }
 
     return NextResponse.json({
       data: (data ?? []).map((item) =>
-        toSellerRequest(item, productsById.get(String(item.product_id)))
+        toSellerRequest(
+          item,
+          productsById.get(String(item.product_id)),
+          buyerEmailById.get(item.buyer_id)
+        )
       ),
     });
   } catch (error) {
@@ -167,8 +200,12 @@ export async function PATCH(request: Request) {
     const product = products.find(
       (item) => String(item.product_id) === String(data.product_id)
     );
+    const buyerEmail =
+      data.status === "accepted" ? await getEmailByUserId(data.buyer_id) : null;
 
-    return NextResponse.json({ request: toSellerRequest(data, product) });
+    return NextResponse.json({
+      request: toSellerRequest(data, product, buyerEmail),
+    });
   } catch (error) {
     console.error(error);
     const message =

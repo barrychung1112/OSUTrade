@@ -22,6 +22,7 @@ type SellerRequest = {
   id: string;
   itemId: string;
   buyerId: string;
+  buyerEmail?: string | null;
   quantity: number;
   note: string;
   status: RequestStatus;
@@ -278,6 +279,19 @@ function RequestRow({
         <p className="mt-3 rounded-md bg-orange-50 px-3 py-2 text-sm text-gray-700">
           {request.note}
         </p>
+      )}
+
+      {request.status === "accepted" && request.buyerEmail ? (
+        <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          Buyer contact:{" "}
+          <a className="font-medium underline" href={`mailto:${request.buyerEmail}`}>
+            {request.buyerEmail}
+          </a>
+        </div>
+      ) : (
+        <Text className="mt-3 block" color="gray" size="2">
+          Buyer email appears after you accept the request.
+        </Text>
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">

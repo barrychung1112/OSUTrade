@@ -5,7 +5,13 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname, search } = req.nextUrl;
 
-  const protectedPrefixes = ["/overview", "/sell", "/cart", "/seller"];
+  const protectedPrefixes = [
+    "/overview",
+    "/sell",
+    "/cart",
+    "/seller",
+    "/requests",
+  ];
   const isProtected = protectedPrefixes.some((prefix) =>
     pathname.startsWith(prefix)
   );
@@ -34,6 +40,7 @@ export const config = {
     "/sell/:path*",
     "/cart/:path*",
     "/seller/:path*",
+    "/requests/:path*",
     "/",
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
