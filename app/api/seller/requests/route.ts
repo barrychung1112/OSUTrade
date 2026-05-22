@@ -238,7 +238,7 @@ export async function PATCH(request: Request) {
         {
           message:
             status === "accepted"
-              ? "Only pending requests can be accepted."
+              ? "Only sent requests can be accepted."
               : "Request not found.",
         },
         { status: status === "accepted" ? 409 : 404 }
@@ -305,7 +305,7 @@ export async function PATCH(request: Request) {
 
         return NextResponse.json(
           {
-            message: `Only ${latestAvailableQuantity} item(s) are available.`,
+            message: `Request quantity exceeds available stock. Only ${latestAvailableQuantity} item(s) are available.`,
             availableQuantity: latestAvailableQuantity,
           },
           { status: 409 }
