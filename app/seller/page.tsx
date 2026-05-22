@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
-import { ArrowLeftIcon, CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { ArrowLeftIcon, CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import { useI18n } from "../i18n";
 
@@ -81,6 +81,19 @@ export default function SellerPage() {
     () => requests.filter((request) => request.status === "sent").length,
     [requests]
   );
+  const activeListings = useMemo(
+    () => products.filter((product) => product.status !== "sold").length,
+    [products]
+  );
+  const availableUnits = useMemo(
+    () =>
+      products.reduce(
+        (total, product) =>
+          product.status === "available" ? total + (product.quantity ?? 0) : total,
+        0
+      ),
+    [products]
+  );
 
   async function updateRequest(requestId: string, status: RequestStatus) {
     const res = await fetch("/api/seller/requests", {
@@ -117,53 +130,80 @@ export default function SellerPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
-      <main className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 py-20">
+      <main className="min-h-screen bg-gradient-to-br from-white via-[#fff7f2] to-[#ffe7df] px-4 py-28">
         <Header />
 
         <section className="mx-auto max-w-7xl">
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <Heading size="8" className="text-[#333]">
-                {t("seller.title")}
-              </Heading>
-              <Text color="gray">
-                {t("seller.counts", {
-                  listings: products.length,
-                  pending: pendingRequests,
-                })}
-              </Text>
+          <div className="mb-6 rounded-xl border border-orange-100 bg-white/85 p-5 shadow-sm backdrop-blur md:p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#d73f09]">
+                  {t("nav.seller")}
+                </p>
+                <Heading size="8" className="text-gray-950">
+                  {t("seller.title")}
+                </Heading>
+                <Text as="p" color="gray" className="mt-2 max-w-2xl">
+                  {t("seller.subtitle")}
+                </Text>
+              </div>
+
+              <div className="flex flex-wrap gap-2 lg:justify-end">
+                <Link href="/overview">
+                  <Button variant="soft" className="whitespace-nowrap">
+                    <ArrowLeftIcon /> {t("nav.marketplace")}
+                  </Button>
+                </Link>
+                <Link href="/sell">
+                  <Button highContrast className="whitespace-nowrap">
+                    <PlusIcon /> {t("marketplace.listItem")}
+                  </Button>
+                </Link>
+              </div>
             </div>
 
-            <div className="flex gap-3">
-              <Link href="/overview">
-                <Button variant="soft">
-                  <ArrowLeftIcon /> {t("nav.marketplace")}
-                </Button>
-              </Link>
-              <Link href="/sell">
-                <Button highContrast>{t("marketplace.listItem")}</Button>
-              </Link>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <StatCard label={t("seller.totalListings")} value={activeListings} />
+              <StatCard label={t("seller.pendingRequests")} value={pendingRequests} />
+              <StatCard label={t("seller.availableUnits")} value={availableUnits} />
             </div>
           </div>
 
           {error && (
-            <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </p>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-[1fr,1.1fr]">
-            <section>
-              <Heading size="5" className="mb-4">
-                {t("seller.myListings")}
-              </Heading>
-              <div className="space-y-4">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,1fr)]">
+            <section className="rounded-xl border border-orange-100 bg-white/80 p-4 shadow-sm backdrop-blur md:p-5">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <Heading size="5" className="text-gray-950">
+                    {t("seller.myListings")}
+                  </Heading>
+                  <Text as="p" color="gray" size="2" className="mt-1">
+                    {t("seller.myListingsHelp")}
+                  </Text>
+                </div>
+                <Badge color="orange">{products.length}</Badge>
+              </div>
+
+              <div className="space-y-3">
                 {loading ? (
                   <Card className="p-5">{t("seller.loadingListings")}</Card>
                 ) : products.length === 0 ? (
-                  <Card className="p-5">
-                    <Text color="gray">{t("seller.noListings")}</Text>
-                  </Card>
+                  <EmptyState
+                    title={t("seller.noListings")}
+                    body={t("seller.noListingsHelp")}
+                    action={
+                      <Link href="/sell">
+                        <Button highContrast>
+                          <PlusIcon /> {t("marketplace.listItem")}
+                        </Button>
+                      </Link>
+                    }
+                  />
                 ) : (
                   products.map((product) => (
                     <ProductRow
@@ -177,17 +217,36 @@ export default function SellerPage() {
               </div>
             </section>
 
-            <section>
-              <Heading size="5" className="mb-4">
-                {t("seller.buyerRequests")}
-              </Heading>
-              <div className="space-y-4">
+            <section className="rounded-xl border border-orange-100 bg-white/80 p-4 shadow-sm backdrop-blur md:p-5">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <Heading size="5" className="text-gray-950">
+                    {t("seller.buyerRequests")}
+                  </Heading>
+                  <Text as="p" color="gray" size="2" className="mt-1">
+                    {t("seller.buyerRequestsHelp")}
+                  </Text>
+                </div>
+                <Badge color={pendingRequests > 0 ? "amber" : "gray"}>
+                  {pendingRequests}
+                </Badge>
+              </div>
+
+              <div className="space-y-3">
                 {loading ? (
                   <Card className="p-5">{t("seller.loadingRequests")}</Card>
                 ) : requests.length === 0 ? (
-                  <Card className="p-5">
-                    <Text color="gray">{t("seller.noRequests")}</Text>
-                  </Card>
+                  <EmptyState
+                    title={t("seller.noRequests")}
+                    body={t("seller.noRequestsHelp")}
+                    action={
+                      <Link href="/overview">
+                        <Button variant="soft">
+                          <ArrowLeftIcon /> {t("nav.marketplace")}
+                        </Button>
+                      </Link>
+                    }
+                  />
                 ) : (
                   requests.map((request) => (
                     <RequestRow
@@ -207,6 +266,39 @@ export default function SellerPage() {
   );
 }
 
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-orange-100 bg-orange-50/60 px-4 py-3">
+      <Text as="p" size="2" color="gray">
+        {label}
+      </Text>
+      <p className="mt-1 text-2xl font-bold text-gray-950">{value}</p>
+    </div>
+  );
+}
+
+function EmptyState({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action: ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-dashed border-orange-200 bg-white/70 px-6 py-10 text-center">
+      <Heading size="4" className="text-gray-950">
+        {title}
+      </Heading>
+      <Text as="p" color="gray" className="mx-auto mt-2 max-w-sm">
+        {body}
+      </Text>
+      <div className="mt-5 flex justify-center">{action}</div>
+    </div>
+  );
+}
+
 function ProductRow({
   product,
   onStatus,
@@ -217,22 +309,24 @@ function ProductRow({
   t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
-    <Card className="border border-orange-200 bg-white/70 p-4 shadow">
+    <Card className="border border-orange-100 bg-white p-3 shadow-sm">
       <div className="flex gap-4">
         <img
           src={product.imageUrl || "/images/Bike_0.jpg"}
           alt={product.name}
-          className="h-20 w-20 rounded-md object-cover"
+          className="h-20 w-20 shrink-0 rounded-md object-cover"
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <Text className="block font-medium">{product.name}</Text>
+            <div className="min-w-0">
+              <Text className="block truncate font-medium">{product.name}</Text>
               <Text color="gray" size="2">
                 {product.category
                   ? t(`common.category.${product.category}` as any)
                   : t("common.category.general")}{" "}
-                - {currency(product.price)} -{" "}
+                - {currency(product.price)}
+              </Text>
+              <Text as="p" color="gray" size="2" className="mt-1">
                 {t("product.stock", { quantity: product.quantity ?? 1 })}
               </Text>
             </div>
@@ -281,10 +375,10 @@ function RequestRow({
   t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
-    <Card className="border border-orange-200 bg-white/70 p-4 shadow">
+    <Card className="border border-orange-100 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <Text className="block font-medium">
+        <div className="min-w-0">
+          <Text className="block truncate font-medium">
             {request.product?.name || `Item ${request.itemId}`}
           </Text>
           <Text color="gray" size="2">
