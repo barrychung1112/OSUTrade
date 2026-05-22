@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { findDemoProduct } from "@/app/lib/demoProducts";
+import { canUseDemoProducts, findDemoProduct } from "@/app/lib/demoProducts";
 
 type ProductRow = {
   product_id: string | number;
@@ -49,6 +49,13 @@ export async function GET(
     return NextResponse.json(toProduct(data), { status: 200 });
   } catch (error) {
     console.error(error);
+    if (!canUseDemoProducts()) {
+      return NextResponse.json(
+        { message: "Failed to load product." },
+        { status: 500 }
+      );
+    }
+
     const { id } = await params;
     const product = findDemoProduct(id);
 

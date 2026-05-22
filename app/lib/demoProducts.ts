@@ -65,6 +65,13 @@ export const demoProducts: DemoProduct[] = [
   },
 ];
 
+export function canUseDemoProducts() {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.ENABLE_DEMO_PRODUCTS === "true"
+  );
+}
+
 export function filterDemoProducts({
   name,
   category,

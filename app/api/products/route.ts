@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
-import { filterDemoProducts } from "@/app/lib/demoProducts";
+import { canUseDemoProducts, filterDemoProducts } from "@/app/lib/demoProducts";
 
 type ProductRow = {
   product_id: string | number;
@@ -77,6 +77,13 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error(error);
+    if (!canUseDemoProducts()) {
+      return NextResponse.json(
+        { message: "Failed to load products." },
+        { status: 500 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "12", 10);
