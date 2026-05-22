@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import Header from "../components/Header";
 import type { Product } from "../lib/products";
+import { useI18n } from "../i18n";
 
 const categories = ["general", "electronics", "clothing", "books", "home"];
 
 export default function SellPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -37,7 +39,7 @@ export default function SellPage() {
       if (!uploadRes.ok) {
         const payload = await uploadRes.json().catch(() => null);
         setLoading(false);
-        setError(payload?.message || "Failed to upload image.");
+        setError(payload?.message || t("sell.uploadError"));
         return;
       }
 
@@ -60,7 +62,7 @@ export default function SellPage() {
 
     if (!res.ok) {
       const payload = await res.json().catch(() => null);
-      setError(payload?.message || "Failed to list item.");
+      setError(payload?.message || t("sell.listError"));
       return;
     }
 
@@ -74,14 +76,14 @@ export default function SellPage() {
         <Header />
         <section className="mx-auto max-w-2xl">
           <Heading size="8" className="mb-8 text-center text-[#333]">
-            List an Item
+            {t("sell.title")}
           </Heading>
 
           <Card className="border border-orange-200 bg-white/75 p-6 shadow">
             <form className="space-y-5" onSubmit={onSubmit}>
               <label className="block">
                 <Text as="span" size="2" weight="medium">
-                  Item name
+                  {t("sell.itemName")}
                 </Text>
                 <input
                   className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
@@ -93,7 +95,7 @@ export default function SellPage() {
 
               <label className="block">
                 <Text as="span" size="2" weight="medium">
-                  Price
+                  {t("sell.price")}
                 </Text>
                 <input
                   className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
@@ -108,7 +110,7 @@ export default function SellPage() {
 
               <label className="block">
                 <Text as="span" size="2" weight="medium">
-                  Category
+                  {t("marketplace.category")}
                 </Text>
                 <select
                   className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
@@ -117,7 +119,7 @@ export default function SellPage() {
                 >
                   {categories.map((item) => (
                     <option key={item} value={item}>
-                      {item}
+                      {t(`common.category.${item}` as any)}
                     </option>
                   ))}
                 </select>
@@ -125,7 +127,7 @@ export default function SellPage() {
 
               <label className="block">
                 <Text as="span" size="2" weight="medium">
-                  Product image
+                  {t("sell.productImage")}
                 </Text>
                 <input
                   className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
@@ -134,13 +136,13 @@ export default function SellPage() {
                   onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
                 />
                 <Text as="p" size="1" color="gray" className="mt-1">
-                  JPG, PNG, or WebP up to 5 MB.
+                  {t("sell.imageHelp")}
                 </Text>
               </label>
 
               <label className="block">
                 <Text as="span" size="2" weight="medium">
-                  Image URL fallback
+                  {t("sell.imageUrlFallback")}
                 </Text>
                 <input
                   className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
@@ -159,7 +161,7 @@ export default function SellPage() {
               )}
 
               <Button highContrast type="submit" disabled={loading}>
-                {loading ? "Listing..." : "List item"}
+                {loading ? t("sell.listing") : t("sell.submit")}
               </Button>
             </form>
           </Card>

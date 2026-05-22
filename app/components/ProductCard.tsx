@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card, Text, Heading, Button } from "@radix-ui/themes";
 import { PlusIcon } from "@radix-ui/react-icons";
+import { useI18n } from "../i18n";
 
 interface ProductCardProps {
   productId: string | number;
@@ -20,6 +21,7 @@ export default function ProductCard({
   price,
   imageUrl,
 }: ProductCardProps) {
+  const { t } = useI18n();
   const [adding, setAdding] = useState(false);
   const [feedback, setFeedback] = useState<{
     tone: "success" | "error";
@@ -45,12 +47,12 @@ export default function ProductCard({
       }
       setFeedback({
         tone: "success",
-        message: "Added to request cart.",
+        message: t("product.added"),
       });
     } catch {
       setFeedback({
         tone: "error",
-        message: "Could not add item. Please try again.",
+        message: t("product.addError"),
       });
     } finally {
       setAdding(false);
@@ -76,7 +78,7 @@ export default function ProductCard({
             onClick={addToCart}
             disabled={adding}
           >
-            <PlusIcon /> <span>{adding ? "Adding..." : "Add to cart"}</span>
+            <PlusIcon /> <span>{adding ? t("product.adding") : t("product.addToCart")}</span>
           </Button>
           <Text size="3" weight="medium" className="text-gray-700">
             ${price}

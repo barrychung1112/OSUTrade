@@ -17,6 +17,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@radix-ui/react-icons";
+import { useI18n } from "../i18n";
 
 type CartItem = {
   id: string;
@@ -45,6 +46,7 @@ async function saveCart(items: CartItem[]) {
 }
 
 export default function CartPage() {
+  const { t } = useI18n();
   const [items, setItems] = useState<CartItem[]>([]);
   const [states, setStates] = useState<Record<string, ItemState>>({});
   const [loading, setLoading] = useState(true);
@@ -132,7 +134,7 @@ export default function CartPage() {
         [id]: {
           ...prev[id],
           status: "error",
-          errorMsg: payload?.message || "Failed to send request.",
+          errorMsg: payload?.message || t("cart.sendFailed"),
         },
       }));
       return;
@@ -155,12 +157,12 @@ export default function CartPage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex items-center justify-between">
             <Heading size="8" className="text-[#333]">
-              Your Requests
+              {t("cart.title")}
             </Heading>
 
             <Link href="/overview" className="inline-flex items-center gap-2">
               <Button variant="soft">
-                <ArrowLeftIcon /> Back to Marketplace
+                <ArrowLeftIcon /> {t("cart.backMarketplace")}
               </Button>
             </Link>
           </div>
@@ -169,19 +171,19 @@ export default function CartPage() {
             <section className="space-y-4">
               {loading ? (
                 <Card className="border border-orange-200 bg-white/60 p-6 shadow">
-                  <Text>Loading your cart...</Text>
+                  <Text>{t("cart.loading")}</Text>
                 </Card>
               ) : items.length === 0 ? (
                 <Card className="border border-orange-200 bg-white/60 p-8 text-center shadow">
                   <Heading size="5" className="mb-2">
-                    Your cart is empty
+                    {t("cart.empty")}
                   </Heading>
                   <Text color="gray">
-                    Add items in Marketplace and send requests to sellers.
+                    {t("cart.emptyHelp")}
                   </Text>
                   <div className="mt-6">
                     <Link href="/overview">
-                      <Button highContrast>Go shopping</Button>
+                      <Button highContrast>{t("cart.goShopping")}</Button>
                     </Link>
                   </div>
                 </Card>
@@ -196,6 +198,7 @@ export default function CartPage() {
                     onMinus={() => changeQty(item.id, -1)}
                     onPlus={() => changeQty(item.id, 1)}
                     onSend={() => sendRequest(item.id)}
+                    t={t}
                   />
                 ))
               )}
@@ -204,18 +207,18 @@ export default function CartPage() {
             <aside>
               <Card className="rounded-2xl border border-orange-200 bg-white/70 p-6 shadow">
                 <Heading size="5" className="mb-4">
-                  Request Summary
+                  {t("cart.summary")}
                 </Heading>
 
                 <div className="space-y-2">
-                  <SummaryRow label="Items" value={String(items.length)} />
-                  <SummaryRow label="Subtotal" value={currency(subtotal)} />
+                  <SummaryRow label={t("cart.items")} value={String(items.length)} />
+                  <SummaryRow label={t("cart.subtotal")} value={currency(subtotal)} />
                   <SummaryRow
-                    label="Pending / Total"
+                    label={t("cart.pendingTotal")}
                     value={`${pendingCount} / ${items.length}`}
                   />
-                  <SummaryRow label="Sent" value={String(sentCount)} />
-                  <SummaryRow label="Failed" value={String(errorCount)} />
+                  <SummaryRow label={t("cart.sent")} value={String(sentCount)} />
+                  <SummaryRow label={t("cart.failed")} value={String(errorCount)} />
                 </div>
 
                 <Separator my="3" size="4" />
@@ -227,7 +230,7 @@ export default function CartPage() {
                   onClick={sendAll}
                   disabled={items.length === 0}
                 >
-                  Send all requests
+                  {t("cart.sendAll")}
                 </Button>
               </Card>
             </aside>
@@ -246,6 +249,7 @@ function ItemCard({
   onMinus,
   onPlus,
   onSend,
+  t,
 }: {
   item: CartItem;
   state?: ItemState;
@@ -254,6 +258,7 @@ function ItemCard({
   onMinus: () => void;
   onPlus: () => void;
   onSend: () => void;
+  t: ReturnType<typeof useI18n>["t"];
 }) {
   const disabled = state?.status === "sending";
 
@@ -282,10 +287,10 @@ function ItemCard({
             <button
               onClick={onRemove}
               className="inline-flex items-center gap-1 text-red-600 transition-colors hover:text-red-700"
-              aria-label="Remove item"
-              title="Remove item"
+              aria-label={t("cart.remove")}
+              title={t("cart.remove")}
             >
-              <TrashIcon /> <span className="text-sm">Remove</span>
+              <TrashIcon /> <span className="text-sm">{t("cart.remove")}</span>
             </button>
           </div>
 
@@ -294,7 +299,7 @@ function ItemCard({
               <button
                 onClick={onMinus}
                 className="p-2 transition hover:bg-gray-50 active:scale-95"
-                aria-label="Decrease quantity"
+                aria-label={t("cart.decrease")}
               >
                 <MinusIcon />
               </button>
@@ -302,7 +307,7 @@ function ItemCard({
               <button
                 onClick={onPlus}
                 className="p-2 transition hover:bg-gray-50 active:scale-95"
-                aria-label="Increase quantity"
+                aria-label={t("cart.increase")}
               >
                 <PlusIcon />
               </button>
@@ -316,13 +321,13 @@ function ItemCard({
           <div className="mt-4 grid gap-2 sm:grid-cols-[1fr,auto] sm:items-end">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Note to seller
+                {t("cart.note")}
               </label>
               <textarea
                 rows={2}
                 value={state?.note ?? ""}
                 onChange={(event) => onNote(event.target.value)}
-                placeholder="e.g., Can we meet at the library?"
+                placeholder={t("cart.notePlaceholder")}
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 disabled={disabled}
               />
@@ -342,10 +347,10 @@ function ItemCard({
               onClick={onSend}
             >
               {state?.status === "sending"
-                ? "Sending..."
+                ? t("cart.sending")
                 : state?.status === "sent"
-                  ? "Sent"
-                  : "Send request"}
+                  ? t("cart.sent")
+                  : t("cart.send")}
             </Button>
           </div>
         </div>
@@ -355,10 +360,12 @@ function ItemCard({
 }
 
 function StatusBadge({ status }: { status: ItemState["status"] }) {
-  if (status === "sending") return <Badge color="amber">Sending</Badge>;
-  if (status === "sent") return <Badge color="green">Sent</Badge>;
-  if (status === "error") return <Badge color="red">Error</Badge>;
-  return <Badge color="gray">Idle</Badge>;
+  const { t } = useI18n();
+
+  if (status === "sending") return <Badge color="amber">{t("cart.sending")}</Badge>;
+  if (status === "sent") return <Badge color="green">{t("cart.sent")}</Badge>;
+  if (status === "error") return <Badge color="red">{t("cart.error")}</Badge>;
+  return <Badge color="gray">{t("cart.idle")}</Badge>;
 }
 
 function SummaryRow({ label, value }: { label: string; value: string }) {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
+import { useI18n } from "../i18n";
 
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
 
@@ -28,6 +29,7 @@ const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 export default function RequestsPage() {
+  const { t } = useI18n();
   const [requests, setRequests] = useState<BuyerRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,16 +79,19 @@ export default function RequestsPage() {
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
               <Heading size="8" className="text-[#333]">
-                My Requests
+                {t("requests.title")}
               </Heading>
               <Text color="gray">
-                {requests.length} total, {acceptedCount} accepted
+                {t("requests.counts", {
+                  total: requests.length,
+                  accepted: acceptedCount,
+                })}
               </Text>
             </div>
 
             <Link href="/overview">
               <Button variant="soft">
-                <ArrowLeftIcon /> Marketplace
+                <ArrowLeftIcon /> {t("nav.marketplace")}
               </Button>
             </Link>
           </div>
@@ -99,18 +104,18 @@ export default function RequestsPage() {
 
           <div className="space-y-4">
             {loading ? (
-              <Card className="p-5">Loading requests...</Card>
+              <Card className="p-5">{t("requests.loading")}</Card>
             ) : requests.length === 0 ? (
               <Card className="p-8 text-center">
                 <Heading size="5" className="mb-2">
-                  No requests yet
+                  {t("requests.empty")}
                 </Heading>
                 <Text color="gray">
-                  Send a request from your cart to start a trade.
+                  {t("requests.emptyHelp")}
                 </Text>
                 <div className="mt-5">
                   <Link href="/overview">
-                    <Button highContrast>Browse items</Button>
+                    <Button highContrast>{t("requests.browse")}</Button>
                   </Link>
                 </div>
               </Card>
@@ -120,6 +125,7 @@ export default function RequestsPage() {
                   key={request.id}
                   request={request}
                   onCancel={() => cancelRequest(request.id)}
+                  t={t}
                 />
               ))
             )}
@@ -133,9 +139,11 @@ export default function RequestsPage() {
 function RequestCard({
   request,
   onCancel,
+  t,
 }: {
   request: BuyerRequest;
   onCancel: () => void;
+  t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
     <Card className="border border-orange-200 bg-white/70 p-4 shadow">
@@ -152,7 +160,7 @@ function RequestCard({
                 {request.product?.name || `Item ${request.itemId}`}
               </Text>
               <Text color="gray" size="2">
-                Qty {request.quantity}
+                {t("requests.qty", { quantity: request.quantity })}
                 {request.product ? ` - ${currency(request.product.price)}` : ""}
               </Text>
             </div>
@@ -167,20 +175,20 @@ function RequestCard({
 
           {request.status === "accepted" && request.sellerEmail ? (
             <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-              Seller accepted. Contact:{" "}
+              {t("requests.acceptedContact")}{" "}
               <a className="font-medium underline" href={`mailto:${request.sellerEmail}`}>
                 {request.sellerEmail}
               </a>
             </div>
           ) : (
             <Text className="mt-3 block" color="gray" size="2">
-              Contact details appear after the seller accepts your request.
+              {t("requests.contactPending")}
             </Text>
           )}
 
           {request.status === "sent" && (
             <Button className="mt-4" color="red" variant="soft" onClick={onCancel}>
-              Cancel request
+              {t("requests.cancel")}
             </Button>
           )}
         </div>

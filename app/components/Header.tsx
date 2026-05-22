@@ -7,6 +7,7 @@ import { signOut, getSession } from "next-auth/react";
 import { Avatar, DropdownMenu } from "@radix-ui/themes";
 import { RocketIcon } from "@radix-ui/react-icons";
 import LoginModal from "./LoginModal";
+import { LanguageToggle, useI18n } from "../i18n";
 
 type HeaderUser = {
   name?: string | null;
@@ -14,6 +15,7 @@ type HeaderUser = {
 };
 
 export default function Header() {
+  const { t } = useI18n();
   const [user, setUser] = useState<HeaderUser | null>(null);
 
   useEffect(() => {
@@ -40,23 +42,24 @@ export default function Header() {
 
         <nav className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
           <Link href="/" className={navLinkClass}>
-            Home
+            {t("nav.home")}
           </Link>
           <Link href="/overview" className={navLinkClass}>
-            Marketplace
+            {t("nav.marketplace")}
           </Link>
           <Link href="/sell" className={navLinkClass}>
-            Sell
+            {t("nav.sell")}
           </Link>
           <Link href="/seller" className={navLinkClass}>
-            Seller
+            {t("nav.seller")}
           </Link>
           <Link href="/requests" className={navLinkClass}>
-            Requests
+            {t("nav.requests")}
           </Link>
           <Link href="/cart" className={`${navLinkClass} inline-flex items-center`}>
-            <RocketIcon className="mr-1" /> Cart
+            <RocketIcon className="mr-1" /> {t("nav.cart")}
           </Link>
+          <LanguageToggle />
 
           {!user ? (
             <LoginModal />
@@ -75,7 +78,7 @@ export default function Header() {
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator />
                 <DropdownMenu.Item color="red" onClick={() => signOut()}>
-                  Logout
+                  {t("nav.logout")}
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Root>

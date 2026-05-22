@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
+import { useI18n } from "../i18n";
 
 type SignupResponse = {
   id?: string;
@@ -13,6 +14,7 @@ type SignupResponse = {
 };
 
 export default function SignUpModal() {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -36,13 +38,13 @@ export default function SignUpModal() {
 
     if (!res.ok && res.status !== 202) {
       setLoading(false);
-      setError(payload.message || "Sign up failed. Check your email and password.");
+      setError(payload.message || t("auth.signupError"));
       return;
     }
 
     if (res.status === 202 || payload.status === "confirmation_required") {
       setLoading(false);
-      setSuccess(payload.message || "Please check your email to confirm your account.");
+      setSuccess(payload.message || t("auth.confirmEmail"));
       return;
     }
 
@@ -55,7 +57,7 @@ export default function SignUpModal() {
     setLoading(false);
 
     if (loginResult?.error) {
-      setSuccess("Account created. Please log in after confirming your email.");
+      setSuccess(t("auth.createdConfirm"));
       return;
     }
 
@@ -70,18 +72,18 @@ export default function SignUpModal() {
         className="bg-[#1a1a1a] text-white hover:bg-[#333]"
         onClick={() => setIsOpen(true)}
       >
-        Sign Up
+        {t("auth.signup")}
       </Button>
 
       <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
         <Dialog.Content maxWidth="450px">
-          <Dialog.Title>Sign Up</Dialog.Title>
+          <Dialog.Title>{t("auth.signup")}</Dialog.Title>
 
           <form onSubmit={onSubmit}>
             <Flex direction="column" gap="3" mt="4">
               <input
                 className="px-3 py-2 border rounded"
-                placeholder="Email"
+                placeholder={t("auth.email")}
                 type="email"
                 autoComplete="email"
                 value={email}
@@ -90,7 +92,7 @@ export default function SignUpModal() {
               />
               <input
                 className="px-3 py-2 border rounded"
-                placeholder="User Name"
+                placeholder={t("auth.username")}
                 autoComplete="name"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
@@ -99,7 +101,7 @@ export default function SignUpModal() {
               <input
                 type="password"
                 className="px-3 py-2 border rounded"
-                placeholder="Password"
+                placeholder={t("auth.password")}
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -119,7 +121,7 @@ export default function SignUpModal() {
               )}
 
               <Button highContrast type="submit" disabled={loading}>
-                {loading ? "Creating account..." : "Sign Up"}
+                {loading ? t("auth.creating") : t("auth.signup")}
               </Button>
             </Flex>
           </form>

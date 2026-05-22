@@ -7,6 +7,7 @@ import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hook/useProducts";
 import type { Product } from "../lib/products";
+import { useI18n } from "../i18n";
 
 const categories = ["all", "electronics", "clothing", "books", "home", "general"];
 
@@ -21,6 +22,7 @@ function sortProductsByPrice(products: Product[], order: string) {
 }
 
 export default function ProductListPage() {
+  const { t } = useI18n();
   const { products, loading, error, refetch } = useProducts();
 
   const [search, setSearch] = useState("");
@@ -59,30 +61,29 @@ export default function ProductListPage() {
           <section className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#d73f09]">
-                Marketplace
+                {t("nav.marketplace")}
               </p>
               <Heading size="8" className="text-3xl font-bold text-gray-900 sm:text-4xl">
-                Find campus deals faster.
+                {t("marketplace.title")}
               </Heading>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600 sm:text-base">
-                Browse available listings, filter by category, and add items to
-                your request cart when you are ready to contact the seller.
+                {t("marketplace.subtitle")}
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Button variant="soft" onClick={() => refetch()} disabled={loading}>
-                {loading ? "Refreshing..." : "Refresh"}
+                {loading ? t("common.refreshing") : t("common.refresh")}
               </Button>
               <Link href="/sell">
-                <Button highContrast>List Item</Button>
+                <Button highContrast>{t("marketplace.listItem")}</Button>
               </Link>
             </div>
           </section>
 
           {error && (
             <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              Failed to load products: {error.message}
+              {t("marketplace.loadError", { message: error.message })}
             </div>
           )}
 
@@ -90,11 +91,11 @@ export default function ProductListPage() {
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px_auto] md:items-end">
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-gray-700">
-                  Search
+                  {t("marketplace.search")}
                 </span>
                 <input
                   type="search"
-                  placeholder="Search by item name"
+                  placeholder={t("marketplace.searchPlaceholder")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100"
@@ -103,7 +104,7 @@ export default function ProductListPage() {
 
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-gray-700">
-                  Category
+                  {t("marketplace.category")}
                 </span>
                 <select
                   value={category}
@@ -112,7 +113,9 @@ export default function ProductListPage() {
                 >
                   {categories.map((item) => (
                     <option key={item} value={item}>
-                      {item === "all" ? "All categories" : item}
+                      {item === "all"
+                        ? t("marketplace.allCategories")
+                        : t(`common.category.${item}` as any)}
                     </option>
                   ))}
                 </select>
@@ -120,16 +123,16 @@ export default function ProductListPage() {
 
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-gray-700">
-                  Sort
+                  {t("marketplace.sort")}
                 </span>
                 <select
                   value={priceSort}
                   onChange={(e) => setPriceSort(e.target.value)}
                   className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100"
                 >
-                  <option value="none">Newest first</option>
-                  <option value="asc">Price: low to high</option>
-                  <option value="desc">Price: high to low</option>
+                  <option value="none">{t("marketplace.newest")}</option>
+                  <option value="asc">{t("marketplace.priceAsc")}</option>
+                  <option value="desc">{t("marketplace.priceDesc")}</option>
                 </select>
               </label>
 
@@ -139,19 +142,22 @@ export default function ProductListPage() {
                 disabled={!hasFilters}
                 className="h-10"
               >
-                Clear
+                {t("common.clear")}
               </Button>
             </div>
 
             <div className="mt-3 text-sm text-gray-600">
-              Showing {filteredProducts.length} of {products.length} listings
+              {t("marketplace.showing", {
+                shown: filteredProducts.length,
+                total: products.length,
+              })}
             </div>
           </section>
 
           <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {loading ? (
               <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/60 px-6 py-12 text-center text-gray-600">
-                Loading listings...
+                {t("marketplace.loadingListings")}
               </div>
             ) : filteredProducts.length > 0 ? (
               filteredProducts.map((product) => (
@@ -169,10 +175,10 @@ export default function ProductListPage() {
             ) : (
               <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/60 px-6 py-12 text-center">
                 <Heading size="4" className="text-gray-900">
-                  No matching listings
+                  {t("marketplace.noMatches")}
                 </Heading>
                 <p className="mt-2 text-sm text-gray-600">
-                  Try clearing filters or list the first item in this category.
+                  {t("marketplace.noMatchesHelp")}
                 </p>
               </div>
             )}

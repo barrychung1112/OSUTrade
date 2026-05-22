@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, ShoppingCart, Store } from "lucide-react";
 import { fetchProduct, type Product } from "@/app/lib/products";
+import { useI18n } from "@/app/i18n";
 
 const fallbackImage = "https://placehold.co/1000x750/f9fafb/d73f09?text=OSUTrade";
 
@@ -15,6 +16,7 @@ type Feedback = {
 };
 
 export default function ProductDetailPage() {
+  const { t } = useI18n();
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>(fallbackImage);
@@ -75,12 +77,12 @@ export default function ProductDetailPage() {
 
       setFeedback({
         tone: "success",
-        message: "Added to request cart. You can review it before sending.",
+        message: t("product.addedDetail"),
       });
     } catch {
       setFeedback({
         tone: "error",
-        message: "Could not add this item. Please try again.",
+        message: t("product.addErrorDetail"),
       });
     } finally {
       setAdding(false);
@@ -91,7 +93,7 @@ export default function ProductDetailPage() {
     return (
       <main className="min-h-screen bg-[#fff8f4] px-4 py-16">
         <div className="mx-auto max-w-5xl rounded-lg border border-orange-100 bg-white p-8 text-center text-gray-600 shadow-sm">
-          Loading item...
+          {t("product.loading")}
         </div>
       </main>
     );
@@ -101,13 +103,13 @@ export default function ProductDetailPage() {
     return (
       <main className="min-h-screen bg-[#fff8f4] px-4 py-16">
         <div className="mx-auto max-w-3xl rounded-lg border border-red-100 bg-white p-8 text-center shadow-sm">
-          <h1 className="text-2xl font-bold text-gray-900">Product unavailable</h1>
-          <p className="mt-2 text-gray-600">{error || "This item was not found."}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t("product.unavailable")}</h1>
+          <p className="mt-2 text-gray-600">{error || t("product.notFound")}</p>
           <Link
             href="/overview"
             className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#d73f09] px-4 py-2 text-sm font-semibold text-white"
           >
-            <ArrowLeft size={16} /> Back to marketplace
+            <ArrowLeft size={16} /> {t("product.backMarketplace")}
           </Link>
         </div>
       </main>
@@ -124,7 +126,7 @@ export default function ProductDetailPage() {
           href="/overview"
           className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#d73f09] hover:text-[#b43305]"
         >
-          <ArrowLeft size={16} /> Back to marketplace
+          <ArrowLeft size={16} /> {t("product.backMarketplace")}
         </Link>
 
         <section className="grid gap-8 rounded-xl border border-orange-100 bg-white p-4 shadow-sm md:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] md:p-6">
@@ -187,9 +189,9 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-3 text-gray-800">
                 <Store size={20} className="text-[#d73f09]" />
                 <div>
-                  <p className="font-semibold">Seller</p>
+                  <p className="font-semibold">{t("product.seller")}</p>
                   <p className="text-sm text-gray-600">
-                    Contact is handled after you send a request.
+                    {t("product.contactAfterRequest")}
                   </p>
                 </div>
               </div>
@@ -198,11 +200,11 @@ export default function ProductDetailPage() {
             <div className="mt-6 space-y-3 text-sm text-gray-600">
               <div className="flex gap-2">
                 <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-green-600" />
-                <p>Add the item to your request cart, then send one request with notes.</p>
+                <p>{t("product.stepCart")}</p>
               </div>
               <div className="flex gap-2">
                 <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-green-600" />
-                <p>The seller can accept or decline from their seller dashboard.</p>
+                <p>{t("product.stepSeller")}</p>
               </div>
             </div>
 
@@ -213,7 +215,11 @@ export default function ProductDetailPage() {
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d73f09] px-5 py-3 font-semibold text-white transition hover:bg-[#b43305] disabled:cursor-not-allowed disabled:bg-gray-300"
               >
                 <ShoppingCart size={20} />
-                {adding ? "Adding..." : isAvailable ? "Add to request cart" : "Unavailable"}
+                {adding
+                  ? t("product.adding")
+                  : isAvailable
+                    ? t("product.addToCart")
+                    : t("product.statusUnavailable")}
               </button>
 
               {feedback && (
