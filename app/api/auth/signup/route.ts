@@ -8,11 +8,11 @@ export async function POST(request: Request) {
     const normalizedEmail = String(email ?? "").trim().toLowerCase();
     const normalizedUsername = String(username ?? "").trim();
 
-    if (!normalizedEmail.endsWith("@oregonstate.edu")) {
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       return NextResponse.json(
         {
-          errorCode: "EMAIL_DOMAIN_INVALID",
-          message: "Only @oregonstate.edu emails are allowed.",
+          errorCode: "EMAIL_INVALID",
+          message: "Please enter a valid email address.",
         },
         { status: 400 }
       );
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
           status: "confirmation_required",
           email: normalizedEmail,
           name: normalizedUsername,
-          message: "Please check your OSU email to confirm your account.",
+          message: "Please check your email to confirm your account.",
         },
         { status: 202 }
       );
