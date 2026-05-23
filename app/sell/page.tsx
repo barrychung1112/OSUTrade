@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import Header from "../components/Header";
@@ -18,8 +18,21 @@ export default function SellPage() {
   const [category, setCategory] = useState("general");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreviewUrl("");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [imageFile]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -170,6 +183,19 @@ export default function SellPage() {
                   placeholder="https://..."
                 />
               </label>
+
+              {(imagePreviewUrl || imageUrl.trim()) && (
+                <div className="rounded-lg border border-orange-100 bg-orange-50/60 p-3">
+                  <Text as="p" size="2" weight="medium" className="mb-2">
+                    {t("sell.preview")}
+                  </Text>
+                  <img
+                    src={imagePreviewUrl || imageUrl.trim()}
+                    alt={name || t("sell.productImage")}
+                    className="h-48 w-full rounded-md object-cover"
+                  />
+                </div>
+              )}
 
               {error && (
                 <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
