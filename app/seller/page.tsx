@@ -46,6 +46,9 @@ export default function SellerPage() {
   const [requests, setRequests] = useState<SellerRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingProductId, setPendingProductId] = useState<string | number | null>(null);
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
 
   async function loadSellerData() {
     setLoading(true);
@@ -96,13 +99,20 @@ export default function SellerPage() {
   );
 
   async function updateRequest(requestId: string, status: RequestStatus) {
-    const res = await fetch("/api/seller/requests", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ requestId, status }),
-    });
+    setActionError(null);
+    setPendingRequestId(requestId);
 
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/seller/requests", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId, status }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update request.");
+      }
+
       const payload = await res.json();
       setRequests((current) =>
         current.map((item) => (item.id === requestId ? payload.request : item))
@@ -110,21 +120,36 @@ export default function SellerPage() {
       if (status === "accepted") {
         await loadSellerData();
       }
+    } catch {
+      setActionError(t("seller.actionError"));
+    } finally {
+      setPendingRequestId(null);
     }
   }
 
   async function updateProduct(productId: string | number, status: ProductStatus) {
-    const res = await fetch("/api/seller/products", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ productId, status }),
-    });
+    setActionError(null);
+    setPendingProductId(productId);
 
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/seller/products", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ productId, status }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update product.");
+      }
+
       const payload = await res.json();
       setProducts((current) =>
         current.map((item) => (item.id === productId ? payload.product : item))
       );
+    } catch {
+      setActionError(t("seller.actionError"));
+    } finally {
+      setPendingProductId(null);
     }
   }
 
@@ -174,6 +199,11 @@ export default function SellerPage() {
               {error}
             </p>
           )}
+          {actionError && (
+            <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {actionError}
+            </p>
+          )}
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,1fr)]">
             <section className="rounded-xl border border-orange-100 bg-white/80 p-4 shadow-sm backdrop-blur md:p-5">
@@ -210,6 +240,7 @@ export default function SellerPage() {
                       key={product.id}
                       product={product}
                       onStatus={(status) => updateProduct(product.id, status)}
+                      busy={pendingProductId === product.id}
                       t={t}
                     />
                   ))
@@ -253,6 +284,7 @@ export default function SellerPage() {
                       key={request.id}
                       request={request}
                       onUpdate={(status) => updateRequest(request.id, status)}
+                      busy={pendingRequestId === request.id}
                       t={t}
                     />
                   ))
@@ -302,10 +334,12 @@ function EmptyState({
 function ProductRow({
   product,
   onStatus,
+  busy,
   t,
 }: {
   product: SellerProduct;
   onStatus: (status: ProductStatus) => void;
+  busy: boolean;
   t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
@@ -338,7 +372,7 @@ function ProductRow({
               size="2"
               variant="soft"
               onClick={() => onStatus("available")}
-              disabled={product.status === "available"}
+              disabled={busy || product.status === "available"}
             >
               {t("seller.available")}
             </Button>
@@ -346,7 +380,7 @@ function ProductRow({
               size="2"
               variant="soft"
               onClick={() => onStatus("pending")}
-              disabled={product.status === "pending"}
+              disabled={busy || product.status === "pending"}
             >
               {t("seller.pending")}
             </Button>
@@ -354,10 +388,15 @@ function ProductRow({
               size="2"
               highContrast
               onClick={() => onStatus("sold")}
-              disabled={product.status === "sold"}
+              disabled={busy || product.status === "sold"}
             >
               {t("seller.sold")}
             </Button>
+            {busy && (
+              <Text color="gray" size="2" className="self-center">
+                {t("seller.saving")}
+              </Text>
+            )}
           </div>
         </div>
       </div>
@@ -368,10 +407,12 @@ function ProductRow({
 function RequestRow({
   request,
   onUpdate,
+  busy,
   t,
 }: {
   request: SellerRequest;
   onUpdate: (status: RequestStatus) => void;
+  busy: boolean;
   t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
@@ -413,7 +454,7 @@ function RequestRow({
           size="2"
           highContrast
           onClick={() => onUpdate("accepted")}
-          disabled={request.status === "accepted"}
+          disabled={busy || request.status === "accepted"}
         >
           <CheckIcon /> {t("seller.accept")}
         </Button>
@@ -422,10 +463,15 @@ function RequestRow({
           color="red"
           variant="soft"
           onClick={() => onUpdate("declined")}
-          disabled={request.status === "declined"}
+          disabled={busy || request.status === "declined"}
         >
           <Cross2Icon /> {t("seller.decline")}
         </Button>
+        {busy && (
+          <Text color="gray" size="2" className="self-center">
+            {t("seller.saving")}
+          </Text>
+        )}
       </div>
     </Card>
   );
