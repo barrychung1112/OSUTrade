@@ -41,9 +41,15 @@ export default function HomePage() {
               <LoginModal />
             </div>
             <div className="flex flex-wrap gap-4">
-              <Button size="3" className="rounded-md bg-[#24292f] text-white">
-                <GitHubLogoIcon className="mr-2" /> {t("home.github")}
-              </Button>
+              <a
+                href="https://github.com/barrychung1112/OSUTrade"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button size="3" className="rounded-md bg-[#24292f] text-white">
+                  <GitHubLogoIcon className="mr-2" /> {t("home.github")}
+                </Button>
+              </a>
               <a
                 href="https://discord.gg/BqqAmmjJR"
                 target="_blank"
@@ -53,13 +59,19 @@ export default function HomePage() {
                   <ChatBubbleIcon className="mr-2" /> {t("home.discord")}
                 </Button>
               </a>
-              <Button
-                size="3"
-                variant="outline"
-                className="rounded-md border-[#d73f09] text-[#d73f09]"
+              <a
+                href="https://github.com/barrychung1112/OSUTrade"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <HeartIcon className="mr-2" /> {t("home.support")}
-              </Button>
+                <Button
+                  size="3"
+                  variant="outline"
+                  className="rounded-md border-[#d73f09] text-[#d73f09]"
+                >
+                  <HeartIcon className="mr-2" /> {t("home.support")}
+                </Button>
+              </a>
             </div>
           </div>
 
@@ -68,17 +80,21 @@ export default function HomePage() {
             <FundingProgressCard />
             <Card className="border border-orange-300 bg-white/70 p-4 shadow backdrop-blur-md transition-transform hover:scale-[1.02]">
               <Heading size="5" mb="2">
-                {t("home.about")}
+                {t("home.howItWorks")}
               </Heading>
-              <div className="aspect-w-16 aspect-h-9">
-                <iframe
-                  className="h-64 w-full rounded-lg"
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                  title="YouTube video player"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
+              <div className="space-y-3 text-sm text-gray-700">
+                <p>{t("home.howItWorksIntro")}</p>
+                <ol className="space-y-2">
+                  <li className="rounded-md bg-orange-50 px-3 py-2">
+                    {t("home.stepBrowse")}
+                  </li>
+                  <li className="rounded-md bg-orange-50 px-3 py-2">
+                    {t("home.stepRequest")}
+                  </li>
+                  <li className="rounded-md bg-orange-50 px-3 py-2">
+                    {t("home.stepMeet")}
+                  </li>
+                </ol>
               </div>
             </Card>
           </div>
