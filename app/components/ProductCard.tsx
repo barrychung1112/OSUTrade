@@ -98,6 +98,14 @@ export default function ProductCard({
         >
           {feedback?.message}
         </p>
+        {feedback?.tone === "success" && (
+          <Link
+            href="/cart"
+            className="mt-1 inline-flex text-sm font-medium text-[#d73f09] underline-offset-4 hover:underline"
+          >
+            {t("product.viewCart")}
+          </Link>
+        )}
       </div>
     </Card>
   );

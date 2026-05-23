@@ -232,7 +232,7 @@ export default function ProductDetailPage() {
               </button>
 
               {feedback && (
-                <p
+                <div
                   className={`mt-3 rounded-md px-3 py-2 text-sm ${
                     feedback.tone === "error"
                       ? "bg-red-50 text-red-700"
@@ -240,8 +240,16 @@ export default function ProductDetailPage() {
                   }`}
                   aria-live="polite"
                 >
-                  {feedback.message}
-                </p>
+                  <p>{feedback.message}</p>
+                  {feedback.tone === "success" && (
+                    <Link
+                      href="/cart"
+                      className="mt-1 inline-flex font-medium underline underline-offset-4"
+                    >
+                      {t("product.viewCart")}
+                    </Link>
+                  )}
+                </div>
               )}
             </div>
           </div>
