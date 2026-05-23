@@ -8,6 +8,7 @@ import Header from "../components/Header";
 import { useI18n } from "../i18n";
 
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
+type RequestFilter = RequestStatus | "all";
 
 type BuyerRequest = {
   id: string;
@@ -31,6 +32,7 @@ const currency = (n: number) =>
 export default function RequestsPage() {
   const { t } = useI18n();
   const [requests, setRequests] = useState<BuyerRequest[]>([]);
+  const [filter, setFilter] = useState<RequestFilter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,6 +71,14 @@ export default function RequestsPage() {
     () => requests.filter((request) => request.status === "accepted").length,
     [requests]
   );
+  const filteredRequests = useMemo(
+    () =>
+      filter === "all"
+        ? requests
+        : requests.filter((request) => request.status === filter),
+    [filter, requests]
+  );
+  const filters: RequestFilter[] = ["all", "sent", "accepted", "declined", "cancelled"];
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
@@ -102,6 +112,23 @@ export default function RequestsPage() {
             </p>
           )}
 
+          <div className="mb-5 flex flex-wrap gap-2">
+            {filters.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setFilter(item)}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  filter === item
+                    ? "border-[#d73f09] bg-[#d73f09] text-white"
+                    : "border-orange-200 bg-white/70 text-gray-700 hover:bg-orange-50"
+                }`}
+              >
+                {t(`requests.filter.${item}` as any)}
+              </button>
+            ))}
+          </div>
+
           <div className="space-y-4">
             {loading ? (
               <Card className="p-5">{t("requests.loading")}</Card>
@@ -119,8 +146,20 @@ export default function RequestsPage() {
                   </Link>
                 </div>
               </Card>
+            ) : filteredRequests.length === 0 ? (
+              <Card className="p-8 text-center">
+                <Heading size="5" className="mb-2">
+                  {t("requests.noFiltered")}
+                </Heading>
+                <Text color="gray">
+                  {t("requests.counts", {
+                    total: requests.length,
+                    accepted: acceptedCount,
+                  })}
+                </Text>
+              </Card>
             ) : (
-              requests.map((request) => (
+              filteredRequests.map((request) => (
                 <RequestCard
                   key={request.id}
                   request={request}
@@ -198,9 +237,11 @@ function RequestCard({
 }
 
 function StatusBadge({ status }: { status: RequestStatus }) {
-  if (status === "accepted") return <Badge color="green">accepted</Badge>;
+  const { t } = useI18n();
+
+  if (status === "accepted") return <Badge color="green">{t("requests.status.accepted")}</Badge>;
   if (status === "declined" || status === "cancelled") {
-    return <Badge color="red">{status}</Badge>;
+    return <Badge color="red">{t(`requests.status.${status}` as any)}</Badge>;
   }
-  return <Badge color="amber">{status}</Badge>;
+  return <Badge color="amber">{t("requests.status.sent")}</Badge>;
 }
