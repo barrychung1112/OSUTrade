@@ -20,6 +20,9 @@ type ProductRow = {
   name_zh_cn?: string | null;
   price: number;
   image_url: string | null;
+  contact_phone?: string | null;
+  contact_line_id?: string | null;
+  contact_wechat_id?: string | null;
   seller_id: string | null;
   status?: string | null;
   quantity?: number | null;
@@ -35,6 +38,15 @@ function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) 
     status: row.status,
     createdAt: row.created_at,
     sellerEmail: row.status === "accepted" ? sellerEmail ?? null : null,
+    sellerContact:
+      row.status === "accepted"
+        ? {
+            email: sellerEmail ?? null,
+            phone: product?.contact_phone ?? null,
+            lineId: product?.contact_line_id ?? null,
+            wechatId: product?.contact_wechat_id ?? null,
+          }
+        : null,
     product: product
       ? {
           id: product.product_id,

@@ -13,6 +13,9 @@ type ProductRow = {
   price: number;
   category: string | null;
   image_url: string | null;
+  contact_phone?: string | null;
+  contact_line_id?: string | null;
+  contact_wechat_id?: string | null;
   seller_id: string | null;
   status: ProductStatus | null;
   quantity: number | null;
@@ -39,6 +42,11 @@ function toProduct(row: ProductRow) {
     category: row.category,
     imageUrl: row.image_url,
     sellerId: row.seller_id,
+    sellerContact: {
+      phone: row.contact_phone ?? null,
+      lineId: row.contact_line_id ?? null,
+      wechatId: row.contact_wechat_id ?? null,
+    },
     status: row.status ?? "available",
     quantity: row.quantity ?? 1,
     createdAt: row.created_at,

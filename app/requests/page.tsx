@@ -19,6 +19,12 @@ type BuyerRequest = {
   status: RequestStatus;
   createdAt: string;
   sellerEmail?: string | null;
+  sellerContact?: {
+    email?: string | null;
+    phone?: string | null;
+    lineId?: string | null;
+    wechatId?: string | null;
+  } | null;
   product: {
     id: string | number;
     name: string;
@@ -225,12 +231,24 @@ function RequestCard({
             </p>
           )}
 
-          {request.status === "accepted" && request.sellerEmail ? (
+          {request.status === "accepted" && request.sellerContact ? (
             <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-              {t("requests.acceptedContact")}{" "}
-              <a className="font-medium underline" href={`mailto:${request.sellerEmail}`}>
-                {request.sellerEmail}
-              </a>
+              <p className="font-semibold">{t("requests.acceptedContact")}</p>
+              <ContactLine
+                label={t("contact.email")}
+                value={request.sellerContact.email}
+                hrefPrefix="mailto:"
+              />
+              <ContactLine
+                label={t("contact.phone")}
+                value={request.sellerContact.phone}
+                hrefPrefix="tel:"
+              />
+              <ContactLine label={t("contact.line")} value={request.sellerContact.lineId} />
+              <ContactLine
+                label={t("contact.wechat")}
+                value={request.sellerContact.wechatId}
+              />
             </div>
           ) : (
             <Text className="mt-3 block" color="gray" size="2">
@@ -246,6 +264,34 @@ function RequestCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+function ContactLine({
+  label,
+  value,
+  hrefPrefix,
+}: {
+  label: string;
+  value?: string | null;
+  hrefPrefix?: string;
+}) {
+  if (!value) {
+    return null;
+  }
+
+  const content = hrefPrefix ? (
+    <a className="font-medium underline" href={`${hrefPrefix}${value}`}>
+      {value}
+    </a>
+  ) : (
+    <span className="font-medium">{value}</span>
+  );
+
+  return (
+    <p className="mt-1">
+      {label}: {content}
+    </p>
   );
 }
 
