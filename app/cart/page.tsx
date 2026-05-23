@@ -81,6 +81,7 @@ export default function CartPage() {
     [states]
   );
   const pendingCount = items.length - sentCount;
+  const allSent = items.length > 0 && sentCount === items.length;
 
   function replaceItems(nextItems: CartItem[]) {
     setItems(nextItems);
@@ -152,6 +153,8 @@ export default function CartPage() {
   }
 
   async function sendAll() {
+    if (allSent) return;
+
     for (const item of items) {
       if (states[item.id]?.status !== "sent") {
         await sendRequest(item.id);
@@ -232,14 +235,20 @@ export default function CartPage() {
 
                 <Separator my="3" size="4" />
 
+                {allSent && (
+                  <p className="mb-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                    {t("cart.complete")}
+                  </p>
+                )}
+
                 <Button
                   size="3"
                   highContrast
                   className="w-full"
                   onClick={sendAll}
-                  disabled={items.length === 0}
+                  disabled={items.length === 0 || allSent}
                 >
-                  {t("cart.sendAll")}
+                  {allSent ? t("cart.allSent") : t("cart.sendAll")}
                 </Button>
               </Card>
             </aside>
