@@ -121,8 +121,11 @@ export default function ProductDetailPage() {
   }
 
   const status = product.status || "available";
+  const category = product.category || "general";
   const availableQuantity = product.quantity ?? 1;
   const isAvailable = status === "available" && availableQuantity > 0;
+  const categoryLabel = t(`common.category.${category}` as any);
+  const statusLabel = t(`common.status.${status}` as any);
 
   return (
     <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
@@ -173,7 +176,7 @@ export default function ProductDetailPage() {
           <div className="flex flex-col">
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#d73f09]">
-                {product.category || "general"}
+                {categoryLabel}
               </span>
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
@@ -182,7 +185,7 @@ export default function ProductDetailPage() {
                     : "bg-gray-100 text-gray-600"
                 }`}
               >
-                {status}
+                {statusLabel}
               </span>
             </div>
 
@@ -193,6 +196,28 @@ export default function ProductDetailPage() {
             <p className="mt-2 text-sm font-medium text-gray-600">
               {t("product.stock", { quantity: availableQuantity })}
             </p>
+
+            <div className="mt-6 rounded-lg border border-orange-100 bg-orange-50/60 p-4">
+              <p className="mb-3 text-sm font-semibold text-gray-900">
+                {t("product.details")}
+              </p>
+              <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-gray-500">{t("product.category")}</dt>
+                  <dd className="mt-1 font-medium text-gray-900">{categoryLabel}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">{t("product.availability")}</dt>
+                  <dd className="mt-1 font-medium text-gray-900">{statusLabel}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">{t("sell.quantity")}</dt>
+                  <dd className="mt-1 font-medium text-gray-900">
+                    {t("product.stock", { quantity: availableQuantity })}
+                  </dd>
+                </div>
+              </dl>
+            </div>
 
             <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
               <div className="flex items-center gap-3 text-gray-800">
