@@ -131,6 +131,9 @@ export async function POST(request: NextRequest) {
     const name = String(body.name ?? "").trim();
     const category = String(body.category ?? "").trim();
     const imageUrl = String(body.imageUrl ?? "").trim();
+    const contactPhone = String(body.contactPhone ?? "").trim();
+    const contactLineId = String(body.contactLineId ?? "").trim();
+    const contactWechatId = String(body.contactWechatId ?? "").trim();
     const price = Number(body.price);
     const quantity = Number(body.quantity ?? 1);
 
@@ -158,6 +161,9 @@ export async function POST(request: NextRequest) {
       price,
       category: category || "general",
       image_url: imageUrl || null,
+      contact_phone: contactPhone || null,
+      contact_line_id: contactLineId || null,
+      contact_wechat_id: contactWechatId || null,
       seller_id: session.user.id,
       quantity,
       status: "available",
@@ -171,8 +177,16 @@ export async function POST(request: NextRequest) {
       )
       .single();
 
-    if (error && /name_(en|zh_tw|zh_cn)|schema cache/i.test(error.message ?? "")) {
-      const { name_en, name_zh_tw, name_zh_cn, ...legacyValues } = insertValues;
+    if (error && /name_(en|zh_tw|zh_cn)|contact_(phone|line_id|wechat_id)|schema cache/i.test(error.message ?? "")) {
+      const {
+        name_en,
+        name_zh_tw,
+        name_zh_cn,
+        contact_phone,
+        contact_line_id,
+        contact_wechat_id,
+        ...legacyValues
+      } = insertValues;
       const legacyResult = await supabase
         .from("products")
         .insert(legacyValues)

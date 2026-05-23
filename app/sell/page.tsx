@@ -31,6 +31,9 @@ export default function SellPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactLineId, setContactLineId] = useState("");
+  const [contactWechatId, setContactWechatId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successProduct, setSuccessProduct] = useState<Product | null>(null);
@@ -96,6 +99,9 @@ export default function SellPage() {
           quantity: Number(quantity),
           category,
           imageUrl: nextImageUrl,
+          contactPhone,
+          contactLineId,
+          contactWechatId,
         }),
       });
 
@@ -112,6 +118,9 @@ export default function SellPage() {
       setCategory("general");
       setImageUrl("");
       setImageFile(null);
+      setContactPhone("");
+      setContactLineId("");
+      setContactWechatId("");
       setPricingAdvice(null);
       setPricingError(null);
     } catch (err) {
@@ -361,6 +370,54 @@ export default function SellPage() {
                   placeholder="https://..."
                 />
               </label>
+
+              <div className="rounded-lg border border-orange-100 bg-orange-50/60 p-4">
+                <Text as="p" size="2" weight="medium">
+                  {t("sell.contactMethods")}
+                </Text>
+                <Text as="p" size="1" color="gray" className="mt-1">
+                  {t("sell.contactMethodsHelp")}
+                </Text>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <label className="block">
+                    <Text as="span" size="2" weight="medium">
+                      {t("sell.contactPhone")}
+                    </Text>
+                    <input
+                      className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      type="tel"
+                      value={contactPhone}
+                      onChange={(event) => setContactPhone(event.target.value)}
+                      placeholder="541-..."
+                    />
+                  </label>
+
+                  <label className="block">
+                    <Text as="span" size="2" weight="medium">
+                      {t("sell.contactLine")}
+                    </Text>
+                    <input
+                      className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      value={contactLineId}
+                      onChange={(event) => setContactLineId(event.target.value)}
+                      placeholder="line-id"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <Text as="span" size="2" weight="medium">
+                      {t("sell.contactWechat")}
+                    </Text>
+                    <input
+                      className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      value={contactWechatId}
+                      onChange={(event) => setContactWechatId(event.target.value)}
+                      placeholder="wechat-id"
+                    />
+                  </label>
+                </div>
+              </div>
 
               {(imagePreviewUrl || imageUrl.trim()) && (
                 <div className="rounded-lg border border-orange-100 bg-orange-50/60 p-3">

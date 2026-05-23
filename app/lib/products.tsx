@@ -12,6 +12,14 @@ export type Product = {
   sellerId?: string | null;
   status?: string | null;
   quantity?: number | null;
+  sellerContact?: SellerContact | null;
+};
+
+export type SellerContact = {
+  email?: string | null;
+  phone?: string | null;
+  lineId?: string | null;
+  wechatId?: string | null;
 };
 
 export type ProductListResponse = {

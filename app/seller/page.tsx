@@ -18,6 +18,11 @@ type SellerProduct = {
   price: number;
   category?: string | null;
   imageUrl?: string | null;
+  sellerContact?: {
+    phone?: string | null;
+    lineId?: string | null;
+    wechatId?: string | null;
+  } | null;
   status: ProductStatus;
   quantity?: number | null;
 };
@@ -430,9 +435,35 @@ function ProductRow({
               </Text>
             )}
           </div>
+          <SellerContactPreview contact={product.sellerContact} t={t} />
         </div>
       </div>
     </Card>
+  );
+}
+
+function SellerContactPreview({
+  contact,
+  t,
+}: {
+  contact?: SellerProduct["sellerContact"];
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  const methods = [
+    contact?.phone ? `${t("contact.phone")}: ${contact.phone}` : null,
+    contact?.lineId ? `${t("contact.line")}: ${contact.lineId}` : null,
+    contact?.wechatId ? `${t("contact.wechat")}: ${contact.wechatId}` : null,
+  ].filter(Boolean);
+
+  if (methods.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-orange-100 bg-orange-50 px-3 py-2 text-xs text-gray-700">
+      <span className="font-semibold">{t("seller.listingContact")} </span>
+      {methods.join(" · ")}
+    </div>
   );
 }
 
