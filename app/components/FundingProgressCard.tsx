@@ -18,7 +18,7 @@ const fallbackFunding: FundingPayload = {
   raised: 0,
   goal: 2000,
   currency: "USD",
-  supportUrl: "https://github.com/barrychung1112/OSUTrade",
+  supportUrl: "https://buymeacoffee.com/osutrade",
 };
 
 function money(value: number, currency: string) {
