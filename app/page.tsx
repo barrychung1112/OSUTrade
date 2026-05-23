@@ -46,9 +46,15 @@ export default function HomePage() {
               <Button size="3" className="rounded-md bg-[#24292f] text-white">
                 <GitHubLogoIcon className="mr-2" /> {t("home.github")}
               </Button>
-              <Button size="3" className="rounded-md bg-[#5865F2] text-white">
-                <ChatBubbleIcon className="mr-2" /> {t("home.discord")}
-              </Button>
+              <a
+                href="https://discord.gg/BqqAmmjJR"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button size="3" className="rounded-md bg-[#5865F2] text-white">
+                  <ChatBubbleIcon className="mr-2" /> {t("home.discord")}
+                </Button>
+              </a>
               <Button
                 size="3"
                 variant="outline"
