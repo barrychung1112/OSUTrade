@@ -9,6 +9,17 @@ import { useI18n } from "../i18n";
 
 const categories = ["general", "electronics", "clothing", "books", "home"];
 
+type PricingAdvice = {
+  suggestedPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  confidence: "low" | "medium" | "high";
+  summary: string;
+  signals: string[];
+  supabaseComparables: Array<{ name: string; price: number }>;
+  amazonComparables: Array<{ name: string; price: number }>;
+};
+
 export default function SellPage() {
   const { t } = useI18n();
   const router = useRouter();
@@ -21,6 +32,9 @@ export default function SellPage() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
+  const [pricingAdvice, setPricingAdvice] = useState<PricingAdvice | null>(null);
 
   useEffect(() => {
     if (!imageFile) {
@@ -85,6 +99,39 @@ export default function SellPage() {
     router.push(`/product/${product.id}`);
   }
 
+  async function requestPricingAdvice() {
+    if (!name.trim()) {
+      setPricingError(t("sell.itemName"));
+      return;
+    }
+
+    setPricingLoading(true);
+    setPricingError(null);
+    setPricingAdvice(null);
+
+    try {
+      const res = await fetch("/api/pricing/advice", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, category }),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.message || t("sell.pricingAdvisorError"));
+      }
+
+      const payload = (await res.json()) as PricingAdvice;
+      setPricingAdvice(payload);
+    } catch (err) {
+      setPricingError(
+        err instanceof Error ? err.message : t("sell.pricingAdvisorError")
+      );
+    } finally {
+      setPricingLoading(false);
+    }
+  }
+
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
       <main className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 py-20">
@@ -122,6 +169,77 @@ export default function SellPage() {
                   required
                 />
               </label>
+
+              <div className="rounded-lg border border-orange-100 bg-orange-50/60 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <Text as="p" size="2" weight="medium">
+                      {t("sell.pricingAdvisor")}
+                    </Text>
+                    <Text as="p" size="1" color="gray" className="mt-1">
+                      {t("sell.pricingAdvisorHelp")}
+                    </Text>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="soft"
+                    onClick={requestPricingAdvice}
+                    disabled={pricingLoading || !name.trim()}
+                    className="whitespace-nowrap"
+                  >
+                    {pricingLoading
+                      ? t("sell.pricingAdvisorLoading")
+                      : t("sell.pricingAdvisor")}
+                  </Button>
+                </div>
+
+                {pricingError && (
+                  <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {pricingError}
+                  </p>
+                )}
+
+                {pricingAdvice && (
+                  <div className="mt-4 rounded-md border border-orange-200 bg-white p-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-[#d73f09]">
+                          ${pricingAdvice.suggestedPrice}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-700">
+                          {t("sell.pricingAdvisorRange", {
+                            min: pricingAdvice.minPrice,
+                            max: pricingAdvice.maxPrice,
+                          })}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {t("sell.pricingAdvisorConfidence", {
+                            confidence: pricingAdvice.confidence,
+                          })}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        highContrast
+                        onClick={() => setPrice(String(pricingAdvice.suggestedPrice))}
+                      >
+                        {t("sell.pricingAdvisorApply")}
+                      </Button>
+                    </div>
+                    <p className="mt-3 text-sm text-gray-700">{pricingAdvice.summary}</p>
+                    <div className="mt-3">
+                      <Text as="p" size="1" weight="medium" color="gray">
+                        {t("sell.pricingAdvisorSignals")}
+                      </Text>
+                      <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-gray-600">
+                        {pricingAdvice.signals.map((signal) => (
+                          <li key={signal}>{signal}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <label className="block">
                 <Text as="span" size="2" weight="medium">
