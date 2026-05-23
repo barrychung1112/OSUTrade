@@ -166,6 +166,7 @@ export default function ProductListPage() {
                   productId={product.id}
                   name={product.name}
                   price={product.price}
+                  category={product.category}
                   quantity={product.quantity}
                   imageUrl={
                     product.imageUrl ||

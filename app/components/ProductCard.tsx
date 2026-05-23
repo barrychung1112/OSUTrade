@@ -13,6 +13,7 @@ interface ProductCardProps {
   name: string;
   price: number;
   imageUrl: string;
+  category?: string | null;
   quantity?: number | null;
 }
 
@@ -21,6 +22,7 @@ export default function ProductCard({
   name,
   price,
   imageUrl,
+  category,
   quantity,
 }: ProductCardProps) {
   const { t } = useI18n();
@@ -73,6 +75,14 @@ export default function ProductCard({
             {name}
           </Heading>
         </Link>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-[#d73f09]">
+            {t(`common.category.${category || "general"}` as any)}
+          </span>
+          <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+            {t("product.stock", { quantity: quantity ?? 1 })}
+          </span>
+        </div>
         <div className="mt-auto flex justify-between items-center">
           <Button
             size="2"
@@ -87,9 +97,6 @@ export default function ProductCard({
             ${price}
           </Text>
         </div>
-        <Text size="1" color="gray" className="mt-2">
-          {t("product.stock", { quantity: quantity ?? 1 })}
-        </Text>
         <p
           className={`mt-3 min-h-5 text-xs ${
             feedback?.tone === "error" ? "text-red-600" : "text-green-700"
