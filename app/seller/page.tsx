@@ -350,6 +350,31 @@ function ProductRow({
   t: ReturnType<typeof useI18n>["t"];
 }) {
   const displayName = pickProductName(product.name, product.nameTranslations, locale);
+  const statusActions: Array<{
+    status: ProductStatus;
+    label: string;
+    activeClass: string;
+    idleClass: string;
+  }> = [
+    {
+      status: "available",
+      label: t("seller.available"),
+      activeClass: "border-green-700 bg-green-600 text-white shadow-sm",
+      idleClass: "border-green-200 bg-green-50 text-green-800 hover:bg-green-100",
+    },
+    {
+      status: "pending",
+      label: t("seller.pending"),
+      activeClass: "border-amber-700 bg-amber-500 text-white shadow-sm",
+      idleClass: "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100",
+    },
+    {
+      status: "sold",
+      label: t("seller.sold"),
+      activeClass: "border-blue-700 bg-blue-600 text-white shadow-sm",
+      idleClass: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100",
+    },
+  ];
 
   return (
     <Card className="border border-orange-100 bg-white p-3 shadow-sm">
@@ -377,30 +402,28 @@ function ProductRow({
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              size="2"
-              variant="soft"
-              onClick={() => onStatus("available")}
-              disabled={busy || product.status === "available"}
-            >
-              {t("seller.available")}
-            </Button>
-            <Button
-              size="2"
-              variant="soft"
-              onClick={() => onStatus("pending")}
-              disabled={busy || product.status === "pending"}
-            >
-              {t("seller.pending")}
-            </Button>
-            <Button
-              size="2"
-              highContrast
-              onClick={() => onStatus("sold")}
-              disabled={busy || product.status === "sold"}
-            >
-              {t("seller.sold")}
-            </Button>
+            {statusActions.map((action) => {
+              const active = product.status === action.status;
+
+              return (
+                <button
+                  key={action.status}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    if (!active) {
+                      onStatus(action.status);
+                    }
+                  }}
+                  disabled={busy}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                    active ? action.activeClass : action.idleClass
+                  } ${busy ? "cursor-not-allowed opacity-60" : ""}`}
+                >
+                  {action.label}
+                </button>
+              );
+            })}
             {busy && (
               <Text color="gray" size="2" className="self-center">
                 {t("seller.saving")}
