@@ -77,6 +77,16 @@ create policy "Sellers can update their products"
   using (seller_id = auth.uid())
   with check (seller_id = auth.uid());
 
+create table if not exists public.user_presence (
+  session_id text primary key,
+  last_seen_at timestamptz not null default now()
+);
+
+alter table public.user_presence enable row level security;
+
+create index if not exists user_presence_last_seen_at_idx
+  on public.user_presence (last_seen_at);
+
 create table if not exists public.trade_requests (
   request_id uuid primary key default gen_random_uuid(),
   product_id text not null,

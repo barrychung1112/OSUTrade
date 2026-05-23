@@ -1,19 +1,19 @@
 // components/TimezoneCards.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, Text } from "@radix-ui/themes";
 import { ClockIcon } from "@radix-ui/react-icons";
+import { Card, Text } from "@radix-ui/themes";
+import { useEffect, useState } from "react";
 
 const timezones = [
-  { label: "Taipei", zone: "Asia/Taipei", flag: "🇹🇼" },
-  { label: "Oregon", zone: "America/Los_Angeles", flag: "🇺🇸" },
-  { label: "Beijing", zone: "Asia/Shanghai", flag: "🇨🇳" },
-  { label: "Tokyo", zone: "Asia/Tokyo", flag: "🇯🇵" },
-  { label: "New York", zone: "America/New_York", flag: "🇺🇸" },
-  { label: "Delhi", zone: "Asia/Kolkata", flag: "🇮🇳" },
-  { label: "Seoul", zone: "Asia/Seoul", flag: "🇰🇷" },
-  { label: "UK", zone: "Europe/London", flag: "🇬🇧" },
+  { label: "Taipei", zone: "Asia/Taipei", code: "TPE" },
+  { label: "Oregon", zone: "America/Los_Angeles", code: "PDX" },
+  { label: "Beijing", zone: "Asia/Shanghai", code: "BJS" },
+  { label: "Tokyo", zone: "Asia/Tokyo", code: "TYO" },
+  { label: "New York", zone: "America/New_York", code: "NYC" },
+  { label: "Delhi", zone: "Asia/Kolkata", code: "DEL" },
+  { label: "Seoul", zone: "Asia/Seoul", code: "SEL" },
+  { label: "UK", zone: "Europe/London", code: "LON" },
 ];
 
 export default function TimezoneCards() {
@@ -52,19 +52,19 @@ export default function TimezoneCards() {
 
   return (
     <div
-      className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(160px,1fr))] w-full"
+      className="grid w-full grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-4"
       suppressHydrationWarning={true}
     >
-      {timezones.map(({ label, flag }) => (
+      {timezones.map(({ label, code }) => (
         <Card
           key={label}
-          className="bg-white/60 backdrop-blur-md p-4 shadow border border-orange-200 hover:scale-[1.02] transition-transform"
+          className="border border-orange-200 bg-white/60 p-4 shadow backdrop-blur-md transition-transform hover:scale-[1.02]"
         >
-          <div className="flex gap-3 items-start">
+          <div className="flex items-start gap-3">
             <ClockIcon className="mt-1" />
             <div className="flex flex-col">
               <Text size="2" color="gray">
-                {flag} {label} Time
+                {code} - {label} Time
               </Text>
               <Text size="3" color="gray">
                 {zoneDates[label] || "--"}
