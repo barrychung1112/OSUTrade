@@ -9,7 +9,7 @@ export async function GET() {
   const goal = numberFromEnv("FUNDING_GOAL_USD", 2000);
   const raised = Math.min(numberFromEnv("FUNDING_RAISED_USD", 0), goal);
   const supportUrl =
-    process.env.FUNDING_SUPPORT_URL || "https://github.com/barrychung1112/OSUTrade";
+    process.env.FUNDING_SUPPORT_URL || "https://buymeacoffee.com/osutrade";
 
   return NextResponse.json({
     raised,

@@ -60,7 +60,7 @@ export default function HomePage() {
                 </Button>
               </a>
               <a
-                href="https://github.com/barrychung1112/OSUTrade"
+                href="https://buymeacoffee.com/osutrade"
                 target="_blank"
                 rel="noopener noreferrer"
               >
