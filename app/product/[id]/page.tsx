@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, ShoppingCart, Store } from "lucide-react";
 import { fetchProduct, type Product } from "@/app/lib/products";
 import { useI18n } from "@/app/i18n";
+import Header from "@/app/components/Header";
 
 const fallbackImage = "https://placehold.co/1000x750/f9fafb/d73f09?text=OSUTrade";
 
@@ -92,7 +93,8 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#fff8f4] px-4 py-16">
+      <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
+        <Header />
         <div className="mx-auto max-w-5xl rounded-lg border border-orange-100 bg-white p-8 text-center text-gray-600 shadow-sm">
           {t("product.loading")}
         </div>
@@ -102,7 +104,8 @@ export default function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <main className="min-h-screen bg-[#fff8f4] px-4 py-16">
+      <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
+        <Header />
         <div className="mx-auto max-w-3xl rounded-lg border border-red-100 bg-white p-8 text-center shadow-sm">
           <h1 className="text-2xl font-bold text-gray-900">{t("product.unavailable")}</h1>
           <p className="mt-2 text-gray-600">{error || t("product.notFound")}</p>
@@ -122,7 +125,8 @@ export default function ProductDetailPage() {
   const isAvailable = status === "available" && availableQuantity > 0;
 
   return (
-    <main className="min-h-screen bg-[#fff8f4] px-4 py-16">
+    <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
+      <Header />
       <div className="mx-auto max-w-6xl">
         <Link
           href="/overview"
