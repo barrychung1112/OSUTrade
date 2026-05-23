@@ -13,7 +13,8 @@ import LoginModal from "./components/LoginModal";
 import SignUpModal from "./components/SignUpModal";
 import ProductListCard from "./components/ProductListCard";
 import FundingProgressCard from "./components/FundingProgressCard";
-import { LanguageToggle, useI18n } from "./i18n";
+import Header from "./components/Header";
+import { useI18n } from "./i18n";
 
 export default function HomePage() {
   const { t } = useI18n();
@@ -25,11 +26,8 @@ export default function HomePage() {
       grayColor="sand"
       radius="large"
     >
-      <div className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] p-8">
-        <div className="mx-auto mb-6 flex max-w-screen-xl justify-end">
-          <LanguageToggle />
-        </div>
-
+      <div className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 pb-8 pt-28 sm:px-8">
+        <Header />
         <div className="mx-auto grid max-w-screen-xl grid-cols-1 gap-8 align-middle xl:grid-cols-3">
           <div className="col-span-1 flex flex-col gap-6">
             <Heading size="9" weight="bold" className="text-[#d73f09]">

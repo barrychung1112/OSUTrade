@@ -17,6 +17,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@radix-ui/react-icons";
+import Header from "../components/Header";
 import { useI18n } from "../i18n";
 
 type CartItem = {
@@ -160,7 +161,8 @@ export default function CartPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
-      <main className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 py-16">
+      <main className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 py-28">
+        <Header />
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex items-center justify-between">
             <Heading size="8" className="text-[#333]">
