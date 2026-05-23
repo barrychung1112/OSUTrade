@@ -478,14 +478,23 @@ function RequestRow({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useI18n();
+  const label =
+    status === "sent" ||
+    status === "accepted" ||
+    status === "declined" ||
+    status === "cancelled"
+      ? t(`requests.status.${status}` as any)
+      : t(`common.status.${status}` as any);
+
   if (status === "accepted" || status === "available") {
-    return <Badge color="green">{status}</Badge>;
+    return <Badge color="green">{label}</Badge>;
   }
   if (status === "declined" || status === "removed") {
-    return <Badge color="red">{status}</Badge>;
+    return <Badge color="red">{label}</Badge>;
   }
   if (status === "sold") {
-    return <Badge color="blue">{status}</Badge>;
+    return <Badge color="blue">{label}</Badge>;
   }
-  return <Badge color="amber">{status}</Badge>;
+  return <Badge color="amber">{label}</Badge>;
 }
