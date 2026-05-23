@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import Header from "../components/Header";
@@ -32,6 +33,7 @@ export default function SellPage() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successProduct, setSuccessProduct] = useState<Product | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [pricingAdvice, setPricingAdvice] = useState<PricingAdvice | null>(null);
@@ -48,55 +50,86 @@ export default function SellPage() {
     return () => URL.revokeObjectURL(objectUrl);
   }, [imageFile]);
 
+  useEffect(() => {
+    if (!successProduct) return;
+
+    const timer = window.setTimeout(() => {
+      router.push(`/product/${successProduct.id}`);
+    }, 1800);
+
+    return () => window.clearTimeout(timer);
+  }, [router, successProduct]);
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessProduct(null);
 
     let nextImageUrl = imageUrl.trim();
 
-    if (imageFile) {
-      const uploadForm = new FormData();
-      uploadForm.append("image", imageFile);
+    try {
+      if (imageFile) {
+        const uploadForm = new FormData();
+        uploadForm.append("image", imageFile);
 
-      const uploadRes = await fetch("/api/products/images", {
-        method: "POST",
-        body: uploadForm,
-      });
+        const uploadRes = await fetch("/api/products/images", {
+          method: "POST",
+          body: uploadForm,
+        });
 
-      if (!uploadRes.ok) {
-        const payload = await uploadRes.json().catch(() => null);
-        setLoading(false);
-        setError(payload?.message || t("sell.uploadError"));
-        return;
+        if (!uploadRes.ok) {
+          const payload = await uploadRes.json().catch(() => null);
+          throw new Error(payload?.message || t("sell.uploadError"));
+        }
+
+        const uploadPayload = await uploadRes.json();
+        nextImageUrl = uploadPayload.imageUrl;
       }
 
-      const uploadPayload = await uploadRes.json();
-      nextImageUrl = uploadPayload.imageUrl;
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name,
+          price: Number(price),
+          quantity: Number(quantity),
+          category,
+          imageUrl: nextImageUrl,
+        }),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.message || t("sell.listError"));
+      }
+
+      const product = (await res.json()) as Product;
+      setSuccessProduct(product);
+      setName("");
+      setPrice("");
+      setQuantity("1");
+      setCategory("general");
+      setImageUrl("");
+      setImageFile(null);
+      setPricingAdvice(null);
+      setPricingError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("sell.listError"));
+    } finally {
+      setLoading(false);
     }
+  }
 
-    const res = await fetch("/api/products", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name,
-        price: Number(price),
-        quantity: Number(quantity),
-        category,
-        imageUrl: nextImageUrl,
-      }),
-    });
-
-    setLoading(false);
-
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null);
-      setError(payload?.message || t("sell.listError"));
-      return;
+  function goToProductNow() {
+    if (successProduct) {
+      router.push(`/product/${successProduct.id}`);
     }
+  }
 
-    const product = (await res.json()) as Product;
-    router.push(`/product/${product.id}`);
+  function listAnotherItem() {
+    setSuccessProduct(null);
+    setError(null);
   }
 
   async function requestPricingAdvice() {
@@ -140,6 +173,33 @@ export default function SellPage() {
           <Heading size="8" className="mb-8 text-center text-[#333]">
             {t("sell.title")}
           </Heading>
+
+          {successProduct && (
+            <Card className="mb-5 border border-green-200 bg-green-50 p-5 shadow">
+              <Heading size="5" className="text-green-900">
+                {t("sell.successTitle")}
+              </Heading>
+              <Text as="p" size="2" className="mt-2 text-green-800">
+                {t("sell.successBody", { name: successProduct.name })}
+              </Text>
+              <Text as="p" size="1" color="gray" className="mt-1">
+                {t("sell.redirecting")}
+              </Text>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button type="button" highContrast onClick={goToProductNow}>
+                  {t("sell.viewListing")}
+                </Button>
+                <Button type="button" variant="soft" onClick={listAnotherItem}>
+                  {t("sell.listAnother")}
+                </Button>
+                <Link href="/seller">
+                  <Button type="button" variant="outline">
+                    {t("sell.goSellerDashboard")}
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          )}
 
           <Card className="border border-orange-200 bg-white/75 p-6 shadow">
             <form className="space-y-5" onSubmit={onSubmit}>
