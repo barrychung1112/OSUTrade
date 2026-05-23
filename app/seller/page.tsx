@@ -6,6 +6,7 @@ import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon, CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import { useI18n } from "../i18n";
+import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
@@ -13,6 +14,7 @@ type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
 type SellerProduct = {
   id: string | number;
   name: string;
+  nameTranslations?: ProductNameTranslations | null;
   price: number;
   category?: string | null;
   imageUrl?: string | null;
@@ -32,6 +34,7 @@ type SellerRequest = {
   product: {
     id: string | number;
     name: string;
+    nameTranslations?: ProductNameTranslations | null;
     price: number;
     imageUrl?: string | null;
   } | null;
@@ -41,7 +44,7 @@ const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 export default function SellerPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [products, setProducts] = useState<SellerProduct[]>([]);
   const [requests, setRequests] = useState<SellerRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -241,6 +244,7 @@ export default function SellerPage() {
                       product={product}
                       onStatus={(status) => updateProduct(product.id, status)}
                       busy={pendingProductId === product.id}
+                      locale={locale}
                       t={t}
                     />
                   ))
@@ -285,6 +289,7 @@ export default function SellerPage() {
                       request={request}
                       onUpdate={(status) => updateRequest(request.id, status)}
                       busy={pendingRequestId === request.id}
+                      locale={locale}
                       t={t}
                     />
                   ))
@@ -335,25 +340,29 @@ function ProductRow({
   product,
   onStatus,
   busy,
+  locale,
   t,
 }: {
   product: SellerProduct;
   onStatus: (status: ProductStatus) => void;
   busy: boolean;
+  locale: ReturnType<typeof useI18n>["locale"];
   t: ReturnType<typeof useI18n>["t"];
 }) {
+  const displayName = pickProductName(product.name, product.nameTranslations, locale);
+
   return (
     <Card className="border border-orange-100 bg-white p-3 shadow-sm">
       <div className="flex gap-4">
         <img
           src={product.imageUrl || "/images/Bike_0.jpg"}
-          alt={product.name}
+          alt={displayName}
           className="h-20 w-20 shrink-0 rounded-md object-cover"
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <Text className="block truncate font-medium">{product.name}</Text>
+              <Text className="block truncate font-medium">{displayName}</Text>
               <Text color="gray" size="2">
                 {product.category
                   ? t(`common.category.${product.category}` as any)
@@ -408,19 +417,29 @@ function RequestRow({
   request,
   onUpdate,
   busy,
+  locale,
   t,
 }: {
   request: SellerRequest;
   onUpdate: (status: RequestStatus) => void;
   busy: boolean;
+  locale: ReturnType<typeof useI18n>["locale"];
   t: ReturnType<typeof useI18n>["t"];
 }) {
+  const displayName = request.product
+    ? pickProductName(
+        request.product.name,
+        request.product.nameTranslations,
+        locale
+      )
+    : `Item ${request.itemId}`;
+
   return (
     <Card className="border border-orange-100 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Text className="block truncate font-medium">
-            {request.product?.name || `Item ${request.itemId}`}
+            {displayName}
           </Text>
           <Text color="gray" size="2">
             {t("requests.qty", { quantity: request.quantity })} -{" "}

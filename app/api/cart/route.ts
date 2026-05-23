@@ -3,6 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 type CartItem = {
   id: string;
   name: string;
+  nameTranslations?: {
+    en?: string | null;
+    zhTw?: string | null;
+    zhCn?: string | null;
+  } | null;
   price: number;
   imageUrl?: string | null;
   quantity: number;
@@ -43,6 +48,22 @@ function writeCart(items: CartItem[]) {
   return response;
 }
 
+function normalizeNameTranslations(value: any, fallbackName: string) {
+  if (!value || typeof value !== "object") {
+    return {
+      en: fallbackName,
+      zhTw: fallbackName,
+      zhCn: fallbackName,
+    };
+  }
+
+  return {
+    en: String(value.en ?? fallbackName),
+    zhTw: String(value.zhTw ?? fallbackName),
+    zhCn: String(value.zhCn ?? fallbackName),
+  };
+}
+
 export async function GET(request: NextRequest) {
   return NextResponse.json({ data: readCart(request) });
 }
@@ -51,6 +72,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const id = String(body.id ?? "").trim();
   const name = String(body.name ?? "").trim();
+  const nameTranslations = normalizeNameTranslations(body.nameTranslations, name);
   const price = Number(body.price);
   const availableQuantity = Number(body.availableQuantity ?? body.quantityAvailable ?? 1);
   const maxQuantity =
@@ -70,11 +92,13 @@ export async function POST(request: NextRequest) {
 
   if (existing) {
     existing.availableQuantity = maxQuantity;
+    existing.nameTranslations = nameTranslations;
     existing.quantity = normalizeQuantity(existing.quantity + 1, maxQuantity);
   } else {
     cart.push({
       id,
       name,
+      nameTranslations,
       price,
       imageUrl: body.imageUrl ?? null,
       category: body.category ?? "general",
@@ -94,6 +118,10 @@ export async function PUT(request: NextRequest) {
     .map((item) => ({
       id: String(item.id ?? "").trim(),
       name: String(item.name ?? "").trim(),
+      nameTranslations: normalizeNameTranslations(
+        item.nameTranslations,
+        String(item.name ?? "").trim()
+      ),
       price: Number(item.price),
       imageUrl: item.imageUrl ?? null,
       category: item.category ?? "general",

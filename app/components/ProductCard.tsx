@@ -7,10 +7,13 @@ import Link from "next/link";
 import { Card, Text, Heading, Button } from "@radix-ui/themes";
 import { PlusIcon } from "@radix-ui/react-icons";
 import { useI18n } from "../i18n";
+import type { ProductNameTranslations } from "../lib/productTranslations";
 
 interface ProductCardProps {
   productId: string | number;
   name: string;
+  displayName?: string;
+  nameTranslations?: ProductNameTranslations | null;
   price: number;
   imageUrl: string;
   category?: string | null;
@@ -20,6 +23,8 @@ interface ProductCardProps {
 export default function ProductCard({
   productId,
   name,
+  displayName,
+  nameTranslations,
   price,
   imageUrl,
   category,
@@ -42,6 +47,7 @@ export default function ProductCard({
         body: JSON.stringify({
           id: productId,
           name,
+          nameTranslations,
           price,
           imageUrl,
           availableQuantity: quantity ?? 1,
@@ -72,7 +78,7 @@ export default function ProductCard({
       <div className="flex flex-col justify-between p-4 flex-1">
         <Link href={`/product/${productId}`} className="mb-4 min-w-0">
           <Heading size="4" weight="bold" className="text-[#d73f09] truncate">
-            {name}
+            {displayName || name}
           </Heading>
         </Link>
         <div className="mb-4 flex flex-wrap items-center gap-2">

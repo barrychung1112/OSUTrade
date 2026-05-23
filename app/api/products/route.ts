@@ -3,10 +3,14 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { canUseDemoProducts, filterDemoProducts } from "@/app/lib/demoProducts";
+import { translateProductName } from "@/app/lib/productTranslations";
 
 type ProductRow = {
   product_id: string | number;
   name: string;
+  name_en?: string | null;
+  name_zh_tw?: string | null;
+  name_zh_cn?: string | null;
   price: number;
   category: string | null;
   image_url: string | null;
@@ -19,6 +23,11 @@ function toProduct(row: ProductRow) {
   return {
     id: row.product_id,
     name: row.name,
+    nameTranslations: {
+      en: row.name_en ?? row.name,
+      zhTw: row.name_zh_tw ?? row.name,
+      zhCn: row.name_zh_cn ?? row.name,
+    },
     price: row.price,
     category: row.category,
     imageUrl: row.image_url,
@@ -139,19 +148,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
+    const nameTranslations = await translateProductName(name);
+
+    const insertValues = {
+      name,
+      name_en: nameTranslations.en,
+      name_zh_tw: nameTranslations.zhTw,
+      name_zh_cn: nameTranslations.zhCn,
+      price,
+      category: category || "general",
+      image_url: imageUrl || null,
+      seller_id: session.user.id,
+      quantity,
+      status: "available",
+    };
+
+    let { data, error } = await supabase
       .from("products")
-      .insert({
-        name,
-        price,
-        category: category || "general",
-        image_url: imageUrl || null,
-        seller_id: session.user.id,
-        quantity,
-        status: "available",
-      })
-      .select("product_id, name, price, category, image_url, seller_id, status, quantity")
+      .insert(insertValues)
+      .select(
+        "product_id, name, name_en, name_zh_tw, name_zh_cn, price, category, image_url, seller_id, status, quantity"
+      )
       .single();
+
+    if (error && /name_(en|zh_tw|zh_cn)|schema cache/i.test(error.message ?? "")) {
+      const { name_en, name_zh_tw, name_zh_cn, ...legacyValues } = insertValues;
+      const legacyResult = await supabase
+        .from("products")
+        .insert(legacyValues)
+        .select("product_id, name, price, category, image_url, seller_id, status, quantity")
+        .single();
+
+      data = legacyResult.data as any;
+      error = legacyResult.error;
+    }
 
     if (error) {
       throw error;

@@ -1,6 +1,11 @@
 export type Product = {
   id: string | number;
   name: string;
+  nameTranslations?: {
+    en?: string | null;
+    zhTw?: string | null;
+    zhCn?: string | null;
+  } | null;
   price: number;
   category?: string | null;
   imageUrl?: string | null;

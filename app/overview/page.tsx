@@ -8,6 +8,7 @@ import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hook/useProducts";
 import type { Product } from "../lib/products";
 import { useI18n } from "../i18n";
+import { pickProductName } from "../lib/productTranslations";
 
 const categories = ["all", "electronics", "clothing", "books", "home", "general"];
 
@@ -22,7 +23,7 @@ function sortProductsByPrice(products: Product[], order: string) {
 }
 
 export default function ProductListPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { products, loading, error, refetch } = useProducts();
 
   const [search, setSearch] = useState("");
@@ -34,7 +35,9 @@ export default function ProductListPage() {
 
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      updated = updated.filter((p) => p.name?.toLowerCase().includes(q));
+      updated = updated.filter((p) =>
+        pickProductName(p.name, p.nameTranslations, locale).toLowerCase().includes(q)
+      );
     }
 
     if (category !== "all") {
@@ -42,7 +45,7 @@ export default function ProductListPage() {
     }
 
     return sortProductsByPrice(updated, priceSort);
-  }, [products, search, category, priceSort]);
+  }, [products, search, category, priceSort, locale]);
 
   const hasFilters = search.trim() || category !== "all" || priceSort !== "none";
 
@@ -165,6 +168,12 @@ export default function ProductListPage() {
                   key={product.id}
                   productId={product.id}
                   name={product.name}
+                  displayName={pickProductName(
+                    product.name,
+                    product.nameTranslations,
+                    locale
+                  )}
+                  nameTranslations={product.nameTranslations}
                   price={product.price}
                   category={product.category}
                   quantity={product.quantity}

@@ -7,6 +7,9 @@ type ProductStatus = "available" | "pending" | "sold" | "removed";
 type ProductRow = {
   product_id: string | number;
   name: string;
+  name_en?: string | null;
+  name_zh_tw?: string | null;
+  name_zh_cn?: string | null;
   price: number;
   category: string | null;
   image_url: string | null;
@@ -27,6 +30,11 @@ function toProduct(row: ProductRow) {
   return {
     id: row.product_id,
     name: row.name,
+    nameTranslations: {
+      en: row.name_en ?? row.name,
+      zhTw: row.name_zh_tw ?? row.name,
+      zhCn: row.name_zh_cn ?? row.name,
+    },
     price: row.price,
     category: row.category,
     imageUrl: row.image_url,
