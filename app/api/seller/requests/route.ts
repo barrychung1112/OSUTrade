@@ -7,6 +7,9 @@ type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
 type ProductRow = {
   product_id: string | number;
   name: string;
+  name_en?: string | null;
+  name_zh_tw?: string | null;
+  name_zh_cn?: string | null;
   price: number;
   image_url: string | null;
   quantity?: number | null;
@@ -60,6 +63,11 @@ function toSellerRequest(
       ? {
           id: product.product_id,
           name: product.name,
+          nameTranslations: {
+            en: product.name_en ?? product.name,
+            zhTw: product.name_zh_tw ?? product.name,
+            zhCn: product.name_zh_cn ?? product.name,
+          },
           price: product.price,
           imageUrl: product.image_url,
           quantity: product.quantity ?? 1,

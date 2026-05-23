@@ -6,6 +6,7 @@ import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import { useI18n } from "../i18n";
+import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
 type RequestFilter = RequestStatus | "all";
@@ -21,6 +22,7 @@ type BuyerRequest = {
   product: {
     id: string | number;
     name: string;
+    nameTranslations?: ProductNameTranslations | null;
     price: number;
     imageUrl?: string | null;
   } | null;
@@ -30,7 +32,7 @@ const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 export default function RequestsPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [requests, setRequests] = useState<BuyerRequest[]>([]);
   const [filter, setFilter] = useState<RequestFilter>("all");
   const [loading, setLoading] = useState(true);
@@ -164,6 +166,7 @@ export default function RequestsPage() {
                   key={request.id}
                   request={request}
                   onCancel={() => cancelRequest(request.id)}
+                  locale={locale}
                   t={t}
                 />
               ))
@@ -178,25 +181,35 @@ export default function RequestsPage() {
 function RequestCard({
   request,
   onCancel,
+  locale,
   t,
 }: {
   request: BuyerRequest;
   onCancel: () => void;
+  locale: ReturnType<typeof useI18n>["locale"];
   t: ReturnType<typeof useI18n>["t"];
 }) {
+  const displayName = request.product
+    ? pickProductName(
+        request.product.name,
+        request.product.nameTranslations,
+        locale
+      )
+    : `Item ${request.itemId}`;
+
   return (
     <Card className="border border-orange-200 bg-white/70 p-4 shadow">
       <div className="flex gap-4">
         <img
           src={request.product?.imageUrl || "/images/Bike_0.jpg"}
-          alt={request.product?.name || `Item ${request.itemId}`}
+          alt={displayName}
           className="h-24 w-24 rounded-md object-cover"
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div>
               <Text className="block font-medium">
-                {request.product?.name || `Item ${request.itemId}`}
+                {displayName}
               </Text>
               <Text color="gray" size="2">
                 {t("requests.qty", { quantity: request.quantity })}

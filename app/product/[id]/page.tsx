@@ -8,6 +8,7 @@ import { ArrowLeft, CheckCircle2, ShoppingCart, Store } from "lucide-react";
 import { fetchProduct, type Product } from "@/app/lib/products";
 import { useI18n } from "@/app/i18n";
 import Header from "@/app/components/Header";
+import { pickProductName } from "@/app/lib/productTranslations";
 
 const fallbackImage = "https://placehold.co/1000x750/f9fafb/d73f09?text=OSUTrade";
 
@@ -17,7 +18,7 @@ type Feedback = {
 };
 
 export default function ProductDetailPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>(fallbackImage);
@@ -66,6 +67,7 @@ export default function ProductDetailPage() {
         body: JSON.stringify({
           id: product.id,
           name: product.name,
+          nameTranslations: product.nameTranslations,
           price: product.price,
           imageUrl: product.imageUrl || fallbackImage,
           category: product.category,
@@ -126,6 +128,7 @@ export default function ProductDetailPage() {
   const isAvailable = status === "available" && availableQuantity > 0;
   const categoryLabel = t(`common.category.${category}` as any);
   const statusLabel = t(`common.status.${status}` as any);
+  const displayName = pickProductName(product.name, product.nameTranslations, locale);
 
   return (
     <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
@@ -143,7 +146,7 @@ export default function ProductDetailPage() {
             <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-100">
               <Image
                 src={selectedImage}
-                alt={product.name}
+                alt={displayName}
                 fill
                 sizes="(min-width: 768px) 55vw, 100vw"
                 className="object-cover"
@@ -163,7 +166,7 @@ export default function ProductDetailPage() {
                 >
                   <Image
                     src={img}
-                    alt={`${product.name} thumbnail ${idx + 1}`}
+                    alt={`${displayName} thumbnail ${idx + 1}`}
                     fill
                     sizes="80px"
                     className="object-cover"
@@ -189,7 +192,7 @@ export default function ProductDetailPage() {
               </span>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-950">{product.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-950">{displayName}</h1>
             <p className="mt-3 text-3xl font-bold text-[#d73f09]">
               ${Number(product.price).toLocaleString()}
             </p>

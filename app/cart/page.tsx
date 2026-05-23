@@ -19,10 +19,12 @@ import {
 } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import { useI18n } from "../i18n";
+import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
 type CartItem = {
   id: string;
   name: string;
+  nameTranslations?: ProductNameTranslations | null;
   price: number;
   imageUrl?: string | null;
   quantity: number;
@@ -48,7 +50,7 @@ async function saveCart(items: CartItem[]) {
 }
 
 export default function CartPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [items, setItems] = useState<CartItem[]>([]);
   const [states, setStates] = useState<Record<string, ItemState>>({});
   const [loading, setLoading] = useState(true);
@@ -205,6 +207,7 @@ export default function CartPage() {
                     key={item.id}
                     item={item}
                     state={states[item.id]}
+                    locale={locale}
                     onNote={(value) => updateNote(item.id, value)}
                     onRemove={() => removeItem(item.id)}
                     onMinus={() => changeQty(item.id, -1)}
@@ -262,6 +265,7 @@ export default function CartPage() {
 function ItemCard({
   item,
   state,
+  locale,
   onNote,
   onRemove,
   onMinus,
@@ -271,6 +275,7 @@ function ItemCard({
 }: {
   item: CartItem;
   state?: ItemState;
+  locale: ReturnType<typeof useI18n>["locale"];
   onNote: (value: string) => void;
   onRemove: () => void;
   onMinus: () => void;
@@ -279,6 +284,7 @@ function ItemCard({
   t: ReturnType<typeof useI18n>["t"];
 }) {
   const disabled = state?.status === "sending";
+  const displayName = pickProductName(item.name, item.nameTranslations, locale);
 
   return (
     <Card className="rounded-2xl border border-orange-200 bg-white/60 p-4 shadow">
@@ -286,7 +292,7 @@ function ItemCard({
         <div className="h-28 w-28 shrink-0 overflow-hidden rounded-lg bg-gray-100">
           <img
             src={item.imageUrl || "/images/Bike_0.jpg"}
-            alt={item.name}
+            alt={displayName}
             className="h-full w-full object-cover"
           />
         </div>
@@ -295,7 +301,7 @@ function ItemCard({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <Text className="block truncate text-base font-medium">
-                {item.name}
+                {displayName}
               </Text>
               <Text color="gray" size="2">
                 {item.category || "general"}

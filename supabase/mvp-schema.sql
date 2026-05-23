@@ -45,6 +45,9 @@ on conflict (id) do update set public = excluded.public;
 
 alter table public.products
   add column if not exists seller_id uuid references auth.users(id) on delete set null,
+  add column if not exists name_en text,
+  add column if not exists name_zh_tw text,
+  add column if not exists name_zh_cn text,
   add column if not exists quantity integer not null default 1 check (quantity >= 0),
   add column if not exists status text not null default 'available' check (status in ('available', 'pending', 'sold', 'removed')),
   add column if not exists created_at timestamptz not null default now(),
