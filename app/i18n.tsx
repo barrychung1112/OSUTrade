@@ -14,6 +14,7 @@ const dictionaries = {
     "common.language": "Language",
     "common.english": "EN",
     "common.zhTw": "繁中",
+    "common.zhCn": "简中",
     "common.loading": "Loading...",
     "common.refresh": "Refresh",
     "common.refreshing": "Refreshing...",
@@ -154,6 +155,7 @@ const dictionaries = {
     "common.language": "語言",
     "common.english": "EN",
     "common.zhTw": "繁中",
+    "common.zhCn": "简中",
     "common.loading": "載入中...",
     "common.refresh": "重新整理",
     "common.refreshing": "重新整理中...",
@@ -292,8 +294,151 @@ const dictionaries = {
   },
 } as const;
 
-type Locale = keyof typeof dictionaries;
+type BaseLocale = keyof typeof dictionaries;
+type Locale = BaseLocale | "zhCn";
 type TranslationKey = keyof typeof dictionaries.en;
+
+const zhCnDictionary: Record<TranslationKey, string> = {
+  "common.language": "语言",
+  "common.english": "EN",
+  "common.zhTw": "繁中",
+  "common.zhCn": "简中",
+  "common.loading": "加载中...",
+  "common.refresh": "刷新",
+  "common.refreshing": "刷新中...",
+  "common.clear": "清除",
+  "common.category.general": "一般",
+  "common.category.electronics": "电子产品",
+  "common.category.clothing": "服饰",
+  "common.category.books": "书籍",
+  "common.category.home": "家居",
+  "nav.home": "首页",
+  "nav.marketplace": "市集",
+  "nav.sell": "刊登",
+  "nav.seller": "卖家",
+  "nav.requests": "需求",
+  "nav.cart": "购物车",
+  "nav.logout": "登出",
+  "auth.login": "登录",
+  "auth.signup": "注册",
+  "auth.email": "Email",
+  "auth.password": "密码",
+  "auth.username": "用户名",
+  "auth.loggingIn": "登录中...",
+  "auth.creating": "创建账号中...",
+  "auth.loginError": "Email 或密码不正确。",
+  "auth.signupError": "注册失败，请确认 email 与密码。",
+  "auth.confirmEmail": "请查看邮箱并完成账号验证。",
+  "auth.createdConfirm": "账号已创建。请完成 email 验证后再登录。",
+  "home.description":
+    "想清理闲置物品或找到划算好物吗？OSUTrade 让你可以刊登二手商品、浏览校园市集，并快速向卖家发送交易需求。",
+  "home.github": "GitHub",
+  "home.discord": "Discord",
+  "home.support": "支持我们",
+  "home.about": "关于我们",
+  "home.onSale": "热卖商品",
+  "marketplace.title": "更快找到校园好物。",
+  "marketplace.subtitle":
+    "浏览目前可交易的商品，按分类筛选，准备联系卖家时可先加入 request cart。",
+  "marketplace.listItem": "刊登商品",
+  "marketplace.loadError": "商品加载失败：{message}",
+  "marketplace.search": "搜索",
+  "marketplace.searchPlaceholder": "按商品名称搜索",
+  "marketplace.category": "分类",
+  "marketplace.allCategories": "所有分类",
+  "marketplace.sort": "排序",
+  "marketplace.newest": "最新优先",
+  "marketplace.priceAsc": "价格：低到高",
+  "marketplace.priceDesc": "价格：高到低",
+  "marketplace.showing": "显示 {shown} / {total} 个商品",
+  "marketplace.loadingListings": "商品加载中...",
+  "marketplace.noMatches": "没有符合条件的商品",
+  "marketplace.noMatchesHelp": "请清除筛选条件，或成为这个分类第一个刊登商品的人。",
+  "product.addToCart": "加入 request cart",
+  "product.adding": "加入中...",
+  "product.added": "已加入 request cart。",
+  "product.addedDetail": "已加入 request cart，你可以送出前再确认。",
+  "product.addError": "无法加入商品，请再试一次。",
+  "product.addErrorDetail": "无法加入这个商品，请再试一次。",
+  "product.stock": "库存 {quantity} 件",
+  "product.backMarketplace": "回到市集",
+  "product.loading": "商品加载中...",
+  "product.unavailable": "商品不可用",
+  "product.notFound": "找不到这个商品。",
+  "product.seller": "卖家",
+  "product.contactAfterRequest": "送出需求后才会显示联系信息。",
+  "product.stepCart": "先把商品加入 request cart，再附上备注发送需求。",
+  "product.stepSeller": "卖家可在 Seller Dashboard 接受或拒绝需求。",
+  "product.statusUnavailable": "不可交易",
+  "sell.title": "刊登商品",
+  "sell.itemName": "商品名称",
+  "sell.price": "价格",
+  "sell.quantity": "可售数量",
+  "sell.productImage": "商品图片",
+  "sell.imageHelp": "支持 JPG、PNG 或 WebP，最大 5 MB。",
+  "sell.imageUrlFallback": "图片 URL 备用",
+  "sell.listing": "刊登中...",
+  "sell.submit": "刊登商品",
+  "sell.uploadError": "图片上传失败。",
+  "sell.listError": "商品刊登失败。",
+  "cart.title": "你的交易需求",
+  "cart.backMarketplace": "回到市集",
+  "cart.loading": "购物车加载中...",
+  "cart.empty": "购物车是空的",
+  "cart.emptyHelp": "在市集加入商品，并向卖家发送交易需求。",
+  "cart.goShopping": "去逛逛",
+  "cart.summary": "需求摘要",
+  "cart.items": "商品",
+  "cart.subtotal": "小计",
+  "cart.pendingTotal": "待发送 / 总数",
+  "cart.sent": "已发送",
+  "cart.failed": "失败",
+  "cart.sendAll": "发送所有需求",
+  "cart.remove": "移除",
+  "cart.decrease": "减少数量",
+  "cart.increase": "增加数量",
+  "cart.note": "给卖家的备注",
+  "cart.notePlaceholder": "例如：可以在图书馆面交吗？",
+  "cart.send": "发送需求",
+  "cart.sending": "发送中...",
+  "cart.error": "错误",
+  "cart.idle": "尚未发送",
+  "cart.sendFailed": "需求发送失败。",
+  "requests.title": "我的需求",
+  "requests.counts": "共 {total} 笔，{accepted} 笔已接受",
+  "requests.loading": "需求加载中...",
+  "requests.empty": "还没有需求",
+  "requests.emptyHelp": "从购物车发送需求，开始一笔交易。",
+  "requests.browse": "浏览商品",
+  "requests.qty": "数量 {quantity}",
+  "requests.acceptedContact": "卖家已接受。联系方式：",
+  "requests.contactPending": "卖家接受需求后才会显示联系方式。",
+  "requests.cancel": "取消需求",
+  "seller.title": "卖家 Dashboard",
+  "seller.subtitle": "管理刊登商品、追踪买家需求，并保持库存数量正确。",
+  "seller.counts": "{listings} 个刊登商品，{pending} 笔待处理需求",
+  "seller.totalListings": "刊登商品",
+  "seller.pendingRequests": "待处理需求",
+  "seller.availableUnits": "可售数量",
+  "seller.myListings": "我的刊登",
+  "seller.myListingsHelp": "更新商品状态，并追踪可售库存。",
+  "seller.loadingListings": "刊登商品加载中...",
+  "seller.noListings": "尚未刊登商品。",
+  "seller.noListingsHelp": "创建第一件商品，让买家可以发送需求。",
+  "seller.buyerRequests": "买家需求",
+  "seller.buyerRequestsHelp": "准备好分享联系方式时，就可以接受需求。",
+  "seller.loadingRequests": "需求加载中...",
+  "seller.noRequests": "目前没有买家需求。",
+  "seller.noRequestsHelp": "买家从购物车发送需求后，会显示在这里。",
+  "seller.available": "可交易",
+  "seller.pending": "处理中",
+  "seller.sold": "已售出",
+  "seller.buyer": "买家 {id}",
+  "seller.buyerContact": "买家联系方式：",
+  "seller.emailAfterAccept": "接受需求后才会显示买家 email。",
+  "seller.accept": "接受",
+  "seller.decline": "拒绝",
+};
 
 type I18nContextValue = {
   locale: Locale;
@@ -308,7 +453,8 @@ function translate(
   key: TranslationKey,
   values?: Record<string, string | number>
 ) {
-  let text: string = dictionaries[locale][key] ?? dictionaries.en[key] ?? key;
+  const dictionary = locale === "zhCn" ? zhCnDictionary : dictionaries[locale];
+  let text: string = dictionary[key] ?? dictionaries.en[key] ?? key;
 
   if (values) {
     Object.entries(values).forEach(([name, value]) => {
@@ -324,13 +470,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = window.localStorage.getItem("osutrade-locale");
-    if (saved === "en" || saved === "zh") {
+    if (saved === "en" || saved === "zh" || saved === "zhCn") {
       setLocaleState(saved);
     }
   }, []);
 
   useEffect(() => {
-    document.documentElement.lang = locale === "zh" ? "zh-Hant" : "en";
+    document.documentElement.lang =
+      locale === "zh" ? "zh-Hant" : locale === "zhCn" ? "zh-Hans" : "en";
     window.localStorage.setItem("osutrade-locale", locale);
   }, [locale]);
 
@@ -359,11 +506,11 @@ export function LanguageToggle() {
 
   return (
     <div
-      className="inline-flex min-w-[96px] shrink-0 rounded-md border border-orange-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm"
+      className="inline-flex min-w-[138px] shrink-0 rounded-md border border-orange-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm"
       style={{
         flexShrink: 0,
-        minWidth: "96px",
-        width: "96px",
+        minWidth: "138px",
+        width: "138px",
         boxSizing: "border-box",
       }}
       aria-label={t("common.language")}
@@ -385,6 +532,15 @@ export function LanguageToggle() {
         }`}
       >
         {t("common.zhTw")}
+      </button>
+      <button
+        type="button"
+        onClick={() => setLocale("zhCn")}
+        className={`rounded px-2 py-1 transition ${
+          locale === "zhCn" ? "bg-[#d73f09] text-white" : "text-gray-700"
+        }`}
+      >
+        {t("common.zhCn")}
       </button>
     </div>
   );
