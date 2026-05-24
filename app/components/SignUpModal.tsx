@@ -88,7 +88,7 @@ export default function SignUpModal() {
           <form onSubmit={onSubmit}>
             <Flex direction="column" gap="3" mt="4">
               <input
-                className="px-3 py-2 border rounded"
+                className="app-input"
                 placeholder={t("auth.email")}
                 type="email"
                 autoComplete="email"
@@ -97,7 +97,7 @@ export default function SignUpModal() {
                 required
               />
               <input
-                className="px-3 py-2 border rounded"
+                className="app-input"
                 placeholder={t("auth.username")}
                 autoComplete="name"
                 value={username}
@@ -106,7 +106,7 @@ export default function SignUpModal() {
               />
               <input
                 type="password"
-                className="px-3 py-2 border rounded"
+                className="app-input"
                 placeholder={t("auth.password")}
                 autoComplete="new-password"
                 value={password}

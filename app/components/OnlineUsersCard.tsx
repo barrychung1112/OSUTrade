@@ -47,9 +47,11 @@ export default function OnlineUsersCard() {
   }, []);
 
   return (
-    <Card className="border border-orange-200 bg-white/60 p-4 shadow backdrop-blur-md transition-transform hover:scale-[1.02]">
+    <Card className="app-card p-4 backdrop-blur">
       <div className="flex items-center gap-3">
-        <PersonIcon />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[#d73f09]">
+          <PersonIcon />
+        </div>
         <div>
           <Text size="2" color="gray">
             {t("home.onlineNow")}

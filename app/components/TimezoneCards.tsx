@@ -58,11 +58,13 @@ export default function TimezoneCards() {
       {timezones.map(({ label, code }) => (
         <Card
           key={label}
-          className="border border-orange-200 bg-white/60 p-4 shadow backdrop-blur-md transition-transform hover:scale-[1.02]"
+          className="app-card p-4 backdrop-blur"
         >
           <div className="flex items-start gap-3">
-            <ClockIcon className="mt-1" />
-            <div className="flex flex-col">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[#d73f09]">
+              <ClockIcon />
+            </div>
+            <div className="flex min-w-0 flex-col">
               <Text size="2" color="gray">
                 {code} - {label} Time
               </Text>
