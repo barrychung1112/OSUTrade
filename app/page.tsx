@@ -14,7 +14,7 @@ import OnlineUsersCard from "./components/OnlineUsersCard";
 import LoginModal from "./components/LoginModal";
 import SignUpModal from "./components/SignUpModal";
 import ProductListCard from "./components/ProductListCard";
-import FundingProgressCard from "./components/FundingProgressCard";
+import TipProgressCard from "./components/TipProgressCard";
 import Header from "./components/Header";
 import { useI18n } from "./i18n";
 
@@ -132,7 +132,7 @@ export default function HomePage() {
 
           <div className="col-span-1 flex flex-col gap-6">
             <ProductListCard />
-            <FundingProgressCard />
+            <TipProgressCard />
             <Card className="app-card p-4 backdrop-blur">
               <Heading size="5" mb="2">
                 {t("home.howItWorks")}
