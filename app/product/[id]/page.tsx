@@ -222,6 +222,17 @@ export default function ProductDetailPage() {
               </dl>
             </div>
 
+            {product.description && (
+              <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
+                <p className="mb-2 text-sm font-semibold text-gray-900">
+                  {t("product.description")}
+                </p>
+                <p className="whitespace-pre-line text-sm leading-6 text-gray-700">
+                  {product.description}
+                </p>
+              </div>
+            )}
+
             <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
               <div className="flex items-center gap-3 text-gray-800">
                 <Store size={20} className="text-[#d73f09]" />

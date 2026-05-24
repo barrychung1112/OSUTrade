@@ -53,20 +53,23 @@ function percentile(values: number[], ratio: number) {
 async function querySupabaseSimilarProducts({
   category,
   name,
+  description,
 }: {
   category: string;
   name: string;
+  description?: string;
 }): Promise<ComparablePrice[]> {
   const supabase = createAdminClient();
   let query = supabase
     .from("products")
-    .select("name, price, category, status, quantity")
+    .select("name, description, price, category, status, quantity")
     .eq("category", category)
     .gt("price", 0)
     .limit(12);
 
   if (name.trim()) {
-    const firstTerm = name.trim().split(/\s+/)[0];
+    const firstTerm =
+      `${name} ${description ?? ""}`.trim().split(/\s+/)[0] ?? "";
     if (firstTerm.length >= 3) {
       query = query.ilike("name", `%${firstTerm}%`);
     }
@@ -186,6 +189,7 @@ function ruleBasedPricingAdvisor({
 
 async function openAiPricingAdvisor(input: {
   name: string;
+  description: string;
   category: string;
   supabaseComparables: ComparablePrice[];
   amazonComparables: ComparablePrice[];
@@ -213,6 +217,7 @@ async function openAiPricingAdvisor(input: {
             role: "user",
             content: JSON.stringify({
               itemName: input.name,
+              itemDescription: input.description,
               category: input.category,
               comparableUsedPrices: input.supabaseComparables,
               amazonNewPriceSignals: input.amazonComparables,
@@ -268,6 +273,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const name = String(body.name ?? "").trim();
+    const description = String(body.description ?? "").trim();
     const category = String(body.category ?? "general").trim() || "general";
 
     if (!name) {
@@ -278,12 +284,13 @@ export async function POST(request: Request) {
     }
 
     const [supabaseComparables, amazonComparables] = await Promise.all([
-      querySupabaseSimilarProducts({ category, name }),
-      amazonPricingSubAgent(name),
+      querySupabaseSimilarProducts({ category, name, description }),
+      amazonPricingSubAgent(`${name} ${description}`.trim()),
     ]);
 
     const openAiAdvice = await openAiPricingAdvisor({
       name,
+      description,
       category,
       supabaseComparables,
       amazonComparables,

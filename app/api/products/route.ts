@@ -8,6 +8,7 @@ import { translateProductName } from "@/app/lib/productTranslations";
 type ProductRow = {
   product_id: string | number;
   name: string;
+  description?: string | null;
   name_en?: string | null;
   name_zh_tw?: string | null;
   name_zh_cn?: string | null;
@@ -23,6 +24,7 @@ function toProduct(row: ProductRow) {
   return {
     id: row.product_id,
     name: row.name,
+    description: row.description ?? "",
     nameTranslations: {
       en: row.name_en ?? row.name,
       zhTw: row.name_zh_tw ?? row.name,
@@ -129,6 +131,7 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     const body = await request.json();
     const name = String(body.name ?? "").trim();
+    const description = String(body.description ?? "").trim();
     const category = String(body.category ?? "").trim();
     const imageUrl = String(body.imageUrl ?? "").trim();
     const contactPhone = String(body.contactPhone ?? "").trim();
@@ -155,6 +158,7 @@ export async function POST(request: NextRequest) {
 
     const insertValues = {
       name,
+      description: description || null,
       name_en: nameTranslations.en,
       name_zh_tw: nameTranslations.zhTw,
       name_zh_cn: nameTranslations.zhCn,
@@ -173,12 +177,13 @@ export async function POST(request: NextRequest) {
       .from("products")
       .insert(insertValues)
       .select(
-        "product_id, name, name_en, name_zh_tw, name_zh_cn, price, category, image_url, seller_id, status, quantity"
+        "product_id, name, description, name_en, name_zh_tw, name_zh_cn, price, category, image_url, seller_id, status, quantity"
       )
       .single();
 
-    if (error && /name_(en|zh_tw|zh_cn)|contact_(phone|line_id|wechat_id)|schema cache/i.test(error.message ?? "")) {
+    if (error && /description|name_(en|zh_tw|zh_cn)|contact_(phone|line_id|wechat_id)|schema cache/i.test(error.message ?? "")) {
       const {
+        description,
         name_en,
         name_zh_tw,
         name_zh_cn,
