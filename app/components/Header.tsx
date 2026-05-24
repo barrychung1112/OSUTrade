@@ -89,7 +89,7 @@ export default function Header() {
           OSUTrade
         </Link>
 
-        <nav className="hidden min-w-0 flex-1 items-center justify-end gap-1.5 lg:flex">
+        <nav className="hidden min-w-0 flex-1 items-center justify-end gap-1 lg:flex xl:gap-1.5">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} className={navLinkClass(item.href)}>
               {item.label}
@@ -103,7 +103,7 @@ export default function Header() {
           </Link>
         </nav>
 
-        <div className="flex min-w-max shrink-0 items-center justify-end gap-2">
+        <div className="flex min-w-[190px] shrink-0 items-center justify-end gap-2">
           <LanguageToggle />
           <div className="hidden sm:block lg:hidden">{authControl}</div>
           <button
