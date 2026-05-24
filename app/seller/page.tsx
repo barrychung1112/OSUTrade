@@ -49,6 +49,20 @@ type SellerRequest = {
 const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
+const productStatusPriority: Record<ProductStatus, number> = {
+  available: 0,
+  pending: 1,
+  sold: 2,
+  removed: 3,
+};
+
+const requestStatusPriority: Record<RequestStatus, number> = {
+  sent: 0,
+  accepted: 1,
+  declined: 2,
+  cancelled: 3,
+};
+
 export default function SellerPage() {
   const { t, locale } = useI18n();
   const [products, setProducts] = useState<SellerProduct[]>([]);
@@ -105,6 +119,23 @@ export default function SellerPage() {
         0
       ),
     [products]
+  );
+  const sortedProducts = useMemo(
+    () =>
+      [...products].sort(
+        (a, b) =>
+          productStatusPriority[a.status] - productStatusPriority[b.status]
+      ),
+    [products]
+  );
+  const sortedRequests = useMemo(
+    () =>
+      [...requests].sort(
+        (a, b) =>
+          requestStatusPriority[a.status] - requestStatusPriority[b.status] ||
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ),
+    [requests]
   );
 
   async function updateRequest(requestId: string, status: RequestStatus) {
@@ -244,7 +275,7 @@ export default function SellerPage() {
                     }
                   />
                 ) : (
-                  products.map((product) => (
+                  sortedProducts.map((product) => (
                     <ProductRow
                       key={product.id}
                       product={product}
@@ -289,7 +320,7 @@ export default function SellerPage() {
                     }
                   />
                 ) : (
-                  requests.map((request) => (
+                  sortedRequests.map((request) => (
                     <RequestRow
                       key={request.id}
                       request={request}
@@ -361,7 +392,13 @@ function ProductRow({
   ];
 
   return (
-    <Card className="border border-orange-100 bg-white p-3 shadow-sm">
+    <Card
+      className={`border border-orange-100 bg-white p-3 shadow-sm ${
+        product.status === "sold" || product.status === "removed"
+          ? "opacity-65"
+          : ""
+      }`}
+    >
       <div className="flex gap-4">
         <img
           src={product.imageUrl || "/images/Bike_0.jpg"}
@@ -468,7 +505,11 @@ function RequestRow({
     : `Item ${request.itemId}`;
 
   return (
-    <Card className="border border-orange-100 bg-white p-4 shadow-sm">
+    <Card
+      className={`border border-orange-100 bg-white p-4 shadow-sm ${
+        request.status !== "sent" ? "opacity-70" : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Text className="block truncate font-medium">
@@ -502,23 +543,27 @@ function RequestRow({
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          size="2"
-          highContrast
-          onClick={() => onUpdate("accepted")}
-          disabled={busy || request.status === "accepted"}
-        >
-          <CheckIcon /> {t("seller.accept")}
-        </Button>
-        <Button
-          size="2"
-          color="red"
-          variant="soft"
-          onClick={() => onUpdate("declined")}
-          disabled={busy || request.status === "declined"}
-        >
-          <Cross2Icon /> {t("seller.decline")}
-        </Button>
+        {request.status === "sent" && (
+          <>
+            <Button
+              size="2"
+              highContrast
+              onClick={() => onUpdate("accepted")}
+              disabled={busy}
+            >
+              <CheckIcon /> {t("seller.accept")}
+            </Button>
+            <Button
+              size="2"
+              color="red"
+              variant="soft"
+              onClick={() => onUpdate("declined")}
+              disabled={busy}
+            >
+              <Cross2Icon /> {t("seller.decline")}
+            </Button>
+          </>
+        )}
         {busy && (
           <Text color="gray" size="2" className="self-center">
             {t("seller.saving")}
