@@ -91,13 +91,14 @@ export default function RequestsPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
-      <main className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 py-20">
+      <main className="app-page">
         <Header />
 
         <section className="mx-auto max-w-5xl">
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div className="app-hero flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <Heading size="8" className="text-[#333]">
+              <p className="app-eyebrow">{t("nav.requests")}</p>
+              <Heading size="8" className="app-title">
                 {t("requests.title")}
               </Heading>
               <Text color="gray">
@@ -127,7 +128,7 @@ export default function RequestsPage() {
                 key={item}
                 type="button"
                 onClick={() => setFilter(item)}
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                className={`app-chip ${
                   filter === item
                     ? "border-[#d73f09] bg-[#d73f09] text-white"
                     : "border-orange-200 bg-white/70 text-gray-700 hover:bg-orange-50"
@@ -197,16 +198,16 @@ function RequestCard({
     : `Item ${request.itemId}`;
 
   return (
-    <Card className="border border-orange-200 bg-white/70 p-4 shadow">
-      <div className="flex gap-4">
+    <Card className="app-card p-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
         <img
           src={request.product?.imageUrl || "/images/Bike_0.jpg"}
           alt={displayName}
-          className="h-24 w-24 rounded-md object-cover"
+          className="h-48 w-full rounded-md object-cover sm:h-24 sm:w-24"
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <Text className="block font-medium">
                 {displayName}
               </Text>

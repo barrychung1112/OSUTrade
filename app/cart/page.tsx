@@ -167,13 +167,16 @@ export default function CartPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
-      <main className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 py-28">
+      <main className="app-page">
         <Header />
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-8 flex items-center justify-between">
-            <Heading size="8" className="text-[#333]">
-              {t("cart.title")}
-            </Heading>
+        <div className="app-container">
+          <div className="app-hero flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="app-eyebrow">{t("nav.cart")}</p>
+              <Heading size="8" className="app-title">
+                {t("cart.title")}
+              </Heading>
+            </div>
 
             <Link href="/overview" className="inline-flex items-center gap-2">
               <Button variant="soft">
@@ -185,7 +188,7 @@ export default function CartPage() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr,380px]">
             <section className="space-y-4">
               {loading ? (
-                <Card className="border border-orange-200 bg-white/60 p-6 shadow">
+                <Card className="app-card p-6">
                   <Text>{t("cart.loading")}</Text>
                 </Card>
               ) : items.length === 0 ? (
@@ -217,7 +220,7 @@ export default function CartPage() {
             </section>
 
             <aside>
-              <Card className="rounded-2xl border border-orange-200 bg-white/70 p-6 shadow">
+              <Card className="app-card p-6">
                 <Heading size="5" className="mb-4">
                   {t("cart.summary")}
                 </Heading>
@@ -284,9 +287,9 @@ function ItemCard({
   const displayName = pickProductName(item.name, item.nameTranslations, locale);
 
   return (
-    <Card className="rounded-2xl border border-orange-200 bg-white/60 p-4 shadow">
-      <div className="flex gap-4">
-        <div className="h-28 w-28 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+    <Card className="app-card p-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="h-48 w-full shrink-0 overflow-hidden rounded-md bg-gray-100 sm:h-28 sm:w-28">
           <img
             src={item.imageUrl || "/images/Bike_0.jpg"}
             alt={displayName}
@@ -295,7 +298,7 @@ function ItemCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <Text className="block truncate text-base font-medium">
                 {displayName}
@@ -315,7 +318,7 @@ function ItemCard({
             </button>
           </div>
 
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div className="inline-flex items-center overflow-hidden rounded-lg border border-gray-300 bg-white">
               <button
                 onClick={onMinus}
@@ -356,7 +359,7 @@ function ItemCard({
                 value={state?.note ?? ""}
                 onChange={(event) => onNote(event.target.value)}
                 placeholder={t("cart.notePlaceholder")}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="app-input"
                 disabled={disabled}
               />
               <div className="mt-2 flex items-center gap-2">

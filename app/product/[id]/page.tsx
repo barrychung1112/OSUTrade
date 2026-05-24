@@ -97,9 +97,9 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <Theme appearance="light" accentColor="orange" grayColor="sand">
-        <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
+        <main className="app-page">
           <Header />
-          <div className="mx-auto max-w-5xl rounded-lg border border-orange-100 bg-white p-8 text-center text-gray-600 shadow-sm">
+          <div className="mx-auto max-w-5xl rounded-lg border border-orange-100 bg-white/85 p-8 text-center text-gray-600 shadow-sm">
             {t("product.loading")}
           </div>
         </main>
@@ -110,9 +110,9 @@ export default function ProductDetailPage() {
   if (error || !product) {
     return (
       <Theme appearance="light" accentColor="orange" grayColor="sand">
-        <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
+        <main className="app-page">
           <Header />
-          <div className="mx-auto max-w-3xl rounded-lg border border-red-100 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto max-w-3xl rounded-lg border border-red-100 bg-white/85 p-8 text-center shadow-sm">
             <h1 className="text-2xl font-bold text-gray-900">{t("product.unavailable")}</h1>
             <p className="mt-2 text-gray-600">{error || t("product.notFound")}</p>
             <Link
@@ -137,7 +137,7 @@ export default function ProductDetailPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
-      <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
+      <main className="app-page">
         <Header />
         <div className="mx-auto max-w-6xl">
         <Link
@@ -147,7 +147,7 @@ export default function ProductDetailPage() {
           <ArrowLeft size={16} /> {t("product.backMarketplace")}
         </Link>
 
-        <section className="grid gap-8 rounded-xl border border-orange-100 bg-white p-4 shadow-sm md:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] md:p-6">
+        <section className="grid gap-8 rounded-lg border border-orange-100 bg-white/90 p-4 shadow-sm md:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] md:p-6">
           <div>
             <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-100">
               <Image

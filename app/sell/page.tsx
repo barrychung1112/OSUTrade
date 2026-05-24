@@ -179,12 +179,15 @@ export default function SellPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
-      <main className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 py-20">
+      <main className="app-page">
         <Header />
-        <section className="mx-auto max-w-2xl">
-          <Heading size="8" className="mb-8 text-center text-[#333]">
-            {t("sell.title")}
-          </Heading>
+        <section className="mx-auto max-w-5xl">
+          <div className="app-hero text-center md:text-left">
+            <p className="app-eyebrow">{t("nav.sell")}</p>
+            <Heading size="8" className="app-title">
+              {t("sell.title")}
+            </Heading>
+          </div>
 
           {successProduct && (
             <Card className="mb-5 border border-green-200 bg-green-50 p-5 shadow">
@@ -213,14 +216,14 @@ export default function SellPage() {
             </Card>
           )}
 
-          <Card className="border border-orange-200 bg-white/75 p-6 shadow">
+          <Card className="app-card p-5 md:p-6">
             <form className="space-y-5" onSubmit={onSubmit}>
               <label className="block">
                 <Text as="span" size="2" weight="medium">
                   {t("sell.itemName")}
                 </Text>
                 <input
-                  className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="app-input mt-2"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   required
@@ -232,7 +235,7 @@ export default function SellPage() {
                   {t("sell.description")}
                 </Text>
                 <textarea
-                  className="mt-2 min-h-28 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="app-input mt-2 min-h-28"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder={t("sell.descriptionPlaceholder")}
@@ -247,7 +250,7 @@ export default function SellPage() {
                   {t("sell.price")}
                 </Text>
                 <input
-                  className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="app-input mt-2"
                   type="number"
                   min="0.01"
                   step="0.01"
@@ -333,7 +336,7 @@ export default function SellPage() {
                   {t("sell.quantity")}
                 </Text>
                 <input
-                  className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="app-input mt-2"
                   type="number"
                   min="1"
                   step="1"
@@ -348,7 +351,7 @@ export default function SellPage() {
                   {t("marketplace.category")}
                 </Text>
                 <select
-                  className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="app-input mt-2"
                   value={category}
                   onChange={(event) => setCategory(event.target.value)}
                 >
@@ -365,7 +368,7 @@ export default function SellPage() {
                   {t("sell.productImage")}
                 </Text>
                 <input
-                  className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="app-input mt-2"
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
@@ -380,7 +383,7 @@ export default function SellPage() {
                   {t("sell.imageUrlFallback")}
                 </Text>
                 <input
-                  className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="app-input mt-2"
                   type="url"
                   value={imageUrl}
                   onChange={(event) => setImageUrl(event.target.value)}
@@ -403,7 +406,7 @@ export default function SellPage() {
                       {t("sell.contactPhone")}
                     </Text>
                     <input
-                      className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="app-input mt-2"
                       type="tel"
                       value={contactPhone}
                       onChange={(event) => setContactPhone(event.target.value)}
@@ -416,7 +419,7 @@ export default function SellPage() {
                       {t("sell.contactLine")}
                     </Text>
                     <input
-                      className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="app-input mt-2"
                       value={contactLineId}
                       onChange={(event) => setContactLineId(event.target.value)}
                       placeholder="line-id"
@@ -428,7 +431,7 @@ export default function SellPage() {
                       {t("sell.contactWechat")}
                     </Text>
                     <input
-                      className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="app-input mt-2"
                       value={contactWechatId}
                       onChange={(event) => setContactWechatId(event.target.value)}
                       placeholder="wechat-id"

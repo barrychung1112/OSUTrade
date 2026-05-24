@@ -74,7 +74,7 @@ export default function ProductCard({
   }
 
   return (
-    <Card className="flex min-h-[430px] flex-col overflow-hidden border border-orange-200 bg-white/90 p-0 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md">
+    <Card className="app-card flex min-h-[430px] flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-md">
       <Link href={`/product/${productId}`} className="relative block h-52 w-full bg-gray-100">
         <Image src={imageUrl} alt={displayName || name} fill className="object-cover" />
         <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-gray-800 shadow-sm">
@@ -93,7 +93,7 @@ export default function ProductCard({
         </Text>
 
         <div className="mt-4 grid gap-2 text-sm text-gray-700">
-          <div className="flex items-center justify-between gap-3 rounded-md bg-orange-50 px-3 py-2">
+          <div className="flex items-center justify-between gap-3 rounded-md bg-orange-50/80 px-3 py-2">
             <span className="font-medium">{t("marketplace.category")}</span>
             <span className="text-right capitalize">
               {t(`common.category.${category || "general"}` as any)}
