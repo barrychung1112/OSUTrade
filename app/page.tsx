@@ -6,7 +6,9 @@ import {
   GitHubLogoIcon,
   ChatBubbleIcon,
   HeartIcon,
+  LockClosedIcon,
 } from "@radix-ui/react-icons";
+import Link from "next/link";
 import TimezoneCards from "./components/TimezoneCards";
 import OnlineUsersCard from "./components/OnlineUsersCard";
 import LoginModal from "./components/LoginModal";
@@ -30,16 +32,69 @@ export default function HomePage() {
         <Header />
         <div className="mx-auto grid max-w-screen-xl grid-cols-1 gap-8 align-middle xl:grid-cols-3">
           <div className="col-span-1 flex flex-col gap-6">
-            <Heading size="9" weight="bold" className="text-[#d73f09]">
-              OSUTrade
-            </Heading>
-            <Text size="3" className="text-gray-700">
-              {t("home.description")}
-            </Text>
-            <div className="flex gap-4">
-              <SignUpModal />
-              <LoginModal />
+            <div>
+              <Text
+                size="2"
+                weight="bold"
+                className="mb-3 block uppercase tracking-wide text-[#d73f09]"
+              >
+                {t("nav.marketplace")}
+              </Text>
+              <Heading size="9" weight="bold" className="text-[#d73f09]">
+                OSUTrade
+              </Heading>
+              <Text size="3" className="mt-4 block text-gray-700">
+                {t("home.description")}
+              </Text>
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link href="/overview" className="block">
+                <Button
+                  size="4"
+                  highContrast
+                  className="h-12 w-full justify-center rounded-md"
+                >
+                  {t("nav.marketplace")}
+                </Button>
+              </Link>
+              <Link href="/sell" className="block">
+                <Button
+                  size="4"
+                  variant="outline"
+                  className="h-12 w-full justify-center rounded-md border-[#d73f09] text-[#d73f09]"
+                >
+                  {t("marketplace.listItem")}
+                </Button>
+              </Link>
+            </div>
+
+            <Card className="border border-orange-200 bg-white/80 p-4 shadow-sm">
+              <div className="flex gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100 text-[#d73f09]">
+                  <LockClosedIcon />
+                </div>
+                <div>
+                  <Text size="2" weight="bold" className="text-gray-900">
+                    {t("product.contactAfterRequest")}
+                  </Text>
+                  <Text size="2" className="mt-1 block text-gray-600">
+                    {t("home.stepMeet")}
+                  </Text>
+                </div>
+              </div>
+            </Card>
+
+            <div className="rounded-lg border border-orange-100 bg-white/70 p-4">
+              <Text size="2" weight="medium" className="mb-3 block text-gray-700">
+                {t("auth.signup")} / {t("auth.login")}
+              </Text>
+              <div className="flex flex-wrap gap-3">
+                <SignUpModal />
+                <LoginModal />
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-4">
               <a
                 href="https://github.com/barrychung1112/OSUTrade"
