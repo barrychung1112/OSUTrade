@@ -60,7 +60,7 @@ export default function LoginModal() {
           <form onSubmit={onSubmit}>
             <Flex direction="column" gap="3" mt="4">
               <input
-                className="px-3 py-2 border rounded"
+                className="app-input"
                 placeholder={t("auth.email")}
                 type="email"
                 autoComplete="email"
@@ -70,7 +70,7 @@ export default function LoginModal() {
               />
               <input
                 type="password"
-                className="px-3 py-2 border rounded"
+                className="app-input"
                 placeholder={t("auth.password")}
                 autoComplete="current-password"
                 value={password}

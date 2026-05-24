@@ -160,7 +160,7 @@ export default function ProductListPage() {
 
           <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {loading ? (
-              <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/60 px-6 py-12 text-center text-gray-600">
+              <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/85 px-6 py-12 text-center text-gray-600 shadow-sm">
                 {t("marketplace.loadingListings")}
               </div>
             ) : filteredProducts.length > 0 ? (

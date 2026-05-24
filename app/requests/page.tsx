@@ -131,7 +131,7 @@ export default function RequestsPage() {
                 className={`app-chip ${
                   filter === item
                     ? "border-[#d73f09] bg-[#d73f09] text-white"
-                    : "border-orange-200 bg-white/70 text-gray-700 hover:bg-orange-50"
+                    : "border-orange-200 bg-white/85 text-gray-700 hover:bg-orange-50"
                 }`}
               >
                 {t(`requests.filter.${item}` as any)}
