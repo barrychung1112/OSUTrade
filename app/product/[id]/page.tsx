@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, ShoppingCart, Store } from "lucide-react";
+import { Theme } from "@radix-ui/themes";
 import { fetchProduct, type Product } from "@/app/lib/products";
 import { useI18n } from "@/app/i18n";
 import Header from "@/app/components/Header";
@@ -95,30 +96,34 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
-        <Header />
-        <div className="mx-auto max-w-5xl rounded-lg border border-orange-100 bg-white p-8 text-center text-gray-600 shadow-sm">
-          {t("product.loading")}
-        </div>
-      </main>
+      <Theme appearance="light" accentColor="orange" grayColor="sand">
+        <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
+          <Header />
+          <div className="mx-auto max-w-5xl rounded-lg border border-orange-100 bg-white p-8 text-center text-gray-600 shadow-sm">
+            {t("product.loading")}
+          </div>
+        </main>
+      </Theme>
     );
   }
 
   if (error || !product) {
     return (
-      <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
-        <Header />
-        <div className="mx-auto max-w-3xl rounded-lg border border-red-100 bg-white p-8 text-center shadow-sm">
-          <h1 className="text-2xl font-bold text-gray-900">{t("product.unavailable")}</h1>
-          <p className="mt-2 text-gray-600">{error || t("product.notFound")}</p>
-          <Link
-            href="/overview"
-            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#d73f09] px-4 py-2 text-sm font-semibold text-white"
-          >
-            <ArrowLeft size={16} /> {t("product.backMarketplace")}
-          </Link>
-        </div>
-      </main>
+      <Theme appearance="light" accentColor="orange" grayColor="sand">
+        <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
+          <Header />
+          <div className="mx-auto max-w-3xl rounded-lg border border-red-100 bg-white p-8 text-center shadow-sm">
+            <h1 className="text-2xl font-bold text-gray-900">{t("product.unavailable")}</h1>
+            <p className="mt-2 text-gray-600">{error || t("product.notFound")}</p>
+            <Link
+              href="/overview"
+              className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#d73f09] px-4 py-2 text-sm font-semibold text-white"
+            >
+              <ArrowLeft size={16} /> {t("product.backMarketplace")}
+            </Link>
+          </div>
+        </main>
+      </Theme>
     );
   }
 
@@ -131,9 +136,10 @@ export default function ProductDetailPage() {
   const displayName = pickProductName(product.name, product.nameTranslations, locale);
 
   return (
-    <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
-      <Header />
-      <div className="mx-auto max-w-6xl">
+    <Theme appearance="light" accentColor="orange" grayColor="sand">
+      <main className="min-h-screen bg-[#fff8f4] px-4 py-28">
+        <Header />
+        <div className="mx-auto max-w-6xl">
         <Link
           href="/overview"
           className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#d73f09] hover:text-[#b43305]"
@@ -293,7 +299,8 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </section>
-      </div>
-    </main>
+        </div>
+      </main>
+    </Theme>
   );
 }
