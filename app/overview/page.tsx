@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, Heading, Theme } from "@radix-ui/themes";
 import Header from "../components/Header";
+import EmptyState from "../components/EmptyState";
 import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hook/useProducts";
 import type { Product } from "../lib/products";
@@ -184,13 +185,20 @@ export default function ProductListPage() {
                 />
               ))
             ) : (
-              <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/60 px-6 py-12 text-center">
-                <Heading size="4" className="text-gray-900">
-                  {t("marketplace.noMatches")}
-                </Heading>
-                <p className="mt-2 text-sm text-gray-600">
-                  {t("marketplace.noMatchesHelp")}
-                </p>
+              <div className="col-span-full">
+                <EmptyState
+                  title={t("marketplace.noMatches")}
+                  body={t("marketplace.noMatchesHelp")}
+                  action={
+                    <Button
+                      variant="soft"
+                      onClick={clearFilters}
+                      disabled={!hasFilters}
+                    >
+                      {t("common.clear")}
+                    </Button>
+                  }
+                />
               </div>
             )}
           </section>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
+import EmptyState from "../components/EmptyState";
 import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
@@ -141,31 +142,23 @@ export default function RequestsPage() {
             {loading ? (
               <Card className="p-5">{t("requests.loading")}</Card>
             ) : requests.length === 0 ? (
-              <Card className="p-8 text-center">
-                <Heading size="5" className="mb-2">
-                  {t("requests.empty")}
-                </Heading>
-                <Text color="gray">
-                  {t("requests.emptyHelp")}
-                </Text>
-                <div className="mt-5">
+              <EmptyState
+                title={t("requests.empty")}
+                body={t("requests.emptyHelp")}
+                action={
                   <Link href="/overview">
                     <Button highContrast>{t("requests.browse")}</Button>
                   </Link>
-                </div>
-              </Card>
+                }
+              />
             ) : filteredRequests.length === 0 ? (
-              <Card className="p-8 text-center">
-                <Heading size="5" className="mb-2">
-                  {t("requests.noFiltered")}
-                </Heading>
-                <Text color="gray">
-                  {t("requests.counts", {
+              <EmptyState
+                title={t("requests.noFiltered")}
+                body={t("requests.counts", {
                     total: requests.length,
                     accepted: acceptedCount,
                   })}
-                </Text>
-              </Card>
+              />
             ) : (
               filteredRequests.map((request) => (
                 <RequestCard

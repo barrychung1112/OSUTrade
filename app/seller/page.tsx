@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon, CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
+import EmptyState from "../components/EmptyState";
 import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
@@ -315,28 +316,6 @@ function StatCard({ label, value }: { label: string; value: number }) {
         {label}
       </Text>
       <p className="mt-1 text-2xl font-bold text-gray-950">{value}</p>
-    </div>
-  );
-}
-
-function EmptyState({
-  title,
-  body,
-  action,
-}: {
-  title: string;
-  body: string;
-  action: ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-dashed border-orange-200 bg-white/70 px-6 py-10 text-center">
-      <Heading size="4" className="text-gray-950">
-        {title}
-      </Heading>
-      <Text as="p" color="gray" className="mx-auto mt-2 max-w-sm">
-        {body}
-      </Text>
-      <div className="mt-5 flex justify-center">{action}</div>
     </div>
   );
 }
