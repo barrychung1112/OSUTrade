@@ -20,6 +20,9 @@ interface ProductCardProps {
   quantity?: number | null;
 }
 
+const currency = (value: number) =>
+  value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
 export default function ProductCard({
   productId,
   name,
@@ -71,40 +74,53 @@ export default function ProductCard({
   }
 
   return (
-    <Card className="flex flex-col overflow-hidden border border-orange-200 bg-white/80 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md">
-      <Link href={`/product/${productId}`} className="relative block w-full h-52">
-        <Image src={imageUrl} alt={name} fill className="object-cover" />
+    <Card className="flex min-h-[430px] flex-col overflow-hidden border border-orange-200 bg-white/90 p-0 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md">
+      <Link href={`/product/${productId}`} className="relative block h-52 w-full bg-gray-100">
+        <Image src={imageUrl} alt={displayName || name} fill className="object-cover" />
+        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-gray-800 shadow-sm">
+          {t("product.stock", { quantity: quantity ?? 1 })}
+        </span>
       </Link>
-      <div className="flex flex-col justify-between p-4 flex-1">
-        <Link href={`/product/${productId}`} className="mb-4 min-w-0">
-          <Heading size="4" weight="bold" className="text-[#d73f09] truncate">
+      <div className="flex flex-1 flex-col p-4">
+        <Link href={`/product/${productId}`} className="min-w-0">
+          <Heading size="4" weight="bold" className="line-clamp-2 min-h-[48px] text-gray-950">
             {displayName || name}
           </Heading>
         </Link>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-[#d73f09]">
-            {t(`common.category.${category || "general"}` as any)}
-          </span>
-          <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
-            {t("product.stock", { quantity: quantity ?? 1 })}
-          </span>
+
+        <Text size="5" weight="bold" className="mt-3 block text-[#d73f09]">
+          {currency(price)}
+        </Text>
+
+        <div className="mt-4 grid gap-2 text-sm text-gray-700">
+          <div className="flex items-center justify-between gap-3 rounded-md bg-orange-50 px-3 py-2">
+            <span className="font-medium">{t("marketplace.category")}</span>
+            <span className="text-right capitalize">
+              {t(`common.category.${category || "general"}` as any)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md bg-gray-50 px-3 py-2">
+            <span className="font-medium">{t("product.availability")}</span>
+            <span className="text-right">
+              {t("product.stock", { quantity: quantity ?? 1 })}
+            </span>
+          </div>
         </div>
-        <div className="mt-auto flex justify-between items-center">
+
+        <div className="mt-auto pt-4">
           <Button
-            size="2"
-            variant="outline"
-            className="border-[#d73f09] text-[#d73f09] flex items-center gap-2"
+            size="3"
+            highContrast
+            className="flex w-full items-center justify-center gap-2"
             onClick={addToCart}
             disabled={adding}
           >
             <PlusIcon /> <span>{adding ? t("product.adding") : t("product.addToCart")}</span>
           </Button>
-          <Text size="3" weight="medium" className="text-gray-700">
-            ${price}
-          </Text>
         </div>
+
         <p
-          className={`mt-3 min-h-5 text-xs ${
+          className={`mt-3 min-h-5 text-sm ${
             feedback?.tone === "error" ? "text-red-600" : "text-green-700"
           }`}
           aria-live="polite"
@@ -114,7 +130,7 @@ export default function ProductCard({
         {feedback?.tone === "success" && (
           <Link
             href="/cart"
-            className="mt-1 inline-flex text-sm font-medium text-[#d73f09] underline-offset-4 hover:underline"
+            className="inline-flex text-sm font-medium text-[#d73f09] underline-offset-4 hover:underline"
           >
             {t("product.viewCart")}
           </Link>
