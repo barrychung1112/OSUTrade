@@ -59,7 +59,7 @@ export default function Header() {
         <Avatar
           fallback={fallback.toUpperCase()}
           size="2"
-          className="cursor-pointer border border-gray-300"
+          className="header-avatar-control cursor-pointer border border-gray-300"
         />
       </DropdownMenu.Trigger>
       <DropdownMenu.Content align="end">
