@@ -18,6 +18,7 @@ import {
   TrashIcon,
 } from "@radix-ui/react-icons";
 import Header from "../components/Header";
+import EmptyState from "../components/EmptyState";
 import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
@@ -188,19 +189,15 @@ export default function CartPage() {
                   <Text>{t("cart.loading")}</Text>
                 </Card>
               ) : items.length === 0 ? (
-                <Card className="border border-orange-200 bg-white/60 p-8 text-center shadow">
-                  <Heading size="5" className="mb-2">
-                    {t("cart.empty")}
-                  </Heading>
-                  <Text color="gray">
-                    {t("cart.emptyHelp")}
-                  </Text>
-                  <div className="mt-6">
+                <EmptyState
+                  title={t("cart.empty")}
+                  body={t("cart.emptyHelp")}
+                  action={
                     <Link href="/overview">
                       <Button highContrast>{t("cart.goShopping")}</Button>
                     </Link>
-                  </div>
-                </Card>
+                  }
+                />
               ) : (
                 items.map((item) => (
                   <ItemCard
