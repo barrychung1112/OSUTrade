@@ -1,6 +1,7 @@
 export type Product = {
   id: string | number;
   name: string;
+  description?: string | null;
   nameTranslations?: {
     en?: string | null;
     zhTw?: string | null;

@@ -25,6 +25,7 @@ export default function SellPage() {
   const { t } = useI18n();
   const router = useRouter();
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [category, setCategory] = useState("general");
@@ -95,6 +96,7 @@ export default function SellPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name,
+          description,
           price: Number(price),
           quantity: Number(quantity),
           category,
@@ -113,6 +115,7 @@ export default function SellPage() {
       const product = (await res.json()) as Product;
       setSuccessProduct(product);
       setName("");
+      setDescription("");
       setPrice("");
       setQuantity("1");
       setCategory("general");
@@ -155,7 +158,7 @@ export default function SellPage() {
       const res = await fetch("/api/pricing/advice", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, category }),
+        body: JSON.stringify({ name, description, category }),
       });
 
       if (!res.ok) {
@@ -222,6 +225,21 @@ export default function SellPage() {
                   onChange={(event) => setName(event.target.value)}
                   required
                 />
+              </label>
+
+              <label className="block">
+                <Text as="span" size="2" weight="medium">
+                  {t("sell.description")}
+                </Text>
+                <textarea
+                  className="mt-2 min-h-28 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder={t("sell.descriptionPlaceholder")}
+                />
+                <Text as="p" size="1" color="gray" className="mt-1">
+                  {t("sell.descriptionHelp")}
+                </Text>
               </label>
 
               <label className="block">

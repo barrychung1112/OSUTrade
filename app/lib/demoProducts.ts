@@ -1,6 +1,7 @@
 export type DemoProduct = {
   id: string;
   name: string;
+  description?: string;
   price: number;
   category: string;
   imageUrl: string;
@@ -11,6 +12,7 @@ export const demoProducts: DemoProduct[] = [
   {
     id: "demo-bike",
     name: "Commuter Bike",
+    description: "Lightly used commuter bike for campus errands and short rides.",
     price: 85,
     category: "general",
     imageUrl: "/images/Bike_0.jpg",
@@ -19,6 +21,7 @@ export const demoProducts: DemoProduct[] = [
   {
     id: "demo-dell-monitor",
     name: "Dell 24-inch Monitor",
+    description: "External monitor with stand, good for dorm desks and study setups.",
     price: 70,
     category: "electronics",
     imageUrl: "/images/DellMonitor_0.jpg",
@@ -27,6 +30,7 @@ export const demoProducts: DemoProduct[] = [
   {
     id: "demo-mini-fridge",
     name: "Dorm Mini Fridge",
+    description: "Compact fridge sized for dorm rooms or shared apartments.",
     price: 95,
     category: "electronics",
     imageUrl: "/images/Fridge1_0.jpg",
@@ -35,6 +39,7 @@ export const demoProducts: DemoProduct[] = [
   {
     id: "demo-led-lamp",
     name: "LED Desk Lamp",
+    description: "Adjustable desk lamp with bright LED lighting.",
     price: 18,
     category: "home",
     imageUrl: "/images/LED lamp_0.jpg",
@@ -43,6 +48,7 @@ export const demoProducts: DemoProduct[] = [
   {
     id: "demo-bookshelf",
     name: "Small Bookshelf",
+    description: "Compact shelf for books, decor, or dorm storage.",
     price: 35,
     category: "home",
     imageUrl: "/images/shelf_0.jpg",
@@ -51,6 +57,7 @@ export const demoProducts: DemoProduct[] = [
   {
     id: "demo-study-table",
     name: "Study Table",
+    description: "Simple study table with enough room for a laptop and notes.",
     price: 55,
     category: "home",
     imageUrl: "/images/table_0.jpg",
@@ -59,6 +66,7 @@ export const demoProducts: DemoProduct[] = [
   {
     id: "demo-textbook",
     name: "CS Textbook Bundle",
+    description: "Bundle of used computer science textbooks for reference or classes.",
     price: 30,
     category: "books",
     imageUrl: "/images/Fridge2_0.jpg",
@@ -67,6 +75,7 @@ export const demoProducts: DemoProduct[] = [
   {
     id: "demo-bike-helmet",
     name: "Bike Helmet",
+    description: "Campus bike helmet with adjustable fit.",
     price: 20,
     category: "clothing",
     imageUrl: "/images/Bike2_0.jpg",

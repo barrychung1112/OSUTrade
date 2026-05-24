@@ -45,6 +45,7 @@ on conflict (id) do update set public = excluded.public;
 
 alter table public.products
   add column if not exists seller_id uuid references auth.users(id) on delete set null,
+  add column if not exists description text,
   add column if not exists name_en text,
   add column if not exists name_zh_tw text,
   add column if not exists name_zh_cn text,
