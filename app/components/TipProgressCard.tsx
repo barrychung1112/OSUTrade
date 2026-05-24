@@ -1,4 +1,4 @@
-// app/components/FundingProgressCard.tsx
+// app/components/TipProgressCard.tsx
 "use client";
 
 import { HeartIcon } from "@radix-ui/react-icons";
@@ -7,14 +7,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n";
 
-type FundingPayload = {
+type TipPayload = {
   raised: number;
   goal: number;
   currency: string;
   supportUrl: string;
 };
 
-const fallbackFunding: FundingPayload = {
+const fallbackTip: TipPayload = {
   raised: 0,
   goal: 2000,
   currency: "USD",
@@ -29,14 +29,14 @@ function money(value: number, currency: string) {
   }).format(value);
 }
 
-export default function FundingProgressCard() {
+export default function TipProgressCard() {
   const { t } = useI18n();
-  const [funding, setFunding] = useState<FundingPayload>(fallbackFunding);
+  const [tipProgress, setTipProgress] = useState<TipPayload>(fallbackTip);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadFunding() {
+    async function loadTipProgress() {
       try {
         const response = await fetch("/api/home/funding", {
           cache: "no-store",
@@ -44,21 +44,21 @@ export default function FundingProgressCard() {
         });
 
         if (response.ok) {
-          setFunding((await response.json()) as FundingPayload);
+          setTipProgress((await response.json()) as TipPayload);
         }
       } catch {
-        // Keep the local fallback if funding settings are not configured yet.
+        // Keep the local fallback if tip settings are not configured yet.
       }
     }
 
-    loadFunding();
+    loadTipProgress();
     return () => controller.abort();
   }, []);
 
   const progress = useMemo(() => {
-    if (funding.goal <= 0) return 0;
-    return Math.min(100, Math.round((funding.raised / funding.goal) * 100));
-  }, [funding.goal, funding.raised]);
+    if (tipProgress.goal <= 0) return 0;
+    return Math.min(100, Math.round((tipProgress.raised / tipProgress.goal) * 100));
+  }, [tipProgress.goal, tipProgress.raised]);
 
   return (
     <Card className="app-card p-4 backdrop-blur">
@@ -70,7 +70,7 @@ export default function FundingProgressCard() {
           </Text>
         </div>
         <Link
-          href={funding.supportUrl}
+          href={tipProgress.supportUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[#d73f09] px-3 py-1.5 text-sm font-semibold text-white"
@@ -80,11 +80,11 @@ export default function FundingProgressCard() {
       </div>
       <div className="mb-2 flex items-end justify-between gap-3">
         <Text size="6" weight="bold" className="text-[#d73f09]">
-          {money(funding.raised, funding.currency)}
+          {money(tipProgress.raised, tipProgress.currency)}
         </Text>
         <Text size="2" color="gray">
           {t("home.fundingGoal", {
-            goal: money(funding.goal, funding.currency),
+            goal: money(tipProgress.goal, tipProgress.currency),
           })}
         </Text>
       </div>
@@ -98,6 +98,9 @@ export default function FundingProgressCard() {
         <span>{progress}%</span>
         <span>{t("home.fundingUse")}</span>
       </div>
+      <Text as="p" size="1" color="gray" className="mt-3 leading-5">
+        {t("home.fundingNote")}
+      </Text>
     </Card>
   );
 }

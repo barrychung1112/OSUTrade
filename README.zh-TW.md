@@ -8,7 +8,7 @@ OSUTrade 是為校園與在地社群打造的 full-stack marketplace。它協助
 
 產品重點放在三件事：清楚的商品資訊、更安全的聯絡流程，以及多語系可用性。
 
-[GitHub Repository](https://github.com/barrychung1112/OSUTrade) | [Discord Community](https://discord.gg/BqqAmmjJR) | [Buy Me a Coffee](https://buymeacoffee.com/osutrade)
+[GitHub Repository](https://github.com/barrychung1112/OSUTrade) | [Discord Community](https://discord.gg/BqqAmmjJR) | [打賞 OSUTrade](https://buymeacoffee.com/osutrade)
 
 ## 專案介紹
 
@@ -175,7 +175,9 @@ Barry Chung 是 OSUTrade 的創作者，將這個專案打造為一個實用的�
 - GitHub: [barrychung1112](https://github.com/barrychung1112)
 - Project: [OSUTrade](https://github.com/barrychung1112/OSUTrade)
 - Discord: [OSUTrade Community](https://discord.gg/BqqAmmjJR)
-- Support: [Buy Me a Coffee](https://buymeacoffee.com/osutrade)
+- 打賞: [打賞 OSUTrade](https://buymeacoffee.com/osutrade)
+
+打賞是支持 OSUTrade 開發與營運成本的自願付款，並非慈善募款。
 
 ## 願景
 
