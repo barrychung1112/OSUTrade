@@ -720,11 +720,10 @@ export function LanguageToggle() {
 
   return (
     <div
-      className="inline-flex min-w-[138px] shrink-0 rounded-md border border-orange-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm"
+      className="inline-flex shrink-0 rounded-md border border-orange-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm"
       style={{
         flexShrink: 0,
-        minWidth: "138px",
-        width: "138px",
+        width: "fit-content",
         boxSizing: "border-box",
       }}
       aria-label={t("common.language")}
