@@ -67,7 +67,7 @@ export default function ProductListCard() {
   }, [error, loading, products.length, t, total]);
 
   return (
-    <Card className="border border-orange-300 bg-white/70 p-4 shadow backdrop-blur-md transition-transform hover:scale-[1.02]">
+    <Card className="app-card p-4 backdrop-blur">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <Heading size="5">{t("home.onSale")}</Heading>
@@ -86,7 +86,7 @@ export default function ProductListCard() {
             <li key={product.id}>
               <Link
                 href={`/product/${product.id}`}
-                className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-orange-50 px-3 py-2 transition hover:bg-orange-100"
+                className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-orange-50/80 px-3 py-2 transition hover:bg-orange-100"
               >
                 <span className="min-w-0">
                   <span className="block truncate font-semibold text-gray-950">

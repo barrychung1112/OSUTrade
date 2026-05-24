@@ -195,20 +195,20 @@ export default function SellerPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
-      <main className="min-h-screen bg-gradient-to-br from-white via-[#fff7f2] to-[#ffe7df] px-4 py-28">
+      <main className="app-page">
         <Header />
 
-        <section className="mx-auto max-w-7xl">
-          <div className="mb-6 rounded-xl border border-orange-100 bg-white/85 p-5 shadow-sm backdrop-blur md:p-6">
+        <section className="app-container">
+          <div className="app-hero">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#d73f09]">
+                <p className="app-eyebrow">
                   {t("nav.seller")}
                 </p>
-                <Heading size="8" className="text-gray-950">
+                <Heading size="8" className="app-title">
                   {t("seller.title")}
                 </Heading>
-                <Text as="p" color="gray" className="mt-2 max-w-2xl">
+                <Text as="p" color="gray" className="app-subtitle">
                   {t("seller.subtitle")}
                 </Text>
               </div>
@@ -246,7 +246,7 @@ export default function SellerPage() {
           )}
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,1fr)]">
-            <section className="rounded-xl border border-orange-100 bg-white/80 p-4 shadow-sm backdrop-blur md:p-5">
+            <section className="app-panel">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <Heading size="5" className="text-gray-950">
@@ -289,7 +289,7 @@ export default function SellerPage() {
               </div>
             </section>
 
-            <section className="rounded-xl border border-orange-100 bg-white/80 p-4 shadow-sm backdrop-blur md:p-5">
+            <section className="app-panel">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <Heading size="5" className="text-gray-950">
@@ -393,20 +393,20 @@ function ProductRow({
 
   return (
     <Card
-      className={`border border-orange-100 bg-white p-3 shadow-sm ${
+      className={`app-card p-3 ${
         product.status === "sold" || product.status === "removed"
           ? "opacity-65"
           : ""
       }`}
     >
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
         <img
           src={product.imageUrl || "/images/Bike_0.jpg"}
           alt={displayName}
-          className="h-20 w-20 shrink-0 rounded-md object-cover"
+          className="h-44 w-full shrink-0 rounded-md object-cover sm:h-20 sm:w-20"
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <Text className="block truncate font-medium">{displayName}</Text>
               <Text color="gray" size="2">
@@ -506,7 +506,7 @@ function RequestRow({
 
   return (
     <Card
-      className={`border border-orange-100 bg-white p-4 shadow-sm ${
+      className={`app-card p-4 ${
         request.status !== "sent" ? "opacity-70" : ""
       }`}
     >

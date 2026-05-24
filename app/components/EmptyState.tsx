@@ -11,7 +11,7 @@ export default function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <Card className="border border-dashed border-orange-200 bg-white/70 px-6 py-10 text-center shadow-sm">
+    <Card className="rounded-lg border border-dashed border-orange-200 bg-white/85 px-6 py-10 text-center shadow-sm">
       <Heading size="4" className="text-gray-950">
         {title}
       </Heading>

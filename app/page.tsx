@@ -28,22 +28,22 @@ export default function HomePage() {
       grayColor="sand"
       radius="large"
     >
-      <div className="min-h-screen bg-gradient-to-br from-white via-[#fff1f1] to-[#ffe6e6] px-4 pb-8 pt-28 sm:px-8">
+      <div className="app-page">
         <Header />
-        <div className="mx-auto grid max-w-screen-xl grid-cols-1 gap-8 align-middle xl:grid-cols-3">
+        <div className="app-container grid grid-cols-1 gap-6 align-middle xl:grid-cols-3">
           <div className="col-span-1 flex flex-col gap-6">
-            <div>
+            <div className="app-hero mb-0">
               <Text
                 size="2"
                 weight="bold"
-                className="mb-3 block uppercase tracking-wide text-[#d73f09]"
+                className="app-eyebrow block"
               >
                 {t("nav.marketplace")}
               </Text>
               <Heading size="9" weight="bold" className="text-[#d73f09]">
                 OSUTrade
               </Heading>
-              <Text size="3" className="mt-4 block text-gray-700">
+              <Text size="3" className="mt-4 block leading-6 text-gray-700">
                 {t("home.description")}
               </Text>
             </div>
@@ -69,7 +69,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <Card className="border border-orange-200 bg-white/80 p-4 shadow-sm">
+            <Card className="app-card p-4">
               <div className="flex gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100 text-[#d73f09]">
                   <LockClosedIcon />
@@ -85,7 +85,7 @@ export default function HomePage() {
               </div>
             </Card>
 
-            <div className="rounded-lg border border-orange-100 bg-white/70 p-4">
+            <div className="app-panel">
               <Text size="2" weight="medium" className="mb-3 block text-gray-700">
                 {t("auth.signup")} / {t("auth.login")}
               </Text>
@@ -133,7 +133,7 @@ export default function HomePage() {
           <div className="col-span-1 flex flex-col gap-6">
             <ProductListCard />
             <FundingProgressCard />
-            <Card className="border border-orange-300 bg-white/70 p-4 shadow backdrop-blur-md transition-transform hover:scale-[1.02]">
+            <Card className="app-card p-4 backdrop-blur">
               <Heading size="5" mb="2">
                 {t("home.howItWorks")}
               </Heading>

@@ -61,7 +61,7 @@ export default function FundingProgressCard() {
   }, [funding.goal, funding.raised]);
 
   return (
-    <Card className="border border-orange-300 bg-white/70 p-4 shadow backdrop-blur-md transition-transform hover:scale-[1.02]">
+    <Card className="app-card p-4 backdrop-blur">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <Heading size="5">{t("home.fundingTitle")}</Heading>

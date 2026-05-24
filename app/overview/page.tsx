@@ -58,19 +58,19 @@ export default function ProductListPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand" radius="large">
-      <main className="relative min-h-screen bg-gradient-to-br from-white via-[#fff6f1] to-[#ffe7df] px-4 py-24">
+      <main className="app-page">
         <Header />
 
-        <div className="relative z-10 mx-auto max-w-7xl">
-          <section className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div className="app-container">
+          <section className="app-hero flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#d73f09]">
+              <p className="app-eyebrow">
                 {t("nav.marketplace")}
               </p>
-              <Heading size="8" className="text-3xl font-bold text-gray-900 sm:text-4xl">
+              <Heading size="8" className="app-title">
                 {t("marketplace.title")}
               </Heading>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600 sm:text-base">
+              <p className="app-subtitle">
                 {t("marketplace.subtitle")}
               </p>
             </div>
@@ -91,7 +91,7 @@ export default function ProductListPage() {
             </div>
           )}
 
-          <section className="mb-6 rounded-lg border border-orange-100 bg-white/80 p-4 shadow-sm backdrop-blur">
+          <section className="app-panel mb-6">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px_auto] md:items-end">
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-gray-700">
@@ -102,7 +102,7 @@ export default function ProductListPage() {
                   placeholder={t("marketplace.searchPlaceholder")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100"
+                  className="app-input h-10"
                 />
               </label>
 
@@ -113,7 +113,7 @@ export default function ProductListPage() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm capitalize outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100"
+                  className="app-input h-10 capitalize"
                 >
                   {categories.map((item) => (
                     <option key={item} value={item}>
@@ -132,7 +132,7 @@ export default function ProductListPage() {
                 <select
                   value={priceSort}
                   onChange={(e) => setPriceSort(e.target.value)}
-                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100"
+                  className="app-input h-10"
                 >
                   <option value="none">{t("marketplace.newest")}</option>
                   <option value="asc">{t("marketplace.priceAsc")}</option>

@@ -2,6 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .app-page {
+    @apply min-h-screen bg-[linear-gradient(135deg,#fffdfb_0%,#fff7f2_48%,#ffe8df_100%)] px-4 py-24 sm:px-6 lg:px-8;
+  }
+
+  .app-container {
+    @apply mx-auto w-full max-w-7xl;
+  }
+
+  .app-hero {
+    @apply mb-6 rounded-lg border border-orange-100 bg-white/85 p-5 shadow-sm backdrop-blur md:p-6;
+  }
+
+  .app-eyebrow {
+    @apply mb-2 text-sm font-semibold uppercase tracking-wide text-[#d73f09];
+  }
+
+  .app-title {
+    @apply text-3xl font-bold text-gray-950 sm:text-4xl;
+  }
+
+  .app-subtitle {
+    @apply mt-2 max-w-2xl text-sm leading-6 text-gray-600 sm:text-base;
+  }
+
+  .app-panel {
+    @apply rounded-lg border border-orange-100 bg-white/85 p-4 shadow-sm backdrop-blur md:p-5;
+  }
+
+  .app-card {
+    @apply rounded-lg border border-orange-100 bg-white/85 shadow-sm;
+  }
+
+  .app-input {
+    @apply w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100;
+  }
+
+  .app-chip {
+    @apply rounded-full border px-3 py-1.5 text-sm font-semibold transition;
+  }
+}
+
 .header-avatar-control {
   flex-shrink: 0;
   width: 36px;
