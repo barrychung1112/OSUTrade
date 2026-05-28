@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
-import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import { ArrowLeftIcon, Cross2Icon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
 import { useI18n } from "../i18n";
@@ -205,7 +205,9 @@ export default function RequestsPage() {
                 body={t("requests.emptyHelp")}
                 action={
                   <Link href="/overview">
-                    <Button highContrast>{t("requests.browse")}</Button>
+                    <Button highContrast>
+                      <ArrowLeftIcon /> {t("requests.browse")}
+                    </Button>
                   </Link>
                 }
               />
@@ -311,8 +313,13 @@ function RequestCard({
           <RequestProgress status={request.status} t={t} />
 
           {request.status === "sent" && (
-            <Button className="mt-4" color="red" variant="soft" onClick={onCancel}>
-              {t("requests.cancel")}
+            <Button
+              className="mt-4"
+              color="red"
+              variant="soft"
+              onClick={onCancel}
+            >
+              <Cross2Icon /> {t("requests.cancel")}
             </Button>
           )}
         </div>
