@@ -268,6 +268,29 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: existingRequests, error: existingRequestError } = await supabase
+      .from("trade_requests")
+      .select("request_id, status")
+      .eq("product_id", itemId)
+      .eq("buyer_id", session.user.id)
+      .in("status", ["sent", "accepted"]);
+
+    if (existingRequestError) {
+      throw existingRequestError;
+    }
+
+    if ((existingRequests ?? []).length > 0) {
+      return NextResponse.json(
+        {
+          message:
+            "You already have an active request for this item. Wait until it is declined before sending another one.",
+          existingRequestId: existingRequests?.[0]?.request_id,
+          existingStatus: existingRequests?.[0]?.status,
+        },
+        { status: 409 }
+      );
+    }
+
     const { data, error } = await supabase
       .from("trade_requests")
       .insert({

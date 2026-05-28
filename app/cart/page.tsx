@@ -33,6 +33,11 @@ type CartItem = {
   category?: string | null;
 };
 
+type BuyerRequest = {
+  itemId: string;
+  status: "sent" | "accepted" | "declined" | "cancelled";
+};
+
 type ItemState = {
   note: string;
   status: "idle" | "sending" | "sent" | "error";
@@ -54,17 +59,38 @@ export default function CartPage() {
   const { t, locale } = useI18n();
   const [items, setItems] = useState<CartItem[]>([]);
   const [states, setStates] = useState<Record<string, ItemState>>({});
+  const [activeRequestItemIds, setActiveRequestItemIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/cart", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((payload) => {
-        const cart = (payload.data ?? []) as CartItem[];
+    Promise.all([
+      fetch("/api/cart", { cache: "no-store" }).then((res) => res.json()),
+      fetch("/api/requests", { cache: "no-store" }).then((res) =>
+        res.ok ? res.json() : { data: [] }
+      ),
+    ])
+      .then(([cartPayload, requestsPayload]) => {
+        const cart = (cartPayload.data ?? []) as CartItem[];
+        const requests = (requestsPayload.data ?? []) as BuyerRequest[];
+        const activeItems = new Set(
+          requests
+            .filter((request) => ["sent", "accepted"].includes(request.status))
+            .map((request) => String(request.itemId))
+        );
+
         setItems(cart);
+        setActiveRequestItemIds(activeItems);
         setStates(
           Object.fromEntries(
-            cart.map((item) => [item.id, { note: "", status: "idle" }])
+            cart.map((item) => [
+              item.id,
+              {
+                note: "",
+                status: activeItems.has(String(item.id)) ? "sent" : "idle",
+              },
+            ])
           )
         );
       })
@@ -123,6 +149,17 @@ export default function CartPage() {
   async function sendRequest(id: string) {
     const item = items.find((candidate) => candidate.id === id);
     if (!item) return;
+    if (activeRequestItemIds.has(String(id))) {
+      setStates((prev) => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          status: "sent",
+          errorMsg: t("cart.duplicateRequest"),
+        },
+      }));
+      return;
+    }
 
     setStates((prev) => ({
       ...prev,
@@ -141,11 +178,14 @@ export default function CartPage() {
 
     if (!res.ok) {
       const payload = await res.json().catch(() => null);
+      if (res.status === 409 && payload?.existingRequestId) {
+        setActiveRequestItemIds((prev) => new Set(prev).add(String(id)));
+      }
       setStates((prev) => ({
         ...prev,
         [id]: {
           ...prev[id],
-          status: "error",
+          status: res.status === 409 && payload?.existingRequestId ? "sent" : "error",
           errorMsg: payload?.message || t("cart.sendFailed"),
         },
       }));
@@ -153,13 +193,17 @@ export default function CartPage() {
     }
 
     setStates((prev) => ({ ...prev, [id]: { ...prev[id], status: "sent" } }));
+    setActiveRequestItemIds((prev) => new Set(prev).add(String(id)));
   }
 
   async function sendAll() {
     if (allSent) return;
 
     for (const item of items) {
-      if (states[item.id]?.status !== "sent") {
+      if (
+        states[item.id]?.status !== "sent" &&
+        !activeRequestItemIds.has(String(item.id))
+      ) {
         await sendRequest(item.id);
       }
     }
@@ -213,6 +257,7 @@ export default function CartPage() {
                     onMinus={() => changeQty(item.id, -1)}
                     onPlus={() => changeQty(item.id, 1)}
                     onSend={() => sendRequest(item.id)}
+                    requestBlocked={activeRequestItemIds.has(String(item.id))}
                     t={t}
                   />
                 ))
@@ -271,6 +316,7 @@ function ItemCard({
   onMinus,
   onPlus,
   onSend,
+  requestBlocked,
   t,
 }: {
   item: CartItem;
@@ -281,9 +327,10 @@ function ItemCard({
   onMinus: () => void;
   onPlus: () => void;
   onSend: () => void;
+  requestBlocked: boolean;
   t: ReturnType<typeof useI18n>["t"];
 }) {
-  const disabled = state?.status === "sending";
+  const disabled = state?.status === "sending" || requestBlocked;
   const displayName = pickProductName(item.name, item.nameTranslations, locale);
 
   return (
@@ -368,6 +415,10 @@ function ItemCard({
                   <Text color="red" size="2">
                     {state.errorMsg}
                   </Text>
+                ) : requestBlocked ? (
+                  <Text color="green" size="2">
+                    {t("cart.requestAlreadySent")}
+                  </Text>
                 ) : null}
               </div>
             </div>
@@ -379,11 +430,19 @@ function ItemCard({
             >
               {state?.status === "sending"
                 ? t("cart.sending")
-                : state?.status === "sent"
+                : state?.status === "sent" || requestBlocked
                   ? t("cart.sent")
                   : t("cart.send")}
             </Button>
           </div>
+          {(state?.status === "sent" || requestBlocked) && (
+            <Link
+              href="/requests"
+              className="mt-3 inline-flex text-sm font-semibold text-[#d73f09] underline-offset-4 hover:underline"
+            >
+              {t("cart.viewRequests")}
+            </Link>
+          )}
         </div>
       </div>
     </Card>
