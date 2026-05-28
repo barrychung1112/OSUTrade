@@ -50,6 +50,8 @@ const dictionaries = {
     "auth.signupError": "Sign up failed. Check your email and password.",
     "auth.confirmEmail": "Please check your email to confirm your account.",
     "auth.createdConfirm": "Account created. Please log in after confirming your email.",
+    "auth.requiredTitle": "Log in to continue",
+    "auth.requiredBody": "Please log in or create an account to continue to {destination}.",
     "home.description":
       "Looking to declutter or find great deals? OSUTrade helps you list secondhand items, browse campus listings, and send requests to sellers in a few clicks.",
     "home.github": "GitHub",
@@ -297,6 +299,8 @@ const dictionaries = {
     "auth.signupError": "註冊失敗，請確認 email 與密碼。",
     "auth.confirmEmail": "請查看信箱並完成帳號驗證。",
     "auth.createdConfirm": "帳號已建立。請完成 email 驗證後再登入。",
+    "auth.requiredTitle": "請先登入以繼續",
+    "auth.requiredBody": "請登入或建立帳號後繼續前往「{destination}」。",
     "home.description":
       "想出清閒置物品或找划算好物嗎？OSUTrade 讓你可以刊登二手商品、瀏覽校園市集，並快速向賣家送出交易需求。",
     "home.github": "GitHub",
@@ -548,6 +552,8 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "auth.signupError": "注册失败，请确认 email 与密码。",
   "auth.confirmEmail": "请查看邮箱并完成账号验证。",
   "auth.createdConfirm": "账号已创建。请完成 email 验证后再登录。",
+  "auth.requiredTitle": "请先登录以继续",
+  "auth.requiredBody": "请登录或创建账号后继续前往「{destination}」。",
   "home.description":
     "想清理闲置物品或找到划算好物吗？OSUTrade 让你可以刊登二手商品、浏览校园市集，并快速向卖家发送交易需求。",
   "home.github": "GitHub",

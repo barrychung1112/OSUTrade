@@ -1,6 +1,7 @@
 "use client";
 
 import "@radix-ui/themes/styles.css";
+import { useEffect, useMemo, useState } from "react";
 import { Theme, Heading, Text, Button, Card } from "@radix-ui/themes";
 import {
   GitHubLogoIcon,
@@ -20,6 +21,22 @@ import { useI18n } from "./i18n";
 
 export default function HomePage() {
   const { t } = useI18n();
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    const from = new URLSearchParams(window.location.search).get("from");
+    setRedirectPath(from);
+  }, []);
+
+  const redirectLabel = useMemo(() => {
+    if (!redirectPath) return "";
+    if (redirectPath.startsWith("/sell")) return t("nav.sell");
+    if (redirectPath.startsWith("/seller")) return t("nav.seller");
+    if (redirectPath.startsWith("/cart")) return t("nav.cart");
+    if (redirectPath.startsWith("/requests")) return t("nav.requests");
+    if (redirectPath.startsWith("/overview")) return t("nav.marketplace");
+    return "OSUTrade";
+  }, [redirectPath, t]);
 
   return (
     <Theme
@@ -32,6 +49,21 @@ export default function HomePage() {
         <Header />
         <div className="app-container grid grid-cols-1 gap-6 align-middle xl:grid-cols-3">
           <div className="col-span-1 flex flex-col gap-6">
+            {redirectPath && (
+              <Card className="app-card border-amber-200 bg-amber-50 p-4">
+                <Text size="2" weight="bold" className="text-amber-950">
+                  {t("auth.requiredTitle")}
+                </Text>
+                <Text size="2" className="mt-1 block leading-6 text-amber-900">
+                  {t("auth.requiredBody", { destination: redirectLabel })}
+                </Text>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <LoginModal />
+                  <SignUpModal />
+                </div>
+              </Card>
+            )}
+
             <div className="app-hero mb-0">
               <Text
                 size="2"
