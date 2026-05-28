@@ -651,7 +651,8 @@ function StatusBadge({ status }: { status: string }) {
     status === "sent" ||
     status === "accepted" ||
     status === "declined" ||
-    status === "cancelled"
+    status === "cancelled" ||
+    status === "expired"
       ? t(`requests.status.${status}` as any)
       : t(`common.status.${status}` as any);
 
