@@ -250,6 +250,8 @@ function RequestCard({
             </Text>
           )}
 
+          <RequestProgress status={request.status} t={t} />
+
           {request.status === "sent" && (
             <Button className="mt-4" color="red" variant="soft" onClick={onCancel}>
               {t("requests.cancel")}
@@ -258,6 +260,77 @@ function RequestCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+function RequestProgress({
+  status,
+  t,
+}: {
+  status: RequestStatus;
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  const terminal = status === "declined" || status === "cancelled";
+  const steps = terminal
+    ? [
+        { key: "sent", label: t("requests.progress.sent") },
+        { key: status, label: t(`requests.progress.${status}` as any) },
+      ]
+    : [
+        { key: "sent", label: t("requests.progress.sent") },
+        { key: "accepted", label: t("requests.progress.accepted") },
+        { key: "contact", label: t("requests.progress.contact") },
+      ];
+  const activeIndex = terminal
+    ? 1
+    : status === "accepted"
+      ? 2
+      : 0;
+
+  return (
+    <div className="mt-4 rounded-md border border-orange-100 bg-white px-3 py-3">
+      <div className="flex items-center">
+        {steps.map((step, index) => {
+          const complete = index <= activeIndex;
+          const isTerminal = terminal && index === activeIndex;
+          return (
+            <div key={step.key} className="flex flex-1 items-center last:flex-none">
+              <div className="flex min-w-0 flex-col items-center gap-1">
+                <span
+                  className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold ${
+                    isTerminal
+                      ? "border-red-600 bg-red-600 text-white"
+                      : complete
+                        ? "border-[#d73f09] bg-[#d73f09] text-white"
+                        : "border-gray-300 bg-white text-gray-500"
+                  }`}
+                >
+                  {index + 1}
+                </span>
+                <span
+                  className={`max-w-24 truncate text-xs font-medium ${
+                    complete ? "text-gray-900" : "text-gray-500"
+                  }`}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {index < steps.length - 1 && (
+                <div
+                  className={`mx-2 h-0.5 flex-1 ${
+                    index < activeIndex
+                      ? terminal
+                        ? "bg-red-500"
+                        : "bg-[#d73f09]"
+                      : "bg-gray-200"
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
