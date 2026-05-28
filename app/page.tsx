@@ -112,7 +112,7 @@ export default function HomePage() {
                       {t("product.contactAfterRequest")}
                     </Text>
                     <Text size="2" className="mt-1 block text-gray-600">
-                      {t("home.stepMeet")}
+                      {t("home.safetyNote")}
                     </Text>
                   </div>
                 </div>
