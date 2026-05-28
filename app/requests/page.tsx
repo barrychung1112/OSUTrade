@@ -125,6 +125,21 @@ export default function RequestsPage() {
     () => requests.filter((request) => request.status === "accepted").length,
     [requests]
   );
+  const activePendingRequests = useMemo(
+    () => requests.filter((request) => request.status === "sent"),
+    [requests]
+  );
+  const expiredRequests = useMemo(
+    () => requests.filter((request) => request.status === "expired"),
+    [requests]
+  );
+  const historyRequests = useMemo(
+    () =>
+      requests.filter(
+        (request) => request.status !== "sent" && request.status !== "expired"
+      ),
+    [requests]
+  );
   const filteredRequests = useMemo(
     () =>
       filter === "all"
@@ -166,6 +181,24 @@ export default function RequestsPage() {
                 <ArrowLeftIcon /> {t("nav.marketplace")}
               </Button>
             </Link>
+          </div>
+
+          <div className="mb-5 grid gap-3 sm:grid-cols-3">
+            <RequestStatCard
+              label={t("requests.activePending")}
+              value={activePendingRequests.length}
+              tone="amber"
+            />
+            <RequestStatCard
+              label={t("requests.expired")}
+              value={expiredRequests.length}
+              tone="red"
+            />
+            <RequestStatCard
+              label={t("requests.completed")}
+              value={historyRequests.length}
+              tone="gray"
+            />
           </div>
 
           {error && (
@@ -226,6 +259,34 @@ export default function RequestsPage() {
                     accepted: acceptedCount,
                   })}
               />
+            ) : filter === "all" ? (
+              <>
+                <RequestSection
+                  title={t("requests.activePending")}
+                  body={t("requests.activePendingHelp")}
+                  requests={activePendingRequests}
+                  onCancel={cancelRequest}
+                  locale={locale}
+                  t={t}
+                />
+                <RequestSection
+                  title={t("requests.expired")}
+                  body={t("requests.expiredHelp")}
+                  requests={expiredRequests}
+                  onCancel={cancelRequest}
+                  locale={locale}
+                  t={t}
+                  emptyText={t("requests.noExpired")}
+                />
+                <RequestSection
+                  title={t("requests.completed")}
+                  body={t("requests.completedHelp")}
+                  requests={historyRequests}
+                  onCancel={cancelRequest}
+                  locale={locale}
+                  t={t}
+                />
+              </>
             ) : (
               filteredRequests.map((request) => (
                 <RequestCard
@@ -241,6 +302,86 @@ export default function RequestsPage() {
         </section>
       </main>
     </Theme>
+  );
+}
+
+function RequestStatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "amber" | "red" | "gray";
+}) {
+  const toneClass =
+    tone === "red"
+      ? "border-red-100 bg-red-50 text-red-700"
+      : tone === "amber"
+        ? "border-amber-100 bg-amber-50 text-amber-900"
+        : "border-gray-100 bg-white text-gray-700";
+
+  return (
+    <div className={`rounded-lg border px-4 py-3 shadow-sm ${toneClass}`}>
+      <p className="text-sm font-medium">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-gray-950">{value}</p>
+    </div>
+  );
+}
+
+function RequestSection({
+  title,
+  body,
+  requests,
+  onCancel,
+  locale,
+  t,
+  emptyText,
+}: {
+  title: string;
+  body: string;
+  requests: BuyerRequest[];
+  onCancel: (requestId: string) => void;
+  locale: ReturnType<typeof useI18n>["locale"];
+  t: ReturnType<typeof useI18n>["t"];
+  emptyText?: string;
+}) {
+  if (requests.length === 0 && !emptyText) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Heading size="4" className="text-gray-950">
+            {title}
+          </Heading>
+          <Text as="p" color="gray" size="2" className="mt-1">
+            {body}
+          </Text>
+        </div>
+        <Badge color={requests.length > 0 ? "orange" : "gray"}>
+          {requests.length}
+        </Badge>
+      </div>
+
+      {requests.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-orange-200 bg-white/80 px-4 py-3 text-sm text-gray-600">
+          {emptyText}
+        </p>
+      ) : (
+        requests.map((request) => (
+          <RequestCard
+            key={request.id}
+            request={request}
+            onCancel={() => onCancel(request.id)}
+            locale={locale}
+            t={t}
+          />
+        ))
+      )}
+    </section>
   );
 }
 
