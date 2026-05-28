@@ -37,6 +37,12 @@ type BuyerRequest = {
 
 const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+const requestResponseWindowMs = 48 * 60 * 60 * 1000;
+const buyerRequestStatusStorageKey = "osutrade:buyer-request-statuses";
+
+function getResponseDeadline(createdAt: string) {
+  return new Date(new Date(createdAt).getTime() + requestResponseWindowMs);
+}
 
 export default function RequestsPage() {
   const { t, locale } = useI18n();
@@ -44,22 +50,61 @@ export default function RequestsPage() {
   const [filter, setFilter] = useState<RequestFilter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/requests", { cache: "no-store" })
-      .then(async (res) => {
+    async function loadRequests({ notify }: { notify: boolean }) {
+      try {
+        const res = await fetch("/api/requests", { cache: "no-store" });
         if (!res.ok) {
           throw new Error("Failed to load requests.");
         }
 
-        return res.json();
-      })
-      .then((payload) => setRequests(payload.data ?? []))
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load requests.")
-      )
-      .finally(() => setLoading(false));
-  }, []);
+        const payload = await res.json();
+        const nextRequests = (payload.data ?? []) as BuyerRequest[];
+
+        if (notify) {
+          const previous = JSON.parse(
+            window.localStorage.getItem(buyerRequestStatusStorageKey) || "{}"
+          ) as Record<string, RequestStatus>;
+          const changed = nextRequests.find(
+            (request) =>
+              previous[request.id] && previous[request.id] !== request.status
+          );
+
+          if (changed) {
+            setNotice(
+              t("requests.statusChangedNotice", {
+                status: t(`requests.status.${changed.status}` as any),
+              })
+            );
+          }
+        }
+
+        window.localStorage.setItem(
+          buyerRequestStatusStorageKey,
+          JSON.stringify(
+            Object.fromEntries(
+              nextRequests.map((request) => [request.id, request.status])
+            )
+          )
+        );
+        setRequests(nextRequests);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load requests.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadRequests({ notify: false });
+    const timer = window.setInterval(() => {
+      void loadRequests({ notify: true });
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, [t]);
 
   async function cancelRequest(requestId: string) {
     const res = await fetch("/api/requests", {
@@ -120,6 +165,18 @@ export default function RequestsPage() {
             <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </p>
+          )}
+          {notice && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              <span>{notice}</span>
+              <button
+                type="button"
+                className="font-semibold text-green-900"
+                onClick={() => setNotice(null)}
+              >
+                {t("common.clear")}
+              </button>
+            </div>
           )}
 
           <div className="mb-5 flex flex-wrap gap-2">
@@ -250,6 +307,7 @@ function RequestCard({
             </Text>
           )}
 
+          <RequestDeadline request={request} t={t} />
           <RequestProgress status={request.status} t={t} />
 
           {request.status === "sent" && (
@@ -260,6 +318,37 @@ function RequestCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+function RequestDeadline({
+  request,
+  t,
+}: {
+  request: BuyerRequest;
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  if (request.status !== "sent") {
+    return null;
+  }
+
+  const deadline = getResponseDeadline(request.createdAt);
+  const expired = Date.now() > deadline.getTime();
+
+  return (
+    <p
+      className={`mt-3 rounded-md border px-3 py-2 text-sm ${
+        expired
+          ? "border-red-200 bg-red-50 text-red-700"
+          : "border-amber-200 bg-amber-50 text-amber-900"
+      }`}
+    >
+      {expired
+        ? t("requests.responseExpired")
+        : t("requests.responseDue", {
+            date: deadline.toLocaleString(),
+          })}
+    </p>
   );
 }
 

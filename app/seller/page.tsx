@@ -62,6 +62,12 @@ const requestStatusPriority: Record<RequestStatus, number> = {
   declined: 2,
   cancelled: 3,
 };
+const requestResponseWindowMs = 48 * 60 * 60 * 1000;
+const sellerRequestIdsStorageKey = "osutrade:seller-request-ids";
+
+function getResponseDeadline(createdAt: string) {
+  return new Date(new Date(createdAt).getTime() + requestResponseWindowMs);
+}
 
 export default function SellerPage() {
   const { t, locale } = useI18n();
@@ -70,11 +76,14 @@ export default function SellerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pendingProductId, setPendingProductId] = useState<string | number | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
 
-  async function loadSellerData() {
-    setLoading(true);
+  async function loadSellerData(options: { notify?: boolean } = {}) {
+    if (!options.notify) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -89,9 +98,34 @@ export default function SellerPage() {
 
       const productsPayload = await productsRes.json();
       const requestsPayload = await requestsRes.json();
+      const nextRequests = (requestsPayload.data ?? []) as SellerRequest[];
+
+      if (options.notify) {
+        const previousIds = new Set(
+          JSON.parse(
+            window.localStorage.getItem(sellerRequestIdsStorageKey) || "[]"
+          ) as string[]
+        );
+        const newPendingRequests = nextRequests.filter(
+          (request) => request.status === "sent" && !previousIds.has(request.id)
+        );
+
+        if (newPendingRequests.length > 0 && previousIds.size > 0) {
+          setNotice(
+            t("seller.newRequestNotice", {
+              count: newPendingRequests.length,
+            })
+          );
+        }
+      }
+
+      window.localStorage.setItem(
+        sellerRequestIdsStorageKey,
+        JSON.stringify(nextRequests.map((request) => request.id))
+      );
 
       setProducts(productsPayload.data ?? []);
-      setRequests(requestsPayload.data ?? []);
+      setRequests(nextRequests);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard.");
     } finally {
@@ -101,6 +135,11 @@ export default function SellerPage() {
 
   useEffect(() => {
     void loadSellerData();
+    const timer = window.setInterval(() => {
+      void loadSellerData({ notify: true });
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
   }, []);
 
   const pendingRequests = useMemo(
@@ -243,6 +282,18 @@ export default function SellerPage() {
             <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {actionError}
             </p>
+          )}
+          {notice && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              <span>{notice}</span>
+              <button
+                type="button"
+                className="font-semibold text-green-900"
+                onClick={() => setNotice(null)}
+              >
+                {t("common.clear")}
+              </button>
+            </div>
           )}
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,1fr)]">
@@ -503,6 +554,9 @@ function RequestRow({
         locale
       )
     : `Item ${request.itemId}`;
+  const deadline = getResponseDeadline(request.createdAt);
+  const responseExpired =
+    request.status === "sent" && Date.now() > deadline.getTime();
 
   return (
     <Card
@@ -542,6 +596,22 @@ function RequestRow({
         </Text>
       )}
 
+      {request.status === "sent" && (
+        <p
+          className={`mt-3 rounded-md border px-3 py-2 text-sm ${
+            responseExpired
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          }`}
+        >
+          {responseExpired
+            ? t("seller.responseExpired")
+            : t("seller.responseDue", {
+                date: deadline.toLocaleString(),
+              })}
+        </p>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2">
         {request.status === "sent" && (
           <>
@@ -549,7 +619,7 @@ function RequestRow({
               size="2"
               highContrast
               onClick={() => onUpdate("accepted")}
-              disabled={busy}
+              disabled={busy || responseExpired}
             >
               <CheckIcon /> {t("seller.accept")}
             </Button>
@@ -558,7 +628,7 @@ function RequestRow({
               color="red"
               variant="soft"
               onClick={() => onUpdate("declined")}
-              disabled={busy}
+              disabled={busy || responseExpired}
             >
               <Cross2Icon /> {t("seller.decline")}
             </Button>

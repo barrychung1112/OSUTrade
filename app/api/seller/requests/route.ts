@@ -31,6 +31,7 @@ const requestStatuses = new Set<RequestStatus>([
   "declined",
   "cancelled",
 ]);
+const requestResponseWindowMs = 48 * 60 * 60 * 1000;
 
 async function getEmailByUserId(userId: string | null | undefined) {
   if (!userId) return null;
@@ -181,7 +182,7 @@ export async function PATCH(request: Request) {
 
     const { data: existing, error: lookupError } = await supabase
       .from("trade_requests")
-      .select("request_id, product_id, quantity, status")
+      .select("request_id, product_id, quantity, status, created_at")
       .eq("request_id", requestId)
       .single();
 
@@ -193,6 +194,17 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         { message: "Request not found for this seller." },
         { status: 404 }
+      );
+    }
+
+    if (
+      ["accepted", "declined"].includes(status) &&
+      existing.status === "sent" &&
+      Date.now() - new Date(existing.created_at).getTime() > requestResponseWindowMs
+    ) {
+      return NextResponse.json(
+        { message: "This request response window has expired." },
+        { status: 409 }
       );
     }
 
