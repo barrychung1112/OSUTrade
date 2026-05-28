@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
+import { CheckIcon, PlusIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import type { Product } from "../lib/products";
 import { useI18n } from "../i18n";
@@ -202,10 +203,10 @@ export default function SellPage() {
               </Text>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Button type="button" highContrast onClick={goToProductNow}>
-                  {t("sell.viewListing")}
+                  <CheckIcon /> {t("sell.viewListing")}
                 </Button>
                 <Button type="button" variant="soft" onClick={listAnotherItem}>
-                  {t("sell.listAnother")}
+                  <PlusIcon /> {t("sell.listAnother")}
                 </Button>
                 <Link href="/seller">
                   <Button type="button" variant="outline">
@@ -277,6 +278,7 @@ export default function SellPage() {
                     disabled={pricingLoading || !name.trim()}
                     className="whitespace-nowrap"
                   >
+                    <CheckIcon />
                     {pricingLoading
                       ? t("sell.pricingAdvisorLoading")
                       : t("sell.pricingAdvisor")}
@@ -313,6 +315,7 @@ export default function SellPage() {
                         highContrast
                         onClick={() => setPrice(String(pricingAdvice.suggestedPrice))}
                       >
+                        <CheckIcon />
                         {t("sell.pricingAdvisorApply")}
                       </Button>
                     </div>
@@ -459,7 +462,8 @@ export default function SellPage() {
                 </p>
               )}
 
-              <Button highContrast type="submit" disabled={loading}>
+              <Button highContrast size="3" type="submit" disabled={loading}>
+                <PlusIcon />
                 {loading ? t("sell.listing") : t("sell.submit")}
               </Button>
             </form>

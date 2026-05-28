@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, Heading, Theme } from "@radix-ui/themes";
+import { Cross2Icon, PlusIcon, ReloadIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
 import ProductCard from "../components/ProductCard";
@@ -77,10 +78,13 @@ export default function ProductListPage() {
 
             <div className="flex flex-wrap gap-2">
               <Button variant="soft" onClick={() => refetch()} disabled={loading}>
+                <ReloadIcon />
                 {loading ? t("common.refreshing") : t("common.refresh")}
               </Button>
               <Link href="/sell">
-                <Button highContrast>{t("marketplace.listItem")}</Button>
+                <Button highContrast>
+                  <PlusIcon /> {t("marketplace.listItem")}
+                </Button>
               </Link>
             </div>
           </section>
@@ -146,6 +150,7 @@ export default function ProductListPage() {
                 disabled={!hasFilters}
                 className="h-10"
               >
+                <Cross2Icon />
                 {t("common.clear")}
               </Button>
             </div>
@@ -195,6 +200,7 @@ export default function ProductListPage() {
                       onClick={clearFilters}
                       disabled={!hasFilters}
                     >
+                      <Cross2Icon />
                       {t("common.clear")}
                     </Button>
                   }

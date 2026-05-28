@@ -13,8 +13,10 @@ import {
 } from "@radix-ui/themes";
 import {
   ArrowLeftIcon,
+  CheckIcon,
   MinusIcon,
   PlusIcon,
+  RocketIcon,
   TrashIcon,
 } from "@radix-ui/react-icons";
 import Header from "../components/Header";
@@ -241,7 +243,9 @@ export default function CartPage() {
                   body={t("cart.emptyHelp")}
                   action={
                     <Link href="/overview">
-                      <Button highContrast>{t("cart.goShopping")}</Button>
+                      <Button highContrast>
+                        <ArrowLeftIcon /> {t("cart.goShopping")}
+                      </Button>
                     </Link>
                   }
                 />
@@ -296,6 +300,7 @@ export default function CartPage() {
                   onClick={sendAll}
                   disabled={items.length === 0 || allSent}
                 >
+                  {allSent ? <CheckIcon /> : <RocketIcon />}
                   {allSent ? t("cart.allSent") : t("cart.sendAll")}
                 </Button>
               </Card>
@@ -357,11 +362,11 @@ function ItemCard({
 
             <button
               onClick={onRemove}
-              className="inline-flex items-center gap-1 text-red-600 transition-colors hover:text-red-700"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100"
               aria-label={t("cart.remove")}
               title={t("cart.remove")}
             >
-              <TrashIcon /> <span className="text-sm">{t("cart.remove")}</span>
+              <TrashIcon /> <span>{t("cart.remove")}</span>
             </button>
           </div>
 
@@ -369,19 +374,21 @@ function ItemCard({
             <div className="inline-flex items-center overflow-hidden rounded-lg border border-gray-300 bg-white">
               <button
                 onClick={onMinus}
-                className="p-2 transition hover:bg-gray-50 active:scale-95"
+                className="flex h-10 w-10 items-center justify-center transition hover:bg-gray-50 active:scale-95"
                 aria-label={t("cart.decrease")}
               >
                 <MinusIcon />
               </button>
-              <span className="px-4 select-none">{item.quantity}</span>
+              <span className="min-w-10 select-none px-3 text-center font-semibold">
+                {item.quantity}
+              </span>
               <button
                 onClick={onPlus}
                 disabled={
                   Number.isInteger(item.availableQuantity) &&
                   item.quantity >= Number(item.availableQuantity)
                 }
-                className="p-2 transition hover:bg-gray-50 active:scale-95"
+                className="flex h-10 w-10 items-center justify-center transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                 aria-label={t("cart.increase")}
               >
                 <PlusIcon />
@@ -424,10 +431,13 @@ function ItemCard({
             </div>
 
             <Button
+              size="3"
               highContrast
+              className="min-w-full sm:min-w-[168px]"
               disabled={disabled || state?.status === "sent"}
               onClick={onSend}
             >
+              {state?.status === "sent" || requestBlocked ? <CheckIcon /> : <RocketIcon />}
               {state?.status === "sending"
                 ? t("cart.sending")
                 : state?.status === "sent" || requestBlocked
@@ -436,11 +446,10 @@ function ItemCard({
             </Button>
           </div>
           {(state?.status === "sent" || requestBlocked) && (
-            <Link
-              href="/requests"
-              className="mt-3 inline-flex text-sm font-semibold text-[#d73f09] underline-offset-4 hover:underline"
-            >
-              {t("cart.viewRequests")}
+            <Link href="/requests" className="mt-3 inline-flex">
+              <Button variant="soft" size="2">
+                <ArrowLeftIcon /> {t("cart.viewRequests")}
+              </Button>
             </Link>
           )}
         </div>
