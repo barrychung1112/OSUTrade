@@ -6,7 +6,7 @@ import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
 import { useI18n } from "../i18n";
 
-export default function LoginModal() {
+export default function LoginModal({ redirectTo = "/overview" }: { redirectTo?: string }) {
   const { t } = useI18n();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function LoginModal() {
     }
 
     setIsOpen(false);
-    router.push("/overview");
+    router.push(redirectTo);
     router.refresh();
   }
 
