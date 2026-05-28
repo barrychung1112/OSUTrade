@@ -10,7 +10,7 @@ import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
-type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
+type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
 
 type SellerProduct = {
   id: string | number;
@@ -61,6 +61,7 @@ const requestStatusPriority: Record<RequestStatus, number> = {
   accepted: 1,
   declined: 2,
   cancelled: 3,
+  expired: 4,
 };
 const requestResponseWindowMs = 48 * 60 * 60 * 1000;
 const sellerRequestIdsStorageKey = "osutrade:seller-request-ids";
@@ -658,6 +659,9 @@ function StatusBadge({ status }: { status: string }) {
     return <Badge color="green">{label}</Badge>;
   }
   if (status === "declined" || status === "removed") {
+    return <Badge color="red">{label}</Badge>;
+  }
+  if (status === "expired") {
     return <Badge color="red">{label}</Badge>;
   }
   if (status === "sold") {
