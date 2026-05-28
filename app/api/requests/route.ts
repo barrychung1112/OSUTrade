@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 
 type RequestRow = {
   request_id: string;
@@ -27,15 +28,6 @@ type ProductRow = {
   status?: string | null;
   quantity?: number | null;
 };
-
-const requestResponseWindowMs = 48 * 60 * 60 * 1000;
-
-function isExpiredSentRequest(row: Pick<RequestRow, "status" | "created_at">) {
-  return (
-    row.status === "sent" &&
-    Date.now() - new Date(row.created_at).getTime() > requestResponseWindowMs
-  );
-}
 
 function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) {
   const status = isExpiredSentRequest(row) ? "expired" : row.status;

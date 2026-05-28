@@ -8,6 +8,7 @@ import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
 import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
+import { requestResponseWindowMs } from "../lib/requestExpiry";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
@@ -63,7 +64,6 @@ const requestStatusPriority: Record<RequestStatus, number> = {
   cancelled: 3,
   expired: 4,
 };
-const requestResponseWindowMs = 48 * 60 * 60 * 1000;
 const sellerRequestIdsStorageKey = "osutrade:seller-request-ids";
 
 function getResponseDeadline(createdAt: string) {
@@ -659,10 +659,7 @@ function StatusBadge({ status }: { status: string }) {
   if (status === "accepted" || status === "available") {
     return <Badge color="green">{label}</Badge>;
   }
-  if (status === "declined" || status === "removed") {
-    return <Badge color="red">{label}</Badge>;
-  }
-  if (status === "expired") {
+  if (status === "declined" || status === "removed" || status === "expired") {
     return <Badge color="red">{label}</Badge>;
   }
   if (status === "sold") {

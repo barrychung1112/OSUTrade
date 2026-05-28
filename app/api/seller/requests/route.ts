@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
 type ResponseStatus = RequestStatus | "expired";
@@ -32,15 +33,6 @@ const requestStatuses = new Set<RequestStatus>([
   "declined",
   "cancelled",
 ]);
-const requestResponseWindowMs = 48 * 60 * 60 * 1000;
-
-function isExpiredSentRequest(row: Pick<RequestRow, "status" | "created_at">) {
-  return (
-    row.status === "sent" &&
-    Date.now() - new Date(row.created_at).getTime() > requestResponseWindowMs
-  );
-}
-
 async function getEmailByUserId(userId: string | null | undefined) {
   if (!userId) return null;
 
