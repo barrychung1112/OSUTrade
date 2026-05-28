@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
+type ResponseStatus = RequestStatus | "expired";
 
 type ProductRow = {
   product_id: string | number;
@@ -31,8 +33,6 @@ const requestStatuses = new Set<RequestStatus>([
   "declined",
   "cancelled",
 ]);
-const requestResponseWindowMs = 48 * 60 * 60 * 1000;
-
 async function getEmailByUserId(userId: string | null | undefined) {
   if (!userId) return null;
 
@@ -51,14 +51,16 @@ function toSellerRequest(
   product?: ProductRow,
   buyerEmail?: string | null
 ) {
+  const status: ResponseStatus = isExpiredSentRequest(row) ? "expired" : row.status;
+
   return {
     id: row.request_id,
     itemId: row.product_id,
     buyerId: row.buyer_id,
-    buyerEmail: row.status === "accepted" ? buyerEmail ?? null : null,
+    buyerEmail: status === "accepted" ? buyerEmail ?? null : null,
     quantity: row.quantity,
     note: row.note ?? "",
-    status: row.status,
+    status,
     createdAt: row.created_at,
     product: product
       ? {

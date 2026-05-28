@@ -37,7 +37,7 @@ type CartItem = {
 
 type BuyerRequest = {
   itemId: string;
-  status: "sent" | "accepted" | "declined" | "cancelled";
+  status: "sent" | "accepted" | "declined" | "cancelled" | "expired";
 };
 
 type ItemState = {

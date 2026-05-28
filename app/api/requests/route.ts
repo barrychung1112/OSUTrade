@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 
 type RequestRow = {
   request_id: string;
@@ -29,17 +30,19 @@ type ProductRow = {
 };
 
 function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) {
+  const status = isExpiredSentRequest(row) ? "expired" : row.status;
+
   return {
     id: row.request_id,
     itemId: row.product_id,
     buyerId: row.buyer_id,
     quantity: row.quantity,
     note: row.note ?? "",
-    status: row.status,
+    status,
     createdAt: row.created_at,
-    sellerEmail: row.status === "accepted" ? sellerEmail ?? null : null,
+    sellerEmail: status === "accepted" ? sellerEmail ?? null : null,
     sellerContact:
-      row.status === "accepted"
+      status === "accepted"
         ? {
             email: sellerEmail ?? null,
             phone: product?.contact_phone ?? null,
@@ -270,7 +273,7 @@ export async function POST(request: Request) {
 
     const { data: existingRequests, error: existingRequestError } = await supabase
       .from("trade_requests")
-      .select("request_id, status")
+      .select("request_id, status, created_at")
       .eq("product_id", itemId)
       .eq("buyer_id", session.user.id)
       .in("status", ["sent", "accepted"]);
@@ -279,13 +282,17 @@ export async function POST(request: Request) {
       throw existingRequestError;
     }
 
-    if ((existingRequests ?? []).length > 0) {
+    const activeExistingRequest = (existingRequests ?? []).find(
+      (existingRequest) => !isExpiredSentRequest(existingRequest)
+    );
+
+    if (activeExistingRequest) {
       return NextResponse.json(
         {
           message:
             "You already have an active request for this item. Wait until it is declined before sending another one.",
-          existingRequestId: existingRequests?.[0]?.request_id,
-          existingStatus: existingRequests?.[0]?.status,
+          existingRequestId: activeExistingRequest.request_id,
+          existingStatus: activeExistingRequest.status,
         },
         { status: 409 }
       );

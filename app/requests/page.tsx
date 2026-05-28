@@ -9,7 +9,7 @@ import EmptyState from "../components/EmptyState";
 import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
-type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
+type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
 type RequestFilter = RequestStatus | "all";
 
 type BuyerRequest = {
@@ -132,7 +132,14 @@ export default function RequestsPage() {
         : requests.filter((request) => request.status === filter),
     [filter, requests]
   );
-  const filters: RequestFilter[] = ["all", "sent", "accepted", "declined", "cancelled"];
+  const filters: RequestFilter[] = [
+    "all",
+    "sent",
+    "accepted",
+    "declined",
+    "cancelled",
+    "expired",
+  ];
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
@@ -367,17 +374,23 @@ function RequestProgress({
   t: ReturnType<typeof useI18n>["t"];
 }) {
   const terminal = status === "declined" || status === "cancelled";
+  const expired = status === "expired";
   const steps = terminal
     ? [
         { key: "sent", label: t("requests.progress.sent") },
         { key: status, label: t(`requests.progress.${status}` as any) },
       ]
+    : expired
+      ? [
+          { key: "sent", label: t("requests.progress.sent") },
+          { key: "expired", label: t("requests.progress.expired") },
+        ]
     : [
         { key: "sent", label: t("requests.progress.sent") },
         { key: "accepted", label: t("requests.progress.accepted") },
         { key: "contact", label: t("requests.progress.contact") },
       ];
-  const activeIndex = terminal
+  const activeIndex = terminal || expired
     ? 1
     : status === "accepted"
       ? 2
@@ -388,7 +401,7 @@ function RequestProgress({
       <div className="flex items-center">
         {steps.map((step, index) => {
           const complete = index <= activeIndex;
-          const isTerminal = terminal && index === activeIndex;
+          const isTerminal = (terminal || expired) && index === activeIndex;
           return (
             <div key={step.key} className="flex flex-1 items-center last:flex-none">
               <div className="flex min-w-0 flex-col items-center gap-1">
@@ -462,7 +475,7 @@ function StatusBadge({ status }: { status: RequestStatus }) {
   const { t } = useI18n();
 
   if (status === "accepted") return <Badge color="green">{t("requests.status.accepted")}</Badge>;
-  if (status === "declined" || status === "cancelled") {
+  if (status === "declined" || status === "cancelled" || status === "expired") {
     return <Badge color="red">{t(`requests.status.${status}` as any)}</Badge>;
   }
   return <Badge color="amber">{t("requests.status.sent")}</Badge>;
