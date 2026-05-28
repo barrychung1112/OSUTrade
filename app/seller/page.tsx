@@ -147,6 +147,10 @@ export default function SellerPage() {
     () => requests.filter((request) => request.status === "sent").length,
     [requests]
   );
+  const expiredRequests = useMemo(
+    () => requests.filter((request) => request.status === "expired").length,
+    [requests]
+  );
   const activeListings = useMemo(
     () => products.filter((product) => product.status !== "sold").length,
     [products]
@@ -176,6 +180,21 @@ export default function SellerPage() {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ),
     [requests]
+  );
+  const pendingRequestRows = useMemo(
+    () => sortedRequests.filter((request) => request.status === "sent"),
+    [sortedRequests]
+  );
+  const expiredRequestRows = useMemo(
+    () => sortedRequests.filter((request) => request.status === "expired"),
+    [sortedRequests]
+  );
+  const historyRequestRows = useMemo(
+    () =>
+      sortedRequests.filter(
+        (request) => request.status !== "sent" && request.status !== "expired"
+      ),
+    [sortedRequests]
   );
 
   async function updateRequest(requestId: string, status: RequestStatus) {
@@ -267,9 +286,10 @@ export default function SellerPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label={t("seller.totalListings")} value={activeListings} />
               <StatCard label={t("seller.pendingRequests")} value={pendingRequests} />
+              <StatCard label={t("seller.expiredRequests")} value={expiredRequests} />
               <StatCard label={t("seller.availableUnits")} value={availableUnits} />
             </div>
           </div>
@@ -372,16 +392,37 @@ export default function SellerPage() {
                     }
                   />
                 ) : (
-                  sortedRequests.map((request) => (
-                    <RequestRow
-                      key={request.id}
-                      request={request}
-                      onUpdate={(status) => updateRequest(request.id, status)}
-                      busy={pendingRequestId === request.id}
+                  <>
+                    <SellerRequestSection
+                      title={t("seller.activeRequests")}
+                      body={t("seller.activeRequestsHelp")}
+                      requests={pendingRequestRows}
+                      onUpdate={updateRequest}
+                      pendingRequestId={pendingRequestId}
+                      locale={locale}
+                      t={t}
+                      emptyText={t("seller.noActiveRequests")}
+                    />
+                    <SellerRequestSection
+                      title={t("seller.expiredRequests")}
+                      body={t("seller.expiredRequestsHelp")}
+                      requests={expiredRequestRows}
+                      onUpdate={updateRequest}
+                      pendingRequestId={pendingRequestId}
+                      locale={locale}
+                      t={t}
+                      emptyText={t("seller.noExpiredRequests")}
+                    />
+                    <SellerRequestSection
+                      title={t("seller.requestHistory")}
+                      body={t("seller.requestHistoryHelp")}
+                      requests={historyRequestRows}
+                      onUpdate={updateRequest}
+                      pendingRequestId={pendingRequestId}
                       locale={locale}
                       t={t}
                     />
-                  ))
+                  </>
                 )}
               </div>
             </section>
@@ -400,6 +441,65 @@ function StatCard({ label, value }: { label: string; value: number }) {
       </Text>
       <p className="mt-1 text-2xl font-bold text-gray-950">{value}</p>
     </div>
+  );
+}
+
+function SellerRequestSection({
+  title,
+  body,
+  requests,
+  onUpdate,
+  pendingRequestId,
+  locale,
+  t,
+  emptyText,
+}: {
+  title: string;
+  body: string;
+  requests: SellerRequest[];
+  onUpdate: (requestId: string, status: RequestStatus) => void;
+  pendingRequestId: string | null;
+  locale: ReturnType<typeof useI18n>["locale"];
+  t: ReturnType<typeof useI18n>["t"];
+  emptyText?: string;
+}) {
+  if (requests.length === 0 && !emptyText) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-3 rounded-lg border border-orange-100 bg-white/65 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Heading size="4" className="text-gray-950">
+            {title}
+          </Heading>
+          <Text as="p" color="gray" size="2" className="mt-1">
+            {body}
+          </Text>
+        </div>
+        <Badge color={requests.length > 0 ? "orange" : "gray"}>
+          {requests.length}
+        </Badge>
+      </div>
+
+      {requests.length === 0 ? (
+        <p className="rounded-md border border-dashed border-orange-200 bg-white px-3 py-2 text-sm text-gray-600">
+          {emptyText}
+        </p>
+      ) : (
+        requests.map((request) => (
+          <RequestRow
+            key={request.id}
+            request={request}
+            onUpdate={(status) => onUpdate(request.id, status)}
+            busy={pendingRequestId === request.id}
+            locale={locale}
+            t={t}
+          />
+        ))
+      )}
+    </section>
   );
 }
 
