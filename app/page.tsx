@@ -58,8 +58,8 @@ export default function HomePage() {
                   {t("auth.requiredBody", { destination: redirectLabel })}
                 </Text>
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <LoginModal />
-                  <SignUpModal />
+                  <LoginModal redirectTo={redirectPath} />
+                  <SignUpModal redirectTo={redirectPath} />
                 </div>
               </Card>
             )}

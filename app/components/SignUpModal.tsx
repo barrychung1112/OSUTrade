@@ -13,7 +13,7 @@ type SignupResponse = {
   status?: "confirmation_required";
 };
 
-export default function SignUpModal() {
+export default function SignUpModal({ redirectTo = "/overview" }: { redirectTo?: string }) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -61,7 +61,7 @@ export default function SignUpModal() {
       return;
     }
 
-    window.location.assign("/overview");
+    window.location.assign(redirectTo);
   }
 
   return (
