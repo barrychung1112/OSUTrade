@@ -293,16 +293,15 @@ export default function CartPage() {
                   </p>
                 )}
 
-                <Button
-                  size="3"
-                  highContrast
-                  className="w-full"
+                <button
+                  type="button"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#b43305] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
                   onClick={sendAll}
                   disabled={items.length === 0 || allSent}
                 >
                   {allSent ? <CheckIcon /> : <RocketIcon />}
                   {allSent ? t("cart.allSent") : t("cart.sendAll")}
-                </Button>
+                </button>
               </Card>
             </aside>
           </div>
@@ -361,8 +360,9 @@ function ItemCard({
             </div>
 
             <button
+              type="button"
               onClick={onRemove}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-100"
               aria-label={t("cart.remove")}
               title={t("cart.remove")}
             >
@@ -373,6 +373,7 @@ function ItemCard({
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div className="inline-flex items-center overflow-hidden rounded-lg border border-gray-300 bg-white">
               <button
+                type="button"
                 onClick={onMinus}
                 className="flex h-10 w-10 items-center justify-center transition hover:bg-gray-50 active:scale-95"
                 aria-label={t("cart.decrease")}
@@ -383,6 +384,7 @@ function ItemCard({
                 {item.quantity}
               </span>
               <button
+                type="button"
                 onClick={onPlus}
                 disabled={
                   Number.isInteger(item.availableQuantity) &&
@@ -430,10 +432,9 @@ function ItemCard({
               </div>
             </div>
 
-            <Button
-              size="3"
-              highContrast
-              className="min-w-full sm:min-w-[168px]"
+            <button
+              type="button"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#b43305] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600 sm:w-auto sm:min-w-[168px]"
               disabled={disabled || state?.status === "sent"}
               onClick={onSend}
             >
@@ -443,7 +444,7 @@ function ItemCard({
                 : state?.status === "sent" || requestBlocked
                   ? t("cart.sent")
                   : t("cart.send")}
-            </Button>
+            </button>
           </div>
           {(state?.status === "sent" || requestBlocked) && (
             <Link href="/requests" className="mt-3 inline-flex">
