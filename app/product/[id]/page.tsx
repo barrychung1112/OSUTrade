@@ -140,12 +140,12 @@ export default function ProductDetailPage() {
       <main className="app-page">
         <Header />
         <div className="mx-auto max-w-6xl">
-        <Link
-          href="/overview"
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#d73f09] hover:text-[#b43305]"
-        >
-          <ArrowLeft size={16} /> {t("product.backMarketplace")}
-        </Link>
+          <Link
+            href="/overview"
+            className="mb-6 inline-flex items-center gap-2 rounded-md border border-orange-200 bg-white px-3 py-2 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50 hover:text-[#b43305]"
+          >
+            <ArrowLeft size={16} /> {t("product.backMarketplace")}
+          </Link>
 
         <section className="grid gap-8 rounded-lg border border-orange-100 bg-white/90 p-4 shadow-sm md:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] md:p-6">
           <div>
@@ -160,26 +160,30 @@ export default function ProductDetailPage() {
               />
             </div>
 
-            <div className="mt-3 flex gap-2">
-              {images.map((img, idx) => (
-                <button
-                  key={img}
-                  onClick={() => setSelectedImage(img)}
-                  className={`relative h-20 w-20 overflow-hidden rounded-md border-2 bg-gray-100 ${
-                    selectedImage === img ? "border-[#d73f09]" : "border-transparent"
-                  }`}
-                  aria-label={`View image ${idx + 1}`}
-                >
-                  <Image
-                    src={img}
-                    alt={`${displayName} thumbnail ${idx + 1}`}
-                    fill
-                    sizes="80px"
-                    className="object-cover"
-                  />
-                </button>
-              ))}
-            </div>
+            {images.length > 1 && (
+              <div className="mt-3 flex gap-2">
+                {images.map((img, idx) => (
+                  <button
+                    key={img}
+                    onClick={() => setSelectedImage(img)}
+                    className={`relative h-20 w-20 overflow-hidden rounded-md border-2 bg-gray-100 ${
+                      selectedImage === img
+                        ? "border-[#d73f09]"
+                        : "border-transparent"
+                    }`}
+                    aria-label={`View image ${idx + 1}`}
+                  >
+                    <Image
+                      src={img}
+                      alt={`${displayName} thumbnail ${idx + 1}`}
+                      fill
+                      sizes="80px"
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col">
