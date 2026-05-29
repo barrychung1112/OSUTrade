@@ -460,6 +460,17 @@ function RequestCard({
           <RequestDeadline request={request} t={t} />
           <RequestProgress status={request.status} t={t} />
 
+          {request.status === "expired" && (
+            <div className="mt-4 flex flex-col gap-3 rounded-md border border-red-100 bg-red-50 px-3 py-3 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+              <p>{t("requests.expiredNextStep")}</p>
+              <Link href="/overview">
+                <Button color="red" variant="soft">
+                  <ArrowLeftIcon /> {t("requests.browse")}
+                </Button>
+              </Link>
+            </div>
+          )}
+
           {request.status === "sent" && (
             <Button
               className="mt-4"
