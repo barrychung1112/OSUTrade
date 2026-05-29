@@ -162,7 +162,7 @@ export default function RequestsPage() {
         <Header />
 
         <section className="mx-auto max-w-5xl">
-          <div className="app-hero flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="app-hero">
             <div>
               <p className="app-eyebrow">{t("nav.requests")}</p>
               <Heading size="8" className="app-title">
@@ -175,12 +175,6 @@ export default function RequestsPage() {
                 })}
               </Text>
             </div>
-
-            <Link href="/overview">
-              <Button variant="soft">
-                <ArrowLeftIcon /> {t("nav.marketplace")}
-              </Button>
-            </Link>
           </div>
 
           <div className="mb-5 grid gap-3 sm:grid-cols-3">
@@ -245,7 +239,7 @@ export default function RequestsPage() {
                 body={t("requests.emptyHelp")}
                 action={
                   <Link href="/overview">
-                    <Button highContrast>
+                    <Button highContrast size="3" className="min-w-40 shadow-sm">
                       <ArrowLeftIcon /> {t("requests.browse")}
                     </Button>
                   </Link>
