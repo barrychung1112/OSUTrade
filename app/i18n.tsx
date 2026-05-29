@@ -853,18 +853,13 @@ export function LanguageToggle() {
 
   return (
     <div
-      className="inline-flex shrink-0 rounded-md border border-orange-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm"
-      style={{
-        flexShrink: 0,
-        width: "fit-content",
-        boxSizing: "border-box",
-      }}
+      className="inline-flex w-fit shrink-0 items-center rounded-md border border-orange-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm"
       aria-label={t("common.language")}
     >
       <button
         type="button"
         onClick={() => setLocale("en")}
-        className={`rounded px-2 py-1 transition ${
+        className={`min-h-8 min-w-10 rounded px-2 py-1 text-center transition ${
           locale === "en" ? "bg-[#d73f09] text-white" : "text-gray-700"
         }`}
       >
@@ -873,7 +868,7 @@ export function LanguageToggle() {
       <button
         type="button"
         onClick={() => setLocale("zh")}
-        className={`rounded px-2 py-1 transition ${
+        className={`min-h-8 min-w-12 rounded px-2 py-1 text-center transition ${
           locale === "zh" ? "bg-[#d73f09] text-white" : "text-gray-700"
         }`}
       >
@@ -882,7 +877,7 @@ export function LanguageToggle() {
       <button
         type="button"
         onClick={() => setLocale("zhCn")}
-        className={`rounded px-2 py-1 transition ${
+        className={`min-h-8 min-w-12 rounded px-2 py-1 text-center transition ${
           locale === "zhCn" ? "bg-[#d73f09] text-white" : "text-gray-700"
         }`}
       >

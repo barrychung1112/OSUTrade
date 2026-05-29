@@ -60,6 +60,14 @@ export default function Header() {
           fallback={fallback.toUpperCase()}
           size="2"
           className="header-avatar-control cursor-pointer border border-gray-300"
+          style={{
+            display: "inline-flex",
+            flexShrink: 0,
+            width: 36,
+            minWidth: 36,
+            height: 36,
+            minHeight: 36,
+          }}
         />
       </DropdownMenu.Trigger>
       <DropdownMenu.Content align="end">
