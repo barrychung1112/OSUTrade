@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Button, Heading, Theme } from "@radix-ui/themes";
+import { Heading, Theme } from "@radix-ui/themes";
 import { Cross2Icon, PlusIcon, ReloadIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
@@ -77,14 +77,20 @@ export default function ProductListPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button variant="soft" onClick={() => refetch()} disabled={loading}>
-                <ReloadIcon />
+              <button
+                type="button"
+                onClick={() => refetch()}
+                disabled={loading}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-4 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ReloadIcon className={loading ? "animate-spin" : ""} />
                 {loading ? t("common.refreshing") : t("common.refresh")}
-              </Button>
-              <Link href="/sell">
-                <Button highContrast>
-                  <PlusIcon /> {t("marketplace.listItem")}
-                </Button>
+              </button>
+              <Link
+                href="/sell"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#b43305]"
+              >
+                <PlusIcon /> {t("marketplace.listItem")}
               </Link>
             </div>
           </section>
@@ -144,15 +150,15 @@ export default function ProductListPage() {
                 </select>
               </label>
 
-              <Button
-                variant="soft"
+              <button
+                type="button"
                 onClick={clearFilters}
                 disabled={!hasFilters}
-                className="h-10"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] disabled:cursor-not-allowed disabled:opacity-50 md:min-w-24"
               >
                 <Cross2Icon />
                 {t("common.clear")}
-              </Button>
+              </button>
             </div>
 
             <div className="mt-3 text-sm text-gray-600">
@@ -195,14 +201,15 @@ export default function ProductListPage() {
                   title={t("marketplace.noMatches")}
                   body={t("marketplace.noMatchesHelp")}
                   action={
-                    <Button
-                      variant="soft"
+                    <button
+                      type="button"
                       onClick={clearFilters}
                       disabled={!hasFilters}
+                      className="inline-flex h-11 min-w-32 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-4 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Cross2Icon />
                       {t("common.clear")}
-                    </Button>
+                    </button>
                   }
                 />
               </div>
