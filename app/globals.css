@@ -4,7 +4,7 @@
 
 @layer components {
   .app-page {
-    @apply min-h-screen bg-[linear-gradient(135deg,#fffdfb_0%,#fff7f2_48%,#ffe8df_100%)] px-4 py-24 sm:px-6 lg:px-8;
+    @apply min-h-screen bg-[radial-gradient(circle_at_top_left,#fff4ed_0%,transparent_30%),linear-gradient(180deg,#fafafa_0%,#fff7f2_58%,#f8fafc_100%)] px-4 py-24 text-gray-950 sm:px-6 lg:px-8;
   }
 
   .app-container {
@@ -12,7 +12,7 @@
   }
 
   .app-hero {
-    @apply mb-6 rounded-lg border border-orange-100 bg-white/85 p-5 shadow-sm backdrop-blur md:p-6;
+    @apply mb-6 rounded-lg border border-orange-100 bg-white/90 p-5 shadow-sm backdrop-blur md:p-6;
   }
 
   .app-eyebrow {
@@ -28,11 +28,11 @@
   }
 
   .app-panel {
-    @apply rounded-lg border border-orange-100 bg-white/85 p-4 shadow-sm backdrop-blur md:p-5;
+    @apply rounded-lg border border-orange-100 bg-white/90 p-4 shadow-sm backdrop-blur md:p-5;
   }
 
   .app-card {
-    @apply rounded-lg border border-orange-100 bg-white/85 shadow-sm;
+    @apply rounded-lg border border-orange-100 bg-white/90 shadow-sm;
   }
 
   .app-input {
@@ -41,6 +41,18 @@
 
   .app-chip {
     @apply rounded-full border px-3 py-1.5 text-sm font-semibold transition;
+  }
+
+  .app-action-primary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#b43305] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600;
+  }
+
+  .app-action-secondary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-4 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .app-action-icon {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-orange-200 bg-white text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
 }
 

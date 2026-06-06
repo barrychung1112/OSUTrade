@@ -147,7 +147,7 @@ export default function ProductDetailPage() {
         <div className="mx-auto max-w-6xl">
           <Link
             href="/overview"
-            className="mb-6 inline-flex items-center gap-2 rounded-md border border-orange-200 bg-white px-3 py-2 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50 hover:text-[#b43305]"
+            className="app-action-secondary mb-6 h-10"
           >
             <ArrowLeft size={16} /> {t("product.backMarketplace")}
           </Link>
@@ -212,7 +212,7 @@ export default function ProductDetailPage() {
               </span>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-950">{displayName}</h1>
+            <h1 className="text-3xl font-bold leading-tight text-gray-950">{displayName}</h1>
             <p className="mt-3 text-3xl font-bold text-[#d73f09]">
               ${Number(product.price).toLocaleString()}
             </p>
@@ -280,7 +280,7 @@ export default function ProductDetailPage() {
               <button
                 onClick={addToCart}
                 disabled={adding || !isAvailable}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d73f09] px-5 py-3 font-semibold text-white transition hover:bg-[#b43305] disabled:cursor-not-allowed disabled:bg-gray-300"
+                className="app-action-primary h-12 w-full"
               >
                 <ShoppingCart size={20} />
                 {adding

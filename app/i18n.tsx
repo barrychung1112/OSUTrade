@@ -877,7 +877,7 @@ export function LanguageToggle() {
       <button
         type="button"
         onClick={() => setLocale("en")}
-        className={`min-h-8 min-w-10 rounded px-2 py-1 text-center transition ${
+        className={`min-h-10 min-w-11 rounded px-2 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 ${
           locale === "en" ? "bg-[#d73f09] text-white" : "text-gray-700"
         }`}
       >
@@ -886,7 +886,7 @@ export function LanguageToggle() {
       <button
         type="button"
         onClick={() => setLocale("zh")}
-        className={`min-h-8 min-w-12 rounded px-2 py-1 text-center transition ${
+        className={`min-h-10 min-w-12 rounded px-2 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 ${
           locale === "zh" ? "bg-[#d73f09] text-white" : "text-gray-700"
         }`}
       >
@@ -895,7 +895,7 @@ export function LanguageToggle() {
       <button
         type="button"
         onClick={() => setLocale("zhCn")}
-        className={`min-h-8 min-w-12 rounded px-2 py-1 text-center transition ${
+        className={`min-h-10 min-w-12 rounded px-2 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 ${
           locale === "zhCn" ? "bg-[#d73f09] text-white" : "text-gray-700"
         }`}
       >

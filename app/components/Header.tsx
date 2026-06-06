@@ -64,7 +64,7 @@ export default function Header() {
   ) : (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
-        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09]"
+        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2"
         aria-label={user.name || user.email || "User menu"}
       >
         <Avatar
@@ -74,10 +74,10 @@ export default function Header() {
           style={{
             display: "inline-flex",
             flexShrink: 0,
-            width: 28,
-            minWidth: 28,
-            height: 28,
-            minHeight: 28,
+            width: 32,
+            minWidth: 32,
+            height: 32,
+            minHeight: 32,
           }}
         />
         <span className="hidden max-w-24 truncate xl:inline">
@@ -131,7 +131,7 @@ export default function Header() {
           <div className="hidden sm:block lg:hidden">{authControl}</div>
           <button
             type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-orange-200 text-gray-700 transition hover:bg-orange-50 hover:text-[#d73f09] lg:hidden"
+            className="app-action-icon lg:hidden"
             aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
