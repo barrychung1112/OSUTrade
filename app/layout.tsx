@@ -1,5 +1,5 @@
 import "./globals.css";
-import { I18nProvider } from "./i18n";
+import Providers from "./providers";
 
 export default function RootLayout({
   children,
@@ -9,7 +9,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <I18nProvider>{children}</I18nProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

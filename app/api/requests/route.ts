@@ -21,6 +21,7 @@ type ProductRow = {
   name_zh_cn?: string | null;
   price: number;
   image_url: string | null;
+  image_urls?: string[] | null;
   contact_phone?: string | null;
   contact_line_id?: string | null;
   contact_wechat_id?: string | null;
@@ -29,8 +30,19 @@ type ProductRow = {
   quantity?: number | null;
 };
 
+function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | null) {
+  const urls = Array.isArray(imageUrls)
+    ? imageUrls.filter((url) => typeof url === "string" && url.trim())
+    : [];
+  if (urls.length > 0) return urls;
+  return imageUrl ? [imageUrl] : [];
+}
+
 function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) {
   const status = isExpiredSentRequest(row) ? "expired" : row.status;
+  const imageUrls = product
+    ? normalizeImageUrls(product.image_urls, product.image_url)
+    : [];
 
   return {
     id: row.request_id,
@@ -60,7 +72,8 @@ function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) 
             zhCn: product.name_zh_cn ?? product.name,
           },
           price: product.price,
-          imageUrl: product.image_url,
+          imageUrl: imageUrls[0] ?? null,
+          imageUrls,
           quantity: product.quantity ?? 1,
         }
       : null,

@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { signOut, getSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { Avatar, DropdownMenu } from "@radix-ui/themes";
-import { Cross2Icon, HamburgerMenuIcon, RocketIcon } from "@radix-ui/react-icons";
+import {
+  Cross2Icon,
+  ExitIcon,
+  HamburgerMenuIcon,
+  RocketIcon,
+} from "@radix-ui/react-icons";
 import LoginModal from "./LoginModal";
 import { LanguageToggle, useI18n } from "../i18n";
 
@@ -18,19 +23,15 @@ type HeaderUser = {
 export default function Header() {
   const { t } = useI18n();
   const pathname = usePathname();
-  const [user, setUser] = useState<HeaderUser | null>(null);
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    getSession().then((session) => {
-      setUser(session?.user ?? null);
-    });
-  }, []);
 
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
+  const user = (session?.user ?? null) as HeaderUser | null;
   const fallback = user?.name?.[0] || user?.email?.[0] || "U";
   const navItems = [
     { href: "/", label: t("nav.home") },
@@ -51,31 +52,45 @@ export default function Header() {
     ].join(" ");
   };
 
-  const authControl = !user ? (
+  async function handleLogout() {
+    setMenuOpen(false);
+    await signOut({ redirect: false });
+    router.push("/");
+    router.refresh();
+  }
+
+  const authControl = status === "loading" ? null : !user ? (
     <LoginModal />
   ) : (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger>
+      <DropdownMenu.Trigger
+        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09]"
+        aria-label={user.name || user.email || "User menu"}
+      >
         <Avatar
           fallback={fallback.toUpperCase()}
           size="2"
-          className="header-avatar-control cursor-pointer border border-gray-300"
+          className="header-avatar-control border border-gray-300"
           style={{
             display: "inline-flex",
             flexShrink: 0,
-            width: 36,
-            minWidth: 36,
-            height: 36,
-            minHeight: 36,
+            width: 28,
+            minWidth: 28,
+            height: 28,
+            minHeight: 28,
           }}
         />
+        <span className="hidden max-w-24 truncate xl:inline">
+          {user.name || user.email}
+        </span>
       </DropdownMenu.Trigger>
       <DropdownMenu.Content align="end">
         <DropdownMenu.Item disabled>
           {user.name || user.email || "Profile"}
         </DropdownMenu.Item>
         <DropdownMenu.Separator />
-        <DropdownMenu.Item color="red" onClick={() => signOut()}>
+        <DropdownMenu.Item color="red" onClick={handleLogout}>
+          <ExitIcon />
           {t("nav.logout")}
         </DropdownMenu.Item>
       </DropdownMenu.Content>

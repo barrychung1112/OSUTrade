@@ -39,7 +39,7 @@ export default function ProductDetailPage() {
     fetchProduct(id, controller.signal)
       .then((data) => {
         setProduct(data);
-        setSelectedImage(data.imageUrl || fallbackImage);
+        setSelectedImage(data.imageUrls?.[0] || data.imageUrl || fallbackImage);
       })
       .catch((err: any) => {
         if (err?.name !== "AbortError") {
@@ -52,8 +52,13 @@ export default function ProductDetailPage() {
   }, [id]);
 
   const images = useMemo(
-    () => [product?.imageUrl || fallbackImage].filter(Boolean) as string[],
-    [product?.imageUrl]
+    () => {
+      const urls = product?.imageUrls?.length
+        ? product.imageUrls
+        : [product?.imageUrl || fallbackImage];
+      return urls.filter(Boolean) as string[];
+    },
+    [product?.imageUrl, product?.imageUrls]
   );
 
   async function addToCart() {
@@ -148,7 +153,7 @@ export default function ProductDetailPage() {
           </Link>
 
         <section className="grid gap-8 rounded-lg border border-orange-100 bg-white/90 p-4 shadow-sm md:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] md:p-6">
-          <div>
+          <div className="space-y-3">
             <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-100">
               <Image
                 src={selectedImage}
@@ -158,18 +163,23 @@ export default function ProductDetailPage() {
                 className="object-cover"
                 priority
               />
+              {images.length > 1 && (
+                <span className="absolute right-3 top-3 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-gray-800 shadow-sm">
+                  {images.indexOf(selectedImage) + 1} / {images.length}
+                </span>
+              )}
             </div>
 
             {images.length > 1 && (
-              <div className="mt-3 flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {images.map((img, idx) => (
                   <button
                     key={img}
                     onClick={() => setSelectedImage(img)}
-                    className={`relative h-20 w-20 overflow-hidden rounded-md border-2 bg-gray-100 ${
+                    className={`relative aspect-[4/3] overflow-hidden rounded-md border-2 bg-gray-100 ${
                       selectedImage === img
                         ? "border-[#d73f09]"
-                        : "border-transparent"
+                        : "border-orange-100 hover:border-orange-300"
                     }`}
                     aria-label={`View image ${idx + 1}`}
                   >
@@ -177,7 +187,7 @@ export default function ProductDetailPage() {
                       src={img}
                       alt={`${displayName} thumbnail ${idx + 1}`}
                       fill
-                      sizes="80px"
+                      sizes="(min-width: 768px) 180px, 33vw"
                       className="object-cover"
                     />
                   </button>
