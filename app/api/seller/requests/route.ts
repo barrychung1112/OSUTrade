@@ -14,6 +14,7 @@ type ProductRow = {
   name_zh_cn?: string | null;
   price: number;
   image_url: string | null;
+  image_urls?: string[] | null;
   quantity?: number | null;
 };
 
@@ -33,6 +34,15 @@ const requestStatuses = new Set<RequestStatus>([
   "declined",
   "cancelled",
 ]);
+
+function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | null) {
+  const urls = Array.isArray(imageUrls)
+    ? imageUrls.filter((url) => typeof url === "string" && url.trim())
+    : [];
+  if (urls.length > 0) return urls;
+  return imageUrl ? [imageUrl] : [];
+}
+
 async function getEmailByUserId(userId: string | null | undefined) {
   if (!userId) return null;
 
@@ -52,6 +62,9 @@ function toSellerRequest(
   buyerEmail?: string | null
 ) {
   const status: ResponseStatus = isExpiredSentRequest(row) ? "expired" : row.status;
+  const imageUrls = product
+    ? normalizeImageUrls(product.image_urls, product.image_url)
+    : [];
 
   return {
     id: row.request_id,
@@ -72,7 +85,8 @@ function toSellerRequest(
             zhCn: product.name_zh_cn ?? product.name,
           },
           price: product.price,
-          imageUrl: product.image_url,
+          imageUrl: imageUrls[0] ?? null,
+          imageUrls,
           quantity: product.quantity ?? 1,
         }
       : null,

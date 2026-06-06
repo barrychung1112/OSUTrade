@@ -4,12 +4,13 @@ import { FormEvent, type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
-import { CheckIcon, PlusIcon } from "@radix-ui/react-icons";
+import { CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import type { Product } from "../lib/products";
 import { useI18n } from "../i18n";
 
 const categories = ["general", "electronics", "clothing", "books", "home"];
+const maxProductImages = 3;
 
 type PricingAdvice = {
   suggestedPrice: number;
@@ -61,8 +62,8 @@ export default function SellPage() {
   const [quantity, setQuantity] = useState("1");
   const [category, setCategory] = useState("general");
   const [imageUrl, setImageUrl] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [contactPhone, setContactPhone] = useState("");
   const [contactLineId, setContactLineId] = useState("");
   const [contactWechatId, setContactWechatId] = useState("");
@@ -74,16 +75,16 @@ export default function SellPage() {
   const [pricingAdvice, setPricingAdvice] = useState<PricingAdvice | null>(null);
 
   useEffect(() => {
-    if (!imageFile) {
-      setImagePreviewUrl("");
+    if (imageFiles.length === 0) {
+      setImagePreviewUrls([]);
       return;
     }
 
-    const objectUrl = URL.createObjectURL(imageFile);
-    setImagePreviewUrl(objectUrl);
+    const objectUrls = imageFiles.map((file) => URL.createObjectURL(file));
+    setImagePreviewUrls(objectUrls);
 
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [imageFile]);
+    return () => objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+  }, [imageFiles]);
 
   useEffect(() => {
     if (!successProduct) return;
@@ -101,12 +102,16 @@ export default function SellPage() {
     setError(null);
     setSuccessProduct(null);
 
-    let nextImageUrl = imageUrl.trim();
+    let nextImageUrls = imageUrl.trim() ? [imageUrl.trim()] : [];
 
     try {
-      if (imageFile) {
+      if (imageFiles.length > maxProductImages) {
+        throw new Error(t("sell.imageLimitError"));
+      }
+
+      if (imageFiles.length > 0) {
         const uploadForm = new FormData();
-        uploadForm.append("image", imageFile);
+        imageFiles.forEach((file) => uploadForm.append("images", file));
 
         const uploadRes = await fetch("/api/products/images", {
           method: "POST",
@@ -119,7 +124,17 @@ export default function SellPage() {
         }
 
         const uploadPayload = await uploadRes.json();
-        nextImageUrl = uploadPayload.imageUrl;
+        nextImageUrls = Array.isArray(uploadPayload.imageUrls)
+          ? uploadPayload.imageUrls
+          : [uploadPayload.imageUrl].filter(Boolean);
+      }
+
+      if (nextImageUrls.length === 0) {
+        throw new Error(t("sell.imageRequired"));
+      }
+
+      if (nextImageUrls.length > maxProductImages) {
+        throw new Error(t("sell.imageLimitError"));
       }
 
       const res = await fetch("/api/products", {
@@ -131,7 +146,8 @@ export default function SellPage() {
           price: Number(price),
           quantity: Number(quantity),
           category,
-          imageUrl: nextImageUrl,
+          imageUrl: nextImageUrls[0] ?? "",
+          imageUrls: nextImageUrls,
           contactPhone,
           contactLineId,
           contactWechatId,
@@ -151,7 +167,7 @@ export default function SellPage() {
       setQuantity("1");
       setCategory("general");
       setImageUrl("");
-      setImageFile(null);
+      setImageFiles([]);
       setContactPhone("");
       setContactLineId("");
       setContactWechatId("");
@@ -161,6 +177,16 @@ export default function SellPage() {
       setError(err instanceof Error ? err.message : t("sell.listError"));
     } finally {
       setLoading(false);
+    }
+  }
+
+  function selectImageFiles(files: FileList | null) {
+    const selectedFiles = Array.from(files ?? []);
+    setImageFiles(selectedFiles.slice(0, maxProductImages));
+    if (selectedFiles.length > maxProductImages) {
+      setError(t("sell.imageLimitError"));
+    } else {
+      setError(null);
     }
   }
 
@@ -421,22 +447,47 @@ export default function SellPage() {
               >
                 <div className="grid gap-4 md:grid-cols-[1fr_220px]">
                   <div className="space-y-5">
-                    <label className="block">
+                    <div>
                       <Text as="span" size="2" weight="medium">
                         {t("sell.productImage")}
                       </Text>
                       <input
-                        className="app-input mt-2"
+                        key={imageFiles.length === 0 ? "empty" : "selected"}
+                        id="product-images"
+                        className="sr-only"
                         type="file"
                         accept="image/png,image/jpeg,image/webp"
-                        onChange={(event) =>
-                          setImageFile(event.target.files?.[0] ?? null)
-                        }
+                        multiple
+                        onChange={(event) => selectImageFiles(event.target.files)}
                       />
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <label
+                          htmlFor="product-images"
+                          className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#b43305]"
+                        >
+                          <PlusIcon /> {t("sell.uploadMedia")}
+                        </label>
+                        {imageFiles.length > 0 && (
+                          <button
+                            type="button"
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-3 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50"
+                            onClick={() => setImageFiles([])}
+                          >
+                            <Cross2Icon /> {t("common.clear")}
+                          </button>
+                        )}
+                      </div>
                       <Text as="p" size="1" color="gray" className="mt-1">
-                        {t("sell.imageHelp")}
+                        {t("sell.imageHelp")} {t("sell.imageCountHelp")}
                       </Text>
-                    </label>
+                      {imageFiles.length > 0 && (
+                        <Text as="p" size="1" color="gray" className="mt-1">
+                          {t("sell.selectedImages", {
+                            count: imageFiles.length,
+                          })}
+                        </Text>
+                      )}
+                    </div>
 
                     <label className="block">
                       <Text as="span" size="2" weight="medium">
@@ -447,7 +498,7 @@ export default function SellPage() {
                         type="url"
                         value={imageUrl}
                         onChange={(event) => setImageUrl(event.target.value)}
-                        disabled={!!imageFile}
+                        disabled={imageFiles.length > 0}
                         placeholder="https://..."
                       />
                     </label>
@@ -457,12 +508,22 @@ export default function SellPage() {
                     <Text as="p" size="2" weight="medium" className="mb-2">
                       {t("sell.preview")}
                     </Text>
-                    {imagePreviewUrl || imageUrl.trim() ? (
-                      <img
-                        src={imagePreviewUrl || imageUrl.trim()}
-                        alt={name || t("sell.productImage")}
-                        className="h-44 w-full rounded-md object-cover"
-                      />
+                    {imagePreviewUrls.length > 0 || imageUrl.trim() ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {(imagePreviewUrls.length > 0
+                          ? imagePreviewUrls
+                          : [imageUrl.trim()]
+                        ).map((previewUrl, index) => (
+                          <img
+                            key={previewUrl}
+                            src={previewUrl}
+                            alt={`${name || t("sell.productImage")} ${index + 1}`}
+                            className={`h-24 w-full rounded-md border border-orange-100 object-cover ${
+                              index === 0 ? "col-span-2 h-44" : ""
+                            }`}
+                          />
+                        ))}
+                      </div>
                     ) : (
                       <div className="flex h-44 items-center justify-center rounded-md border border-dashed border-orange-200 bg-white/70 text-sm text-gray-500">
                         {t("sell.previewEmpty")}

@@ -49,6 +49,7 @@ alter table public.products
   add column if not exists name_en text,
   add column if not exists name_zh_tw text,
   add column if not exists name_zh_cn text,
+  add column if not exists image_urls text[],
   add column if not exists contact_phone text,
   add column if not exists contact_line_id text,
   add column if not exists contact_wechat_id text,

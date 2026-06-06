@@ -15,12 +15,22 @@ type ProductRow = {
   price: number;
   category: string | null;
   image_url: string | null;
+  image_urls?: string[] | null;
   seller_id: string | null;
   status: string | null;
   quantity: number | null;
 };
 
+function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | null) {
+  const urls = Array.isArray(imageUrls)
+    ? imageUrls.filter((url) => typeof url === "string" && url.trim())
+    : [];
+  if (urls.length > 0) return urls;
+  return imageUrl ? [imageUrl] : [];
+}
+
 function toProduct(row: ProductRow) {
+  const imageUrls = normalizeImageUrls(row.image_urls, row.image_url);
   return {
     id: row.product_id,
     name: row.name,
@@ -32,7 +42,8 @@ function toProduct(row: ProductRow) {
     },
     price: row.price,
     category: row.category,
-    imageUrl: row.image_url,
+    imageUrl: imageUrls[0] ?? null,
+    imageUrls,
     sellerId: row.seller_id,
     status: row.status ?? "available",
     quantity: row.quantity ?? 1,
@@ -133,7 +144,28 @@ export async function POST(request: NextRequest) {
     const name = String(body.name ?? "").trim();
     const description = String(body.description ?? "").trim();
     const category = String(body.category ?? "").trim();
-    const imageUrl = String(body.imageUrl ?? "").trim();
+    const imageUrls = Array.isArray(body.imageUrls)
+      ? body.imageUrls
+          .map((value: unknown) => String(value ?? "").trim())
+          .filter(Boolean)
+      : [];
+    const fallbackImageUrl = String(body.imageUrl ?? "").trim();
+    if (imageUrls.length === 0 && fallbackImageUrl) {
+      imageUrls.push(fallbackImageUrl);
+    }
+    if (imageUrls.length === 0) {
+      return NextResponse.json(
+        { message: "At least one product image is required." },
+        { status: 400 }
+      );
+    }
+    if (imageUrls.length > 3) {
+      return NextResponse.json(
+        { message: "You can add up to 3 product images." },
+        { status: 400 }
+      );
+    }
+    const imageUrl = imageUrls[0] ?? "";
     const contactPhone = String(body.contactPhone ?? "").trim();
     const contactLineId = String(body.contactLineId ?? "").trim();
     const contactWechatId = String(body.contactWechatId ?? "").trim();
@@ -165,6 +197,7 @@ export async function POST(request: NextRequest) {
       price,
       category: category || "general",
       image_url: imageUrl || null,
+      image_urls: imageUrls.length > 0 ? imageUrls : null,
       contact_phone: contactPhone || null,
       contact_line_id: contactLineId || null,
       contact_wechat_id: contactWechatId || null,
@@ -177,16 +210,17 @@ export async function POST(request: NextRequest) {
       .from("products")
       .insert(insertValues)
       .select(
-        "product_id, name, description, name_en, name_zh_tw, name_zh_cn, price, category, image_url, seller_id, status, quantity"
+        "product_id, name, description, name_en, name_zh_tw, name_zh_cn, price, category, image_url, image_urls, seller_id, status, quantity"
       )
       .single();
 
-    if (error && /description|name_(en|zh_tw|zh_cn)|contact_(phone|line_id|wechat_id)|schema cache/i.test(error.message ?? "")) {
+    if (error && /description|name_(en|zh_tw|zh_cn)|image_urls|contact_(phone|line_id|wechat_id)|schema cache/i.test(error.message ?? "")) {
       const {
         description,
         name_en,
         name_zh_tw,
         name_zh_cn,
+        image_urls,
         contact_phone,
         contact_line_id,
         contact_wechat_id,

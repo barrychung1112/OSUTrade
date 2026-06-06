@@ -10,6 +10,7 @@ export type Product = {
   price: number;
   category?: string | null;
   imageUrl?: string | null;
+  imageUrls?: string[] | null;
   sellerId?: string | null;
   status?: string | null;
   quantity?: number | null;

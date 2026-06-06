@@ -12,12 +12,22 @@ type ProductRow = {
   price: number;
   category: string | null;
   image_url: string | null;
+  image_urls?: string[] | null;
   seller_id: string | null;
   status: string | null;
   quantity: number | null;
 };
 
+function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | null) {
+  const urls = Array.isArray(imageUrls)
+    ? imageUrls.filter((url) => typeof url === "string" && url.trim())
+    : [];
+  if (urls.length > 0) return urls;
+  return imageUrl ? [imageUrl] : [];
+}
+
 function toProduct(row: ProductRow) {
+  const imageUrls = normalizeImageUrls(row.image_urls, row.image_url);
   return {
     id: row.product_id,
     name: row.name,
@@ -29,7 +39,8 @@ function toProduct(row: ProductRow) {
     },
     price: row.price,
     category: row.category,
-    imageUrl: row.image_url,
+    imageUrl: imageUrls[0] ?? null,
+    imageUrls,
     sellerId: row.seller_id,
     status: row.status ?? "available",
     quantity: row.quantity ?? 1,
