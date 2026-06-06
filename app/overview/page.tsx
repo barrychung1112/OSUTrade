@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Heading, Theme } from "@radix-ui/themes";
-import { Cross2Icon, PlusIcon, ReloadIcon } from "@radix-ui/react-icons";
+import {
+  Cross2Icon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  ReloadIcon,
+} from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
 import ProductCard from "../components/ProductCard";
@@ -63,36 +68,54 @@ export default function ProductListPage() {
         <Header />
 
         <div className="app-container">
-          <section className="app-hero flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="app-eyebrow">
-                {t("nav.marketplace")}
-              </p>
-              <Heading size="8" className="app-title">
-                {t("marketplace.title")}
-              </Heading>
-              <p className="app-subtitle">
-                {t("marketplace.subtitle")}
-              </p>
+          <section className="app-hero flex flex-col gap-5">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="app-eyebrow">
+                  {t("nav.marketplace")}
+                </p>
+                <Heading size="8" className="app-title">
+                  {t("marketplace.title")}
+                </Heading>
+                <p className="app-subtitle">
+                  {t("marketplace.subtitle")}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  disabled={loading}
+                  className="app-action-secondary"
+                >
+                  <ReloadIcon className={loading ? "animate-spin" : ""} />
+                  {loading ? t("common.refreshing") : t("common.refresh")}
+                </button>
+                <Link
+                  href="/sell"
+                  className="app-action-primary"
+                >
+                  <PlusIcon /> {t("marketplace.listItem")}
+                </Link>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => refetch()}
-                disabled={loading}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-4 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ReloadIcon className={loading ? "animate-spin" : ""} />
-                {loading ? t("common.refreshing") : t("common.refresh")}
-              </button>
-              <Link
-                href="/sell"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#b43305]"
-              >
-                <PlusIcon /> {t("marketplace.listItem")}
-              </Link>
-            </div>
+            <label className="block max-w-3xl">
+              <p className="app-eyebrow">
+                {t("marketplace.search")}
+              </p>
+              <div className="relative">
+                <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="search"
+                  placeholder={t("marketplace.searchPlaceholder")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="app-input h-12 pl-11 text-base shadow-sm"
+                />
+              </div>
+            </label>
           </section>
 
           {error && (
@@ -102,20 +125,7 @@ export default function ProductListPage() {
           )}
 
           <section className="app-panel mb-6">
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px_auto] md:items-end">
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700">
-                  {t("marketplace.search")}
-                </span>
-                <input
-                  type="search"
-                  placeholder={t("marketplace.searchPlaceholder")}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="app-input h-10"
-                />
-              </label>
-
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-gray-700">
                   {t("marketplace.category")}
@@ -154,7 +164,7 @@ export default function ProductListPage() {
                 type="button"
                 onClick={clearFilters}
                 disabled={!hasFilters}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-orange-200 bg-white text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] disabled:cursor-not-allowed disabled:opacity-50"
+                className="app-action-icon"
                 aria-label={t("common.clear")}
                 title={t("common.clear")}
               >
@@ -172,7 +182,7 @@ export default function ProductListPage() {
 
           <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {loading ? (
-              <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/85 px-6 py-12 text-center text-gray-600 shadow-sm">
+              <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/90 px-6 py-12 text-center text-gray-600 shadow-sm">
                 {t("marketplace.loadingListings")}
               </div>
             ) : filteredProducts.length > 0 ? (
@@ -206,7 +216,7 @@ export default function ProductListPage() {
                       type="button"
                       onClick={clearFilters}
                       disabled={!hasFilters}
-                      className="inline-flex h-11 min-w-32 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-4 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="app-action-secondary min-w-32"
                     >
                       <Cross2Icon />
                       <span className="whitespace-nowrap">{t("common.clear")}</span>

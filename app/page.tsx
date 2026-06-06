@@ -65,7 +65,7 @@ export default function HomePage() {
 
           <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
             <div className="flex flex-col gap-6">
-              <div className="app-hero mb-0">
+              <div className="app-hero mb-0 overflow-hidden">
                 <Text
                   size="2"
                   weight="bold"
@@ -73,19 +73,19 @@ export default function HomePage() {
                 >
                   {t("nav.marketplace")}
                 </Text>
-                <Heading size="9" weight="bold" className="text-[#d73f09]">
+                <Heading size="9" weight="bold" className="text-gray-950">
                   OSUTrade
                 </Heading>
-                <Text size="3" className="mt-4 block leading-6 text-gray-700">
+                <Text size="3" className="mt-4 block max-w-2xl leading-6 text-gray-700">
                   {t("home.description")}
                 </Text>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="mt-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <Link href="/overview" className="block">
                     <Button
                       size="4"
                       highContrast
-                      className="h-12 w-full justify-center rounded-md"
+                      className="h-12 w-full justify-center rounded-md px-5"
                     >
                       {t("nav.marketplace")}
                     </Button>
@@ -94,7 +94,7 @@ export default function HomePage() {
                     <Button
                       size="4"
                       variant="outline"
-                      className="h-12 w-full justify-center rounded-md border-[#d73f09] text-[#d73f09]"
+                      className="h-12 w-full justify-center rounded-md border-[#d73f09] px-5 text-[#d73f09] sm:w-auto"
                     >
                       {t("marketplace.listItem")}
                     </Button>
@@ -138,13 +138,13 @@ export default function HomePage() {
                 <div className="space-y-3 text-sm text-gray-700">
                   <p>{t("home.howItWorksIntro")}</p>
                   <ol className="space-y-2">
-                    <li className="rounded-md bg-orange-50 px-3 py-2">
+                    <li className="rounded-md border border-orange-100 bg-orange-50/80 px-3 py-2">
                       {t("home.stepBrowse")}
                     </li>
-                    <li className="rounded-md bg-orange-50 px-3 py-2">
+                    <li className="rounded-md border border-orange-100 bg-orange-50/80 px-3 py-2">
                       {t("home.stepRequest")}
                     </li>
-                    <li className="rounded-md bg-orange-50 px-3 py-2">
+                    <li className="rounded-md border border-orange-100 bg-orange-50/80 px-3 py-2">
                       {t("home.stepMeet")}
                     </li>
                   </ol>
