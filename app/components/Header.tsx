@@ -63,25 +63,24 @@ export default function Header() {
     <LoginModal />
   ) : (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger
-        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2"
-        aria-label={user.name || user.email || "User menu"}
-      >
-        <Avatar
-          fallback={fallback.toUpperCase()}
-          size="2"
-          className="header-avatar-control border border-gray-300"
-          style={{
-            display: "inline-flex",
-            flexShrink: 0,
-            width: 32,
-            minWidth: 32,
-            height: 32,
-            minHeight: 32,
-          }}
-        />
-        <span className="hidden max-w-24 truncate xl:inline">
-          {user.name || user.email}
+      <DropdownMenu.Trigger aria-label={user.name || user.email || "User menu"}>
+        <span className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2">
+          <Avatar
+            fallback={fallback.toUpperCase()}
+            size="2"
+            className="header-avatar-control border border-gray-300"
+            style={{
+              display: "inline-flex",
+              flexShrink: 0,
+              width: 32,
+              minWidth: 32,
+              height: 32,
+              minHeight: 32,
+            }}
+          />
+          <span className="hidden max-w-24 truncate xl:inline">
+            {user.name || user.email}
+          </span>
         </span>
       </DropdownMenu.Trigger>
       <DropdownMenu.Content align="end">
