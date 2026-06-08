@@ -72,6 +72,17 @@ beforeEach(() => {
 });
 
 describe("upsertGoogleUserProfile", () => {
+  test("rejects invalid Google emails before creating an admin client", async () => {
+    await expect(
+      upsertGoogleUserProfile({
+        email: "student@osu",
+        name: "Student",
+      })
+    ).rejects.toThrow("Google account did not provide a valid email address.");
+
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
   test("preserves an existing public user and escapes the email lookup", async () => {
     const { admin, ilikeCalls, upsertCalls } = createMockAdmin({
       maybeSingleResults: [

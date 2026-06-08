@@ -227,6 +227,10 @@ export async function upsertGoogleUserProfile(
     throw new Error("Google account did not provide an email address.");
   }
 
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error("Google account did not provide a valid email address.");
+  }
+
   const admin = createAdminClient();
   const displayName = getDisplayName(email, profile.name);
 
