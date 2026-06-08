@@ -9,7 +9,6 @@ export type AppAuthUser = {
 };
 
 type GoogleProfileInput = {
-  id?: string | null;
   email?: string | null;
   name?: string | null;
 };
@@ -25,7 +24,32 @@ function getDisplayName(email: string, name?: string | null) {
   return trimmedName || email.split("@")[0] || "User";
 }
 
-function isExistingAuthUserError(error: { message?: string }) {
+function isExistingAuthUserError(error: {
+  code?: string;
+  status?: number;
+  name?: string;
+  message?: string;
+}) {
+  const code = String(error.code ?? "").toLowerCase();
+
+  if (code) {
+    return (
+      code === "email_exists" ||
+      code === "user_already_exists" ||
+      /email.*(exist|registered)|user.*(exist|registered)/.test(code)
+    );
+  }
+
+  if (
+    error.status &&
+    [400, 409, 422].includes(error.status) &&
+    /auth/i.test(error.name ?? "")
+  ) {
+    return /already.*registered|already.*exists|email.*exists/i.test(
+      error.message ?? ""
+    );
+  }
+
   return /already.*registered|already.*exists|email.*exists/i.test(
     error.message ?? ""
   );
