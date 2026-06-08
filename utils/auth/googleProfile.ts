@@ -10,6 +10,7 @@ export type AppAuthUser = {
 
 type GoogleProfileInput = {
   email?: string | null;
+  emailVerified?: boolean | null;
   name?: string | null;
 };
 
@@ -229,6 +230,10 @@ export async function upsertGoogleUserProfile(
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error("Google account did not provide a valid email address.");
+  }
+
+  if (profile.emailVerified !== true) {
+    throw new Error("Google account email is not verified.");
   }
 
   const admin = createAdminClient();

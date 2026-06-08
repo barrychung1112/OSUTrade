@@ -77,8 +77,32 @@ describe("upsertGoogleUserProfile", () => {
       upsertGoogleUserProfile({
         email: "student@osu",
         name: "Student",
+        emailVerified: true,
       })
     ).rejects.toThrow("Google account did not provide a valid email address.");
+
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  test("rejects unverified Google emails before creating an admin client", async () => {
+    await expect(
+      upsertGoogleUserProfile({
+        email: "student@osu.edu",
+        name: "Student",
+        emailVerified: false,
+      })
+    ).rejects.toThrow("Google account email is not verified.");
+
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  test("rejects missing Google email verification before creating an admin client", async () => {
+    await expect(
+      upsertGoogleUserProfile({
+        email: "student@osu.edu",
+        name: "Student",
+      })
+    ).rejects.toThrow("Google account email is not verified.");
 
     expect(createAdminClient).not.toHaveBeenCalled();
   });
@@ -102,6 +126,7 @@ describe("upsertGoogleUserProfile", () => {
     const result = await upsertGoogleUserProfile({
       email: "Student_%@OSU.edu",
       name: "Ignored Google Name",
+      emailVerified: true,
     });
 
     expect(result).toEqual({
@@ -140,6 +165,7 @@ describe("upsertGoogleUserProfile", () => {
     const result = await upsertGoogleUserProfile({
       email: "NewStudent@osu.edu",
       name: "New Student",
+      emailVerified: true,
     });
 
     expect(admin.auth.admin.createUser).toHaveBeenCalledWith({
@@ -195,6 +221,7 @@ describe("upsertGoogleUserProfile", () => {
     const result = await upsertGoogleUserProfile({
       email: "student@osu.edu",
       name: "Student",
+      emailVerified: true,
     });
 
     expect(admin.auth.admin.listUsers).toHaveBeenCalledWith({
@@ -227,6 +254,7 @@ describe("upsertGoogleUserProfile", () => {
     const result = await upsertGoogleUserProfile({
       email: "same_name@osu.edu",
       name: "Same_Name%",
+      emailVerified: true,
     });
 
     expect(ilikeCalls).toEqual([
@@ -267,6 +295,7 @@ describe("upsertGoogleUserProfile", () => {
     const result = await upsertGoogleUserProfile({
       email: "racer@osu.edu",
       name: "Racer",
+      emailVerified: true,
     });
 
     expect(upsertCalls).toHaveLength(2);
