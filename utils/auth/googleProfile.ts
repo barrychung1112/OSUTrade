@@ -16,6 +16,10 @@ type GoogleProfileInput = {
 
 type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
 
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
 function getDisplayName(email: string, name?: string | null) {
   const trimmedName = String(name ?? "").trim();
   return trimmedName || email.split("@")[0] || "User";
@@ -27,16 +31,48 @@ function isExistingAuthUserError(error: { message?: string }) {
   );
 }
 
+function isUniqueNameConflict(error: {
+  code?: string;
+  message?: string;
+  details?: string;
+}) {
+  const text = `${error.message ?? ""} ${error.details ?? ""}`;
+  return error.code === "23505" && /name/i.test(text);
+}
+
+function getShortAuthId(authUserId: string) {
+  const shortId = authUserId.replace(/-/g, "").slice(0, 8);
+
+  if (!shortId) {
+    throw new Error("Cannot generate a unique display name without a user id.");
+  }
+
+  return shortId;
+}
+
 async function findAuthUserIdByEmail(
   admin: SupabaseAdminClient,
   email: string
 ) {
+  const maxPages = 100;
+  const perPage = 1000;
   let page = 1;
+  const visitedPages = new Set<number>();
 
   while (true) {
+    if (visitedPages.has(page)) {
+      throw new Error("Supabase Auth user pagination repeated a page.");
+    }
+
+    if (visitedPages.size >= maxPages) {
+      throw new Error("Supabase Auth user lookup exceeded the page limit.");
+    }
+
+    visitedPages.add(page);
+
     const { data, error } = await admin.auth.admin.listUsers({
       page,
-      perPage: 100,
+      perPage,
     });
 
     if (error) {
@@ -58,6 +94,10 @@ async function findAuthUserIdByEmail(
       return null;
     }
 
+    if (nextPage <= page) {
+      throw new Error("Supabase Auth user pagination did not progress.");
+    }
+
     page = nextPage;
   }
 }
@@ -67,12 +107,6 @@ async function getOrCreateAuthUserId(
   email: string,
   displayName: string
 ) {
-  const existingAuthUserId = await findAuthUserIdByEmail(admin, email);
-
-  if (existingAuthUserId) {
-    return existingAuthUserId;
-  }
-
   const { data, error } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
@@ -113,7 +147,7 @@ async function isDisplayNameTaken(
   const { data, error } = await admin
     .from("users")
     .select("id")
-    .ilike("name", candidateName)
+    .ilike("name", escapeLikePattern(candidateName))
     .maybeSingle();
 
   if (error) {
@@ -132,12 +166,7 @@ async function getAvailableDisplayName(
     return baseName;
   }
 
-  const shortId = authUserId.replace(/-/g, "").slice(0, 8);
-
-  if (!shortId) {
-    throw new Error("Cannot generate a unique display name without a user id.");
-  }
-
+  const shortId = getShortAuthId(authUserId);
   const suffixedName = `${baseName}-${shortId}`;
 
   if (!(await isDisplayNameTaken(admin, suffixedName))) {
@@ -145,6 +174,24 @@ async function getAvailableDisplayName(
   }
 
   throw new Error("Could not generate an available display name.");
+}
+
+async function upsertPublicUserProfile(
+  admin: SupabaseAdminClient,
+  user: AppAuthUser
+) {
+  const { error } = await admin.from("users").upsert(
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" }
+  );
+
+  return error;
 }
 
 export async function upsertGoogleUserProfile(
@@ -162,7 +209,7 @@ export async function upsertGoogleUserProfile(
   const { data: existingUser, error: lookupError } = await admin
     .from("users")
     .select("id, email, name, role")
-    .ilike("email", email)
+    .ilike("email", escapeLikePattern(email))
     .maybeSingle();
 
   if (lookupError) {
@@ -175,19 +222,38 @@ export async function upsertGoogleUserProfile(
     existingUser?.name ??
     (await getAvailableDisplayName(admin, displayName, id));
   const role = existingUser?.role ?? "user";
-
-  const { error: upsertError } = await admin.from("users").upsert(
-    {
-      id,
-      email,
-      name,
-      role,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "id" }
-  );
+  const user = { id, email, name, role };
+  const upsertError = await upsertPublicUserProfile(admin, user);
 
   if (upsertError) {
+    if (!existingUser && isUniqueNameConflict(upsertError)) {
+      const fallbackName = `${displayName}-${getShortAuthId(id)}`;
+
+      if (fallbackName !== name) {
+        const retryError = await upsertPublicUserProfile(admin, {
+          ...user,
+          name: fallbackName,
+        });
+
+        if (!retryError) {
+          return {
+            id,
+            email,
+            name: fallbackName,
+            role,
+          };
+        }
+
+        if (isUniqueNameConflict(retryError)) {
+          throw new Error("Could not generate an available display name.");
+        }
+
+        throw retryError;
+      }
+
+      throw new Error("Could not generate an available display name.");
+    }
+
     throw upsertError;
   }
 
