@@ -162,7 +162,7 @@ export async function upsertGoogleUserProfile(
   const { data: existingUser, error: lookupError } = await admin
     .from("users")
     .select("id, email, name, role")
-    .eq("email", email)
+    .ilike("email", email)
     .maybeSingle();
 
   if (lookupError) {
