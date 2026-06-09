@@ -1,7 +1,22 @@
 import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
+import {
+  upsertGoogleUserProfile,
+  type AppAuthUser,
+} from "@/utils/auth/googleProfile";
 
-type User = { id: string; email: string; name?: string; role?: string };
+type User = AppAuthUser;
+
+type GoogleProfile = {
+  sub?: string;
+  email?: string;
+  name?: string;
+  email_verified?: boolean;
+};
+
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
 function getBaseUrl() {
   const baseUrl =
@@ -17,6 +32,15 @@ export const { auth, handlers } = NextAuth({
   pages: { signIn: "/" },
   trustHost: true,
   providers: [
+    ...(googleClientId && googleClientSecret
+      ? [
+          Google({
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     Credentials({
       id: "login",
       name: "Login",
@@ -71,7 +95,23 @@ export const { auth, handlers } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, profile }) {
+      if (account?.provider === "google") {
+        const googleProfile = profile as GoogleProfile | undefined;
+        const authUser = await upsertGoogleUserProfile({
+          email: googleProfile?.email ?? user?.email,
+          name: googleProfile?.name ?? user?.name,
+          emailVerified: googleProfile?.email_verified === true,
+        });
+
+        token.sub = authUser.id;
+        token.email = authUser.email;
+        token.name = authUser.name;
+        token.role = authUser.role;
+
+        return token;
+      }
+
       if (user) {
         const authUser = user as User;
         token.sub = authUser.id;
