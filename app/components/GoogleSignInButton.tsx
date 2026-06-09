@@ -48,10 +48,8 @@ export default function GoogleSignInButton({
 
     try {
       await signIn("google", { redirectTo });
-      setError(t("auth.googleSignInError"));
     } catch {
       setError(t("auth.googleSignInError"));
-    } finally {
       setLoading(false);
     }
   }
