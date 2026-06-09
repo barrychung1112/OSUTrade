@@ -40,23 +40,41 @@ export default function GoogleSignInButton({
 }) {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleGoogleSignIn() {
     setLoading(true);
-    await signIn("google", { callbackUrl: redirectTo });
+    setError(null);
+
+    try {
+      await signIn("google", { redirectTo });
+      setError(t("auth.googleSignInError"));
+    } catch {
+      setError(t("auth.googleSignInError"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <Button
-      type="button"
-      size="3"
-      variant="outline"
-      disabled={loading}
-      onClick={handleGoogleSignIn}
-      className="min-h-11 w-full justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 font-semibold text-gray-800 shadow-sm transition hover:border-[#d73f09] hover:bg-orange-50 hover:text-[#b33107] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-    >
-      <GoogleIcon />
-      <span>{t("auth.continueWithGoogle")}</span>
-    </Button>
+    <div className="w-full">
+      <Button
+        type="button"
+        size="3"
+        variant="outline"
+        disabled={loading}
+        aria-busy={loading}
+        onClick={handleGoogleSignIn}
+        className="min-h-11 w-full justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 font-semibold text-gray-800 shadow-sm transition hover:border-[#d73f09] hover:bg-orange-50 hover:text-[#b33107] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        <GoogleIcon />
+        <span>{loading ? t("common.loading") : t("auth.continueWithGoogle")}</span>
+      </Button>
+      {error && (
+        <p className="mt-2 text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
