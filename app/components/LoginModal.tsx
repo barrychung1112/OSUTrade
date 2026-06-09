@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
 import { useI18n } from "../i18n";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 export default function LoginModal({ redirectTo = "/overview" }: { redirectTo?: string }) {
   const { t } = useI18n();
@@ -57,6 +58,14 @@ export default function LoginModal({ redirectTo = "/overview" }: { redirectTo?: 
       <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
         <Dialog.Content maxWidth="450px">
           <Dialog.Title>{t("auth.login")}</Dialog.Title>
+          <div className="mt-4 space-y-4">
+            <GoogleSignInButton redirectTo={redirectTo} />
+            <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <span className="h-px flex-1 bg-gray-200" />
+              <span>{t("auth.orContinueWithEmail")}</span>
+              <span className="h-px flex-1 bg-gray-200" />
+            </div>
+          </div>
           <form onSubmit={onSubmit}>
             <Flex direction="column" gap="3" mt="4">
               <input
