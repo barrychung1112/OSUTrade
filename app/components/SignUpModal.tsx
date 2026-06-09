@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
 import { useI18n } from "../i18n";
-import GoogleSignInButton from "./GoogleSignInButton";
+import GoogleAuthDialogCta from "./GoogleAuthDialogCta";
 
 type SignupResponse = {
   id?: string;
@@ -85,14 +85,7 @@ export default function SignUpModal({ redirectTo = "/overview" }: { redirectTo?:
       <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
         <Dialog.Content maxWidth="450px">
           <Dialog.Title>{t("auth.signup")}</Dialog.Title>
-          <div className="mt-4 space-y-4">
-            <GoogleSignInButton redirectTo={redirectTo} />
-            <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              <span className="h-px flex-1 bg-gray-200" />
-              <span>{t("auth.orContinueWithEmail")}</span>
-              <span className="h-px flex-1 bg-gray-200" />
-            </div>
-          </div>
+          <GoogleAuthDialogCta redirectTo={redirectTo} />
 
           <form onSubmit={onSubmit}>
             <Flex direction="column" gap="3" mt="4">
