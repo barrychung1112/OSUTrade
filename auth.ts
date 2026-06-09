@@ -9,7 +9,6 @@ import {
 type User = AppAuthUser;
 
 type GoogleProfile = {
-  sub?: string;
   email?: string;
   name?: string;
   email_verified?: boolean;
@@ -37,7 +36,6 @@ export const { auth, handlers } = NextAuth({
           Google({
             clientId: googleClientId,
             clientSecret: googleClientSecret,
-            allowDangerousEmailAccountLinking: true,
           }),
         ]
       : []),
