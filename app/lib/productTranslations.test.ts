@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { translateProductName } from "./productTranslations";
+import {
+  pickProductDescription,
+  translateProductDescription,
+  translateProductName,
+} from "./productTranslations";
 
 const originalApiKey = process.env.OPENAI_API_KEY;
 
@@ -66,4 +70,58 @@ test("translateProductName falls back to the original name when translation fail
     zhTw: "Desk",
     zhCn: "Desk",
   });
+});
+
+test("pickProductDescription returns the locale description with fallbacks", () => {
+  const translations = {
+    en: "Fishing hook set",
+    zhTw: "帶鉤子",
+    zhCn: "带钩子",
+  };
+
+  expect(pickProductDescription("帶鉤子", translations, "en")).toBe(
+    "Fishing hook set"
+  );
+  expect(pickProductDescription("帶鉤子", translations, "zh")).toBe("帶鉤子");
+  expect(pickProductDescription("帶鉤子", translations, "zhCn")).toBe("带钩子");
+});
+
+test("translateProductDescription requests structured description translations", async () => {
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
+    ok: true,
+    json: async () => ({
+      output: [
+        {
+          content: [
+            {
+              type: "output_text",
+              text: JSON.stringify({
+                en: "Includes fishing hooks.",
+                zhTw: "包含釣魚鉤。",
+                zhCn: "包含钓鱼钩。",
+              }),
+            },
+          ],
+        },
+      ],
+    }),
+  } as Response));
+  vi.stubGlobal("fetch", fetchMock);
+
+  const result = await translateProductDescription("帶鉤子");
+
+  expect(result).toEqual({
+    en: "Includes fishing hooks.",
+    zhTw: "包含釣魚鉤。",
+    zhCn: "包含钓鱼钩。",
+  });
+  const requestBody = fetchMock.mock.calls[0]?.[1]?.body;
+  expect(typeof requestBody).toBe("string");
+  const body = JSON.parse(requestBody as string);
+  expect(body.text.format).toMatchObject({
+    type: "json_schema",
+    name: "product_description_translations",
+    strict: true,
+  });
+  expect(body.input[0].content).toContain("marketplace item descriptions");
 });

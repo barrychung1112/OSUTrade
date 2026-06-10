@@ -9,7 +9,10 @@ import { Theme } from "@radix-ui/themes";
 import { fetchProduct, type Product } from "@/app/lib/products";
 import { useI18n } from "@/app/i18n";
 import Header from "@/app/components/Header";
-import { pickProductName } from "@/app/lib/productTranslations";
+import {
+  pickProductDescription,
+  pickProductName,
+} from "@/app/lib/productTranslations";
 
 const fallbackImage = "https://placehold.co/1000x750/f9fafb/d73f09?text=OSUTrade";
 
@@ -139,6 +142,11 @@ export default function ProductDetailPage() {
   const categoryLabel = t(`common.category.${category}` as any);
   const statusLabel = t(`common.status.${status}` as any);
   const displayName = pickProductName(product.name, product.nameTranslations, locale);
+  const displayDescription = pickProductDescription(
+    product.description,
+    product.descriptionTranslations,
+    locale
+  );
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
@@ -242,13 +250,13 @@ export default function ProductDetailPage() {
               </dl>
             </div>
 
-            {product.description && (
+            {displayDescription && (
               <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
                 <p className="mb-2 text-sm font-semibold text-gray-900">
                   {t("product.description")}
                 </p>
                 <p className="whitespace-pre-line text-sm leading-6 text-gray-700">
-                  {product.description}
+                  {displayDescription}
                 </p>
               </div>
             )}

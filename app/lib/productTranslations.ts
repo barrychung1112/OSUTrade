@@ -4,6 +4,8 @@ export type ProductNameTranslations = {
   zhCn?: string | null;
 };
 
+export type ProductDescriptionTranslations = ProductNameTranslations;
+
 export type LocaleLike = "en" | "zh" | "zhCn";
 
 export function pickProductName(
@@ -20,6 +22,24 @@ export function pickProductName(
   }
 
   return translations?.en || fallbackName;
+}
+
+export function pickProductDescription(
+  fallbackDescription: string | null | undefined,
+  translations: ProductDescriptionTranslations | null | undefined,
+  locale: LocaleLike
+) {
+  const fallback = fallbackDescription ?? "";
+
+  if (locale === "zhCn") {
+    return translations?.zhCn || translations?.zhTw || translations?.en || fallback;
+  }
+
+  if (locale === "zh") {
+    return translations?.zhTw || translations?.zhCn || translations?.en || fallback;
+  }
+
+  return translations?.en || fallback;
 }
 
 function cleanTranslation(value: unknown, fallback: string) {
@@ -55,13 +75,19 @@ function parseTranslationJson(text: string) {
   return JSON.parse(trimmed);
 }
 
-export async function translateProductName(
-  name: string
-): Promise<Required<ProductNameTranslations>> {
+async function translateProductText({
+  text: inputText,
+  systemPrompt,
+  schemaName,
+}: {
+  text: string;
+  systemPrompt: string;
+  schemaName: string;
+}): Promise<Required<ProductNameTranslations>> {
   const fallback = {
-    en: name,
-    zhTw: name,
-    zhCn: name,
+    en: inputText,
+    zhTw: inputText,
+    zhCn: inputText,
   };
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -81,18 +107,17 @@ export async function translateProductName(
         input: [
           {
             role: "system",
-            content:
-              "Translate short marketplace item names. Return compact JSON only with keys en, zhTw, zhCn. Preserve brand/model names and do not add extra descriptions.",
+            content: systemPrompt,
           },
           {
             role: "user",
-            content: JSON.stringify({ name }),
+            content: JSON.stringify({ text: inputText }),
           },
         ],
         text: {
           format: {
             type: "json_schema",
-            name: "product_name_translations",
+            name: schemaName,
             strict: true,
             schema: {
               type: "object",
@@ -114,20 +139,42 @@ export async function translateProductName(
     }
 
     const payload = await response.json();
-    const text = extractResponseText(payload);
+    const responseText = extractResponseText(payload);
 
-    if (!text) {
+    if (!responseText) {
       return fallback;
     }
 
-    const parsed = parseTranslationJson(text);
+    const parsed = parseTranslationJson(responseText);
 
     return {
-      en: cleanTranslation(parsed.en, name),
-      zhTw: cleanTranslation(parsed.zhTw, name),
-      zhCn: cleanTranslation(parsed.zhCn, name),
+      en: cleanTranslation(parsed.en, inputText),
+      zhTw: cleanTranslation(parsed.zhTw, inputText),
+      zhCn: cleanTranslation(parsed.zhCn, inputText),
     };
   } catch {
     return fallback;
   }
+}
+
+export async function translateProductName(
+  name: string
+): Promise<Required<ProductNameTranslations>> {
+  return translateProductText({
+    text: name,
+    schemaName: "product_name_translations",
+    systemPrompt:
+      "Translate short marketplace item names. Return compact JSON only with keys en, zhTw, zhCn. Preserve brand/model names and do not add extra descriptions.",
+  });
+}
+
+export async function translateProductDescription(
+  description: string
+): Promise<Required<ProductDescriptionTranslations>> {
+  return translateProductText({
+    text: description,
+    schemaName: "product_description_translations",
+    systemPrompt:
+      "Translate marketplace item descriptions. Return compact JSON only with keys en, zhTw, zhCn. Preserve item facts, condition, pickup notes, brand/model names, and line breaks. Do not add claims or extra details.",
+  });
 }
