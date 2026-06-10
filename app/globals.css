@@ -58,9 +58,14 @@
 
 .header-avatar-control {
   display: inline-flex;
+  flex: 0 0 32px;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
 }
 
 .header-avatar-control .rt-AvatarFallback {
@@ -68,6 +73,10 @@
   align-items: center;
   justify-content: center;
   width: 100% !important;
-  height: 100%;
+  min-width: 100% !important;
+  height: 100% !important;
   box-sizing: border-box;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1;
 }
