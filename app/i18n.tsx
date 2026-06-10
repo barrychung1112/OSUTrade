@@ -79,6 +79,7 @@ const dictionaries = {
     "home.fundingNote": "Tips are voluntary payments for the project and are not charity fundraising.",
     "home.fundingUse": "Hosting, email, and AI tools",
     "home.onlineNow": "Currently online",
+    "home.totalUsers": "Total users",
     "home.users": "users",
     "marketplace.title": "Find campus deals faster.",
     "marketplace.subtitle":
@@ -343,6 +344,7 @@ const dictionaries = {
     "home.fundingNote": "打賞是給專案的自願付款，並非慈善募款。",
     "home.fundingUse": "主機、email 與 AI 工具",
     "home.onlineNow": "目前在線",
+    "home.totalUsers": "總用戶數",
     "home.users": "位使用者",
     "marketplace.title": "更快找到校園好物。",
     "marketplace.subtitle":
@@ -611,6 +613,7 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "home.fundingNote": "打赏是给项目的自愿付款，并非慈善募款。",
   "home.fundingUse": "主机、email 与 AI 工具",
   "home.onlineNow": "目前在线",
+  "home.totalUsers": "总用户数",
   "home.users": "位用户",
   "marketplace.title": "更快找到校园好物。",
   "marketplace.subtitle":
