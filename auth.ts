@@ -46,20 +46,17 @@ export const { auth, handlers } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials): Promise<User | null> {
+        const { authenticateWithPassword } = await import(
+          "@/utils/auth/passwordLogin"
+        );
         const email = String(credentials?.email ?? "");
         const password = String(credentials?.password ?? "");
 
-        const res = await fetch(`${getBaseUrl()}/api/auth/login`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email, password }),
-          cache: "no-store",
-        });
-
-        if (!res.ok) return null;
-
-        const user = (await res.json()) as User;
-        return user?.id ? user : null;
+        try {
+          return await authenticateWithPassword(email, password);
+        } catch {
+          return null;
+        }
       },
     }),
     Credentials({
