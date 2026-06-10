@@ -50,6 +50,9 @@ const dictionaries = {
     "auth.signupError": "Sign up failed. Check your email and password.",
     "auth.confirmEmail": "Please check your email to confirm your account.",
     "auth.createdConfirm": "Account created. Please log in after confirming your email.",
+    "auth.continueWithGoogle": "Continue with Google",
+    "auth.googleSignInError": "Could not start Google sign-in. Please try again.",
+    "auth.orContinueWithEmail": "or continue with email",
     "auth.requiredTitle": "Log in to continue",
     "auth.requiredBody": "Please log in or create an account to continue to {destination}.",
     "home.description":
@@ -317,6 +320,9 @@ const dictionaries = {
     "auth.signupError": "註冊失敗，請確認 email 與密碼。",
     "auth.confirmEmail": "請查看信箱並完成帳號驗證。",
     "auth.createdConfirm": "帳號已建立。請完成 email 驗證後再登入。",
+    "auth.continueWithGoogle": "使用 Google 繼續",
+    "auth.googleSignInError": "無法啟動 Google 登入，請再試一次。",
+    "auth.orContinueWithEmail": "或使用 Email 繼續",
     "auth.requiredTitle": "請先登入以繼續",
     "auth.requiredBody": "請登入或建立帳號後繼續前往「{destination}」。",
     "home.description":
@@ -588,6 +594,9 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "auth.signupError": "注册失败，请确认 email 与密码。",
   "auth.confirmEmail": "请查看邮箱并完成账号验证。",
   "auth.createdConfirm": "账号已创建。请完成 email 验证后再登录。",
+  "auth.continueWithGoogle": "使用 Google 继续",
+  "auth.googleSignInError": "无法启动 Google 登录，请再试一次。",
+  "auth.orContinueWithEmail": "或使用 Email 继续",
   "auth.requiredTitle": "请先登录以继续",
   "auth.requiredBody": "请登录或创建账号后继续前往「{destination}」。",
   "home.description":

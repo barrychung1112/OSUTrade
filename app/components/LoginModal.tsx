@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
 import { useI18n } from "../i18n";
+import GoogleAuthDialogCta from "./GoogleAuthDialogCta";
 
 type LoginModalProps = {
   redirectTo?: string;
@@ -79,6 +80,7 @@ export default function LoginModal({
       <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
         <Dialog.Content maxWidth="450px">
           <Dialog.Title>{t("auth.login")}</Dialog.Title>
+          <GoogleAuthDialogCta redirectTo={redirectTo} />
           <form onSubmit={onSubmit}>
             <Flex direction="column" gap="3" mt="4">
               <input

@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
 import { useI18n } from "../i18n";
+import GoogleAuthDialogCta from "./GoogleAuthDialogCta";
 
 type SignupResponse = {
   id?: string;
@@ -84,6 +85,7 @@ export default function SignUpModal({ redirectTo = "/overview" }: { redirectTo?:
       <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
         <Dialog.Content maxWidth="450px">
           <Dialog.Title>{t("auth.signup")}</Dialog.Title>
+          <GoogleAuthDialogCta redirectTo={redirectTo} />
 
           <form onSubmit={onSubmit}>
             <Flex direction="column" gap="3" mt="4">

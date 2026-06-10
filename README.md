@@ -103,6 +103,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-publishable-or-anon-key"
 SUPABASE_SERVICE_ROLE_KEY="your-server-only-service-role-key"
 AUTH_SECRET="your-auth-secret"
 AUTH_BASE_URL="http://localhost:3000"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
 ENABLE_DEMO_PRODUCTS="false"
 OPENAI_API_KEY=""
 OPENAI_PRICING_MODEL="gpt-4.1-mini"
@@ -112,8 +114,14 @@ OPENAI_TRANSLATION_MODEL="gpt-4.1-mini"
 Notes:
 
 - `OPENAI_API_KEY` is optional for local UI testing, but AI pricing and translation need it.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are required in local `.env.local` and Vercel for Google sign-in.
 - Use a fresh private key and never commit secrets to the repository.
 - `SUPABASE_SERVICE_ROLE_KEY` must only be used server-side.
+
+Google OAuth redirect URIs:
+
+- Local: `http://localhost:3000/api/auth/callback/google`
+- Production: `https://osutrade.com/api/auth/callback/google`
 
 ### 3. Set up Supabase schema
 
