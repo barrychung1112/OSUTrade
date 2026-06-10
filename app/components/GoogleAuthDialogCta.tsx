@@ -17,7 +17,9 @@ export default function GoogleAuthDialogCta({ redirectTo }: { redirectTo: string
 
     async function loadProviderStatus() {
       try {
-        const response = await fetch("/api/auth/providers", { cache: "no-store" });
+        const response = await fetch("/api/auth/provider-status", {
+          cache: "no-store",
+        });
         const providers = (await response.json()) as AuthProvidersResponse;
 
         if (!ignore) {
