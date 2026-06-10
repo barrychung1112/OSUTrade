@@ -27,6 +27,34 @@ function cleanTranslation(value: unknown, fallback: string) {
   return text || fallback;
 }
 
+function extractResponseText(payload: any) {
+  if (typeof payload?.output_text === "string") {
+    return payload.output_text;
+  }
+
+  const output = Array.isArray(payload?.output) ? payload.output : [];
+  for (const item of output) {
+    const content = Array.isArray(item?.content) ? item.content : [];
+    for (const part of content) {
+      if (typeof part?.text === "string") {
+        return part.text;
+      }
+    }
+  }
+
+  const legacyContent = payload?.choices?.[0]?.message?.content;
+  return typeof legacyContent === "string" ? legacyContent : null;
+}
+
+function parseTranslationJson(text: string) {
+  const trimmed = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
+
+  return JSON.parse(trimmed);
+}
+
 export async function translateProductName(
   name: string
 ): Promise<Required<ProductNameTranslations>> {
@@ -63,7 +91,19 @@ export async function translateProductName(
         ],
         text: {
           format: {
-            type: "json_object",
+            type: "json_schema",
+            name: "product_name_translations",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                en: { type: "string" },
+                zhTw: { type: "string" },
+                zhCn: { type: "string" },
+              },
+              required: ["en", "zhTw", "zhCn"],
+            },
           },
         },
       }),
@@ -74,13 +114,13 @@ export async function translateProductName(
     }
 
     const payload = await response.json();
-    const text = payload.output_text || payload.output?.[0]?.content?.[0]?.text;
+    const text = extractResponseText(payload);
 
     if (!text) {
       return fallback;
     }
 
-    const parsed = JSON.parse(text);
+    const parsed = parseTranslationJson(text);
 
     return {
       en: cleanTranslation(parsed.en, name),

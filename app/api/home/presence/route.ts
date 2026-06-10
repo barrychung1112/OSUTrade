@@ -39,10 +39,51 @@ async function countWithSupabase(sessionId: string) {
   return count ?? 1;
 }
 
+async function countTotalUsers() {
+  const supabase = createAdminClient();
+  const perPage = 1000;
+  let page = 1;
+  let total = 0;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const users = data.users ?? [];
+    total += users.length;
+
+    if (users.length < perPage) {
+      return total;
+    }
+
+    page += 1;
+  }
+}
+
+async function countProfileUsers() {
+  const supabase = createAdminClient();
+  const { count, error } = await supabase
+    .from("users")
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
 export async function POST(request: NextRequest) {
   const existingSessionId = request.cookies.get(cookieName)?.value;
   const sessionId = existingSessionId || randomUUID();
   let onlineUsers = 1;
+  let totalUsers: number | null = null;
 
   try {
     onlineUsers = await countWithSupabase(sessionId);
@@ -50,8 +91,20 @@ export async function POST(request: NextRequest) {
     console.warn("Presence fallback used:", error);
   }
 
+  try {
+    totalUsers = await countTotalUsers();
+  } catch (error) {
+    console.warn("Auth users count fallback used:", error);
+    try {
+      totalUsers = await countProfileUsers();
+    } catch (profileError) {
+      console.warn("Profile users count fallback used:", profileError);
+    }
+  }
+
   const response = NextResponse.json({
     onlineUsers,
+    totalUsers,
     activeWindowMinutes,
   });
 

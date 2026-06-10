@@ -10,6 +10,8 @@ import {
   LockClosedIcon,
 } from "@radix-ui/react-icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import TimezoneCards from "./components/TimezoneCards";
 import OnlineUsersCard from "./components/OnlineUsersCard";
 import LoginModal from "./components/LoginModal";
@@ -21,7 +23,10 @@ import { useI18n } from "./i18n";
 
 export default function HomePage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [redirectPath, setRedirectPath] = useState<string | null>(null);
+  const [loginPromptPath, setLoginPromptPath] = useState<string | null>(null);
 
   useEffect(() => {
     const from = new URLSearchParams(window.location.search).get("from");
@@ -37,6 +42,17 @@ export default function HomePage() {
     if (redirectPath.startsWith("/overview")) return t("nav.marketplace");
     return "OSUTrade";
   }, [redirectPath, t]);
+
+  function handleProtectedCta(path: string) {
+    if (status === "loading") return;
+
+    if (status === "authenticated" && session?.user) {
+      router.push(path);
+      return;
+    }
+
+    setLoginPromptPath(path);
+  }
 
   return (
     <Theme
@@ -81,25 +97,33 @@ export default function HomePage() {
                 </Text>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                  <Link href="/overview" className="block">
-                    <Button
-                      size="4"
-                      highContrast
-                      className="h-12 w-full justify-center rounded-md px-5"
-                    >
-                      {t("nav.marketplace")}
-                    </Button>
-                  </Link>
-                  <Link href="/sell" className="block">
-                    <Button
-                      size="4"
-                      variant="outline"
-                      className="h-12 w-full justify-center rounded-md border-[#d73f09] px-5 text-[#d73f09] sm:w-auto"
-                    >
-                      {t("marketplace.listItem")}
-                    </Button>
-                  </Link>
+                  <Button
+                    size="4"
+                    highContrast
+                    className="h-12 w-full justify-center rounded-md px-5"
+                    disabled={status === "loading"}
+                    onClick={() => handleProtectedCta("/overview")}
+                  >
+                    {t("nav.marketplace")}
+                  </Button>
+                  <Button
+                    size="4"
+                    variant="outline"
+                    className="h-12 w-full justify-center rounded-md border-[#d73f09] px-5 text-[#d73f09] sm:w-auto"
+                    disabled={status === "loading"}
+                    onClick={() => handleProtectedCta("/sell")}
+                  >
+                    {t("marketplace.listItem")}
+                  </Button>
                 </div>
+                <LoginModal
+                  redirectTo={loginPromptPath ?? "/overview"}
+                  open={loginPromptPath !== null}
+                  onOpenChange={(open) => {
+                    if (!open) setLoginPromptPath(null);
+                  }}
+                  trigger={null}
+                />
               </div>
 
               <Card className="app-card p-4">

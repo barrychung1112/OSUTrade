@@ -20,6 +20,53 @@ type HeaderUser = {
   email?: string | null;
 };
 
+type UserMenuProps = {
+  user: HeaderUser;
+  fallback: string;
+  logoutLabel: string;
+  onLogout: () => void;
+};
+
+function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
+  const displayName = user.name || user.email || "Profile";
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger aria-label={displayName}>
+        <button
+          type="button"
+          className="inline-flex h-11 max-w-full shrink-0 cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2"
+        >
+          <Avatar
+            fallback={fallback.toUpperCase()}
+            size="2"
+            className="header-avatar-control border border-gray-300"
+            style={{
+              display: "inline-flex",
+              flexShrink: 0,
+              width: 32,
+              minWidth: 32,
+              height: 32,
+              minHeight: 32,
+            }}
+          />
+          <span className="hidden max-w-24 truncate xl:inline">
+            {displayName}
+          </span>
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content align="end">
+        <DropdownMenu.Item disabled>{displayName}</DropdownMenu.Item>
+        <DropdownMenu.Separator />
+        <DropdownMenu.Item color="red" onClick={onLogout}>
+          <ExitIcon />
+          {logoutLabel}
+        </DropdownMenu.Item>
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
+  );
+}
+
 export default function Header() {
   const { t } = useI18n();
   const pathname = usePathname();
@@ -59,42 +106,19 @@ export default function Header() {
     router.refresh();
   }
 
-  const authControl = status === "loading" ? null : !user ? (
-    <LoginModal />
-  ) : (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger aria-label={user.name || user.email || "User menu"}>
-        <span className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2">
-          <Avatar
-            fallback={fallback.toUpperCase()}
-            size="2"
-            className="header-avatar-control border border-gray-300"
-            style={{
-              display: "inline-flex",
-              flexShrink: 0,
-              width: 32,
-              minWidth: 32,
-              height: 32,
-              minHeight: 32,
-            }}
-          />
-          <span className="hidden max-w-24 truncate xl:inline">
-            {user.name || user.email}
-          </span>
-        </span>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="end">
-        <DropdownMenu.Item disabled>
-          {user.name || user.email || "Profile"}
-        </DropdownMenu.Item>
-        <DropdownMenu.Separator />
-        <DropdownMenu.Item color="red" onClick={handleLogout}>
-          <ExitIcon />
-          {t("nav.logout")}
-        </DropdownMenu.Item>
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
-  );
+  function renderAuthControl() {
+    if (status === "loading") return null;
+    if (!user) return <LoginModal />;
+
+    return (
+      <UserMenu
+        user={user}
+        fallback={fallback}
+        logoutLabel={t("nav.logout")}
+        onLogout={handleLogout}
+      />
+    );
+  }
 
   return (
     <motion.header
@@ -127,7 +151,7 @@ export default function Header() {
 
         <div className="flex min-w-max shrink-0 items-center justify-end gap-2">
           <LanguageToggle />
-          <div className="hidden sm:block lg:hidden">{authControl}</div>
+          <div className="hidden sm:block lg:hidden">{renderAuthControl()}</div>
           <button
             type="button"
             className="app-action-icon lg:hidden"
@@ -137,7 +161,7 @@ export default function Header() {
           >
             {menuOpen ? <Cross2Icon /> : <HamburgerMenuIcon />}
           </button>
-          <div className="hidden lg:block">{authControl}</div>
+          <div className="hidden lg:block">{renderAuthControl()}</div>
         </div>
       </div>
 
@@ -157,7 +181,7 @@ export default function Header() {
             </Link>
           </nav>
           <div className="mt-3 border-t border-orange-100 pt-3 sm:hidden">
-            {authControl}
+            {renderAuthControl()}
           </div>
         </div>
       )}

@@ -1,20 +1,40 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, type ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
 import { useI18n } from "../i18n";
 import GoogleAuthDialogCta from "./GoogleAuthDialogCta";
 
-export default function LoginModal({ redirectTo = "/overview" }: { redirectTo?: string }) {
+type LoginModalProps = {
+  redirectTo?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: ReactNode;
+};
+
+export default function LoginModal({
+  redirectTo = "/overview",
+  open,
+  onOpenChange,
+  trigger,
+}: LoginModalProps) {
   const { t } = useI18n();
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isOpen = open ?? internalOpen;
+
+  function setIsOpen(nextOpen: boolean) {
+    onOpenChange?.(nextOpen);
+    if (open === undefined) {
+      setInternalOpen(nextOpen);
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,20 +61,22 @@ export default function LoginModal({ redirectTo = "/overview" }: { redirectTo?: 
 
   return (
     <>
-      <Button
-        size="3"
-        variant="outline"
-        className="min-w-[76px] shrink-0 whitespace-nowrap border-[#d73f09] px-3 text-[#d73f09]"
-        style={{
-          flexShrink: 0,
-          minWidth: "76px",
-          width: "auto",
-          whiteSpace: "nowrap",
-        }}
-        onClick={() => setIsOpen(true)}
-      >
-        {t("auth.login")}
-      </Button>
+      {trigger !== undefined ? trigger : (
+        <Button
+          size="3"
+          variant="outline"
+          className="min-w-[76px] shrink-0 whitespace-nowrap border-[#d73f09] px-3 text-[#d73f09]"
+          style={{
+            flexShrink: 0,
+            minWidth: "76px",
+            width: "auto",
+            whiteSpace: "nowrap",
+          }}
+          onClick={() => setIsOpen(true)}
+        >
+          {t("auth.login")}
+        </Button>
+      )}
       <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
         <Dialog.Content maxWidth="450px">
           <Dialog.Title>{t("auth.login")}</Dialog.Title>

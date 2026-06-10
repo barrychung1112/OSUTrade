@@ -8,17 +8,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n";
 
 type TipPayload = {
-  raised: number;
+  raised: number | null;
   goal: number;
   currency: string;
   supportUrl: string;
+  progressConfigured: boolean;
 };
 
 const fallbackTip: TipPayload = {
-  raised: 0,
+  raised: null,
   goal: 2000,
   currency: "USD",
   supportUrl: "https://buymeacoffee.com/osutrade",
+  progressConfigured: false,
 };
 
 function money(value: number, currency: string) {
@@ -56,9 +58,11 @@ export default function TipProgressCard() {
   }, []);
 
   const progress = useMemo(() => {
+    if (!tipProgress.progressConfigured || tipProgress.raised === null) return 0;
     if (tipProgress.goal <= 0) return 0;
     return Math.min(100, Math.round((tipProgress.raised / tipProgress.goal) * 100));
-  }, [tipProgress.goal, tipProgress.raised]);
+  }, [tipProgress.goal, tipProgress.progressConfigured, tipProgress.raised]);
+  const showProgress = tipProgress.progressConfigured && tipProgress.raised !== null;
 
   return (
     <Card className="app-card p-4 backdrop-blur">
@@ -78,26 +82,39 @@ export default function TipProgressCard() {
           <HeartIcon /> {t("home.supportShort")}
         </Link>
       </div>
-      <div className="mb-2 flex items-end justify-between gap-3">
-        <Text size="6" weight="bold" className="text-[#d73f09]">
-          {money(tipProgress.raised, tipProgress.currency)}
-        </Text>
-        <Text size="2" color="gray">
-          {t("home.fundingGoal", {
-            goal: money(tipProgress.goal, tipProgress.currency),
-          })}
-        </Text>
-      </div>
-      <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-orange-100">
-        <div
-          className="h-full rounded-full bg-[#d73f09] transition-all"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-      <div className="flex justify-between text-xs text-gray-600">
-        <span>{progress}%</span>
-        <span>{t("home.fundingUse")}</span>
-      </div>
+      {showProgress ? (
+        <>
+          <div className="mb-2 flex items-end justify-between gap-3">
+            <Text size="6" weight="bold" className="text-[#d73f09]">
+              {money(tipProgress.raised, tipProgress.currency)}
+            </Text>
+            <Text size="2" color="gray">
+              {t("home.fundingGoal", {
+                goal: money(tipProgress.goal, tipProgress.currency),
+              })}
+            </Text>
+          </div>
+          <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-orange-100">
+            <div
+              className="h-full rounded-full bg-[#d73f09] transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-gray-600">
+            <span>{progress}%</span>
+            <span>{t("home.fundingUse")}</span>
+          </div>
+        </>
+      ) : (
+        <div className="rounded-md border border-orange-100 bg-orange-50/70 px-3 py-2">
+          <Text size="2" weight="medium" className="text-gray-900">
+            {t("home.fundingUntrackedTitle")}
+          </Text>
+          <Text as="p" size="1" color="gray" className="mt-1 leading-5">
+            {t("home.fundingUntrackedBody")}
+          </Text>
+        </div>
+      )}
       <Text as="p" size="1" color="gray" className="mt-3 leading-5">
         {t("home.fundingNote")}
       </Text>
