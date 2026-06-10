@@ -96,15 +96,36 @@ describe("upsertGoogleUserProfile", () => {
     expect(createAdminClient).not.toHaveBeenCalled();
   });
 
-  test("rejects missing Google email verification before creating an admin client", async () => {
-    await expect(
-      upsertGoogleUserProfile({
-        email: "student@osu.edu",
-        name: "Student",
-      })
-    ).rejects.toThrow("Google account email is not verified.");
+  test("does not require a separate email verification step when Google omits the flag", async () => {
+    const authId = "12345678-1234-4234-9234-123456789abc";
+    const { admin } = createMockAdmin({
+      maybeSingleResults: [
+        { data: null, error: null },
+        { data: null, error: null },
+      ],
+      upsertResults: [{ error: null }],
+      createUserResult: {
+        data: { user: { id: authId } },
+        error: null,
+      },
+    });
 
-    expect(createAdminClient).not.toHaveBeenCalled();
+    const result = await upsertGoogleUserProfile({
+      email: "student@osu.edu",
+      name: "Student",
+    });
+
+    expect(admin.auth.admin.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "student@osu.edu",
+        email_confirm: true,
+      })
+    );
+    expect(result).toMatchObject({
+      id: authId,
+      email: "student@osu.edu",
+      name: "Student",
+    });
   });
 
   test("preserves an existing public user and escapes the email lookup", async () => {

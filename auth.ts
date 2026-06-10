@@ -1,10 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import {
-  upsertGoogleUserProfile,
-  type AppAuthUser,
-} from "@/utils/auth/googleProfile";
+import type { AppAuthUser } from "@/utils/auth/googleProfile";
 
 type User = AppAuthUser;
 
@@ -95,6 +92,9 @@ export const { auth, handlers } = NextAuth({
   callbacks: {
     async jwt({ token, user, account, profile }) {
       if (account?.provider === "google") {
+        const { upsertGoogleUserProfile } = await import(
+          "@/utils/auth/googleProfile"
+        );
         const googleProfile = profile as GoogleProfile | undefined;
         const authUser = await upsertGoogleUserProfile({
           email: googleProfile?.email ?? user?.email,

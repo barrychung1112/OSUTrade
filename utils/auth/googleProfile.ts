@@ -232,7 +232,7 @@ export async function upsertGoogleUserProfile(
     throw new Error("Google account did not provide a valid email address.");
   }
 
-  if (profile.emailVerified !== true) {
+  if (profile.emailVerified === false) {
     throw new Error("Google account email is not verified.");
   }
 
