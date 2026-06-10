@@ -6,6 +6,9 @@ type ProductRow = {
   product_id: string | number;
   name: string;
   description?: string | null;
+  description_en?: string | null;
+  description_zh_tw?: string | null;
+  description_zh_cn?: string | null;
   name_en?: string | null;
   name_zh_tw?: string | null;
   name_zh_cn?: string | null;
@@ -36,6 +39,11 @@ function toProduct(row: ProductRow) {
       en: row.name_en ?? row.name,
       zhTw: row.name_zh_tw ?? row.name,
       zhCn: row.name_zh_cn ?? row.name,
+    },
+    descriptionTranslations: {
+      en: row.description_en ?? row.description ?? "",
+      zhTw: row.description_zh_tw ?? row.description ?? "",
+      zhCn: row.description_zh_cn ?? row.description ?? "",
     },
     price: row.price,
     category: row.category,

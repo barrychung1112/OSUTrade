@@ -3,12 +3,18 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { canUseDemoProducts, filterDemoProducts } from "@/app/lib/demoProducts";
-import { translateProductName } from "@/app/lib/productTranslations";
+import {
+  translateProductDescription,
+  translateProductName,
+} from "@/app/lib/productTranslations";
 
 type ProductRow = {
   product_id: string | number;
   name: string;
   description?: string | null;
+  description_en?: string | null;
+  description_zh_tw?: string | null;
+  description_zh_cn?: string | null;
   name_en?: string | null;
   name_zh_tw?: string | null;
   name_zh_cn?: string | null;
@@ -40,6 +46,11 @@ function toProduct(row: ProductRow) {
       zhTw: row.name_zh_tw ?? row.name,
       zhCn: row.name_zh_cn ?? row.name,
     },
+    descriptionTranslations: {
+      en: row.description_en ?? row.description ?? "",
+      zhTw: row.description_zh_tw ?? row.description ?? "",
+      zhCn: row.description_zh_cn ?? row.description ?? "",
+    },
     price: row.price,
     category: row.category,
     imageUrl: imageUrls[0] ?? null,
@@ -52,6 +63,9 @@ function toProduct(row: ProductRow) {
 
 const schemaOptionalFields = [
   "description",
+  "description_en",
+  "description_zh_tw",
+  "description_zh_cn",
   "name_en",
   "name_zh_tw",
   "name_zh_cn",
@@ -70,7 +84,13 @@ function withoutUnsupportedSchemaField<T extends Record<string, unknown>>(
   let removedField = false;
 
   for (const field of schemaOptionalFields) {
-    if (normalizedMessage.includes(field)) {
+    const mentionsField =
+      field === "description"
+        ? /\bdescription\b/.test(normalizedMessage) &&
+          !/description_(en|zh_tw|zh_cn)/.test(normalizedMessage)
+        : normalizedMessage.includes(field);
+
+    if (mentionsField) {
       delete nextValues[field];
       removedField = true;
     }
@@ -224,11 +244,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const nameTranslations = await translateProductName(name);
+    const [nameTranslations, descriptionTranslations] = await Promise.all([
+      translateProductName(name),
+      description
+        ? translateProductDescription(description)
+        : Promise.resolve({ en: "", zhTw: "", zhCn: "" }),
+    ]);
 
     const insertValues = {
       name,
       description: description || null,
+      description_en: descriptionTranslations.en || null,
+      description_zh_tw: descriptionTranslations.zhTw || null,
+      description_zh_cn: descriptionTranslations.zhCn || null,
       name_en: nameTranslations.en,
       name_zh_tw: nameTranslations.zhTw,
       name_zh_cn: nameTranslations.zhCn,
@@ -263,7 +291,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (
-        !/description|name_(en|zh_tw|zh_cn)|image_urls|contact_(phone|line_id|wechat_id)|schema cache|could not find/i.test(
+        !/description|description_(en|zh_tw|zh_cn)|name_(en|zh_tw|zh_cn)|image_urls|contact_(phone|line_id|wechat_id)|schema cache|could not find/i.test(
           error.message ?? ""
         )
       ) {
