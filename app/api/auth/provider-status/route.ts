@@ -4,9 +4,7 @@ import { getGoogleAuthConfig } from "@/utils/auth/googleConfig";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const google = getGoogleAuthConfig().configured;
-
   return NextResponse.json({
-    google,
+    google: getGoogleAuthConfig().configured,
   });
 }
