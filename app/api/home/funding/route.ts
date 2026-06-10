@@ -6,8 +6,11 @@ function numberFromEnv(name: string, fallback: number) {
 }
 
 export async function GET() {
+  const hasRaisedConfig = process.env.FUNDING_RAISED_USD !== undefined;
   const goal = numberFromEnv("FUNDING_GOAL_USD", 2000);
-  const raised = Math.min(numberFromEnv("FUNDING_RAISED_USD", 0), goal);
+  const raised = hasRaisedConfig
+    ? Math.min(numberFromEnv("FUNDING_RAISED_USD", 0), goal)
+    : null;
   const supportUrl =
     process.env.FUNDING_SUPPORT_URL || "https://buymeacoffee.com/osutrade";
 
@@ -16,5 +19,6 @@ export async function GET() {
     goal,
     currency: process.env.FUNDING_CURRENCY || "USD",
     supportUrl,
+    progressConfigured: hasRaisedConfig,
   });
 }
