@@ -39,10 +39,24 @@ async function countWithSupabase(sessionId: string) {
   return count ?? 1;
 }
 
+async function countTotalUsers() {
+  const supabase = createAdminClient();
+  const { count, error } = await supabase
+    .from("users")
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
 export async function POST(request: NextRequest) {
   const existingSessionId = request.cookies.get(cookieName)?.value;
   const sessionId = existingSessionId || randomUUID();
   let onlineUsers = 1;
+  let totalUsers: number | null = null;
 
   try {
     onlineUsers = await countWithSupabase(sessionId);
@@ -50,8 +64,15 @@ export async function POST(request: NextRequest) {
     console.warn("Presence fallback used:", error);
   }
 
+  try {
+    totalUsers = await countTotalUsers();
+  } catch (error) {
+    console.warn("Total users fallback used:", error);
+  }
+
   const response = NextResponse.json({
     onlineUsers,
+    totalUsers,
     activeWindowMinutes,
   });
 
