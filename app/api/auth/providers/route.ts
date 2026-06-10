@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
+import { getGoogleAuthConfig } from "@/utils/auth/googleConfig";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const google =
-    Boolean(process.env.GOOGLE_CLIENT_ID) &&
-    Boolean(process.env.GOOGLE_CLIENT_SECRET);
+  const google = getGoogleAuthConfig().configured;
 
   return NextResponse.json({
     google,

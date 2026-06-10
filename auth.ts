@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import type { AppAuthUser } from "@/utils/auth/googleProfile";
+import { getGoogleAuthConfig } from "@/utils/auth/googleConfig";
 
 type User = AppAuthUser;
 
@@ -11,8 +12,7 @@ type GoogleProfile = {
   email_verified?: boolean;
 };
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID;
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleAuthConfig = getGoogleAuthConfig();
 
 function getBaseUrl() {
   const baseUrl =
@@ -28,11 +28,13 @@ export const { auth, handlers } = NextAuth({
   pages: { signIn: "/" },
   trustHost: true,
   providers: [
-    ...(googleClientId && googleClientSecret
+    ...(googleAuthConfig.configured &&
+    googleAuthConfig.clientId &&
+    googleAuthConfig.clientSecret
       ? [
           Google({
-            clientId: googleClientId,
-            clientSecret: googleClientSecret,
+            clientId: googleAuthConfig.clientId,
+            clientSecret: googleAuthConfig.clientSecret,
           }),
         ]
       : []),
@@ -99,7 +101,7 @@ export const { auth, handlers } = NextAuth({
         const authUser = await upsertGoogleUserProfile({
           email: googleProfile?.email ?? user?.email,
           name: googleProfile?.name ?? user?.name,
-          emailVerified: googleProfile?.email_verified === true,
+          emailVerified: googleProfile?.email_verified,
         });
 
         token.sub = authUser.id;
