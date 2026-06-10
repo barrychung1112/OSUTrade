@@ -35,7 +35,7 @@ function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
       <DropdownMenu.Trigger aria-label={displayName}>
         <button
           type="button"
-          className="inline-flex h-11 max-w-full shrink-0 cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2"
+          className="inline-flex h-11 max-w-[11rem] shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2"
         >
           <Avatar
             fallback={fallback.toUpperCase()}
@@ -50,17 +50,26 @@ function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
               minHeight: 32,
             }}
           />
-          <span className="hidden max-w-24 truncate xl:inline">
+          <span className="hidden min-w-0 max-w-24 truncate xl:inline-block">
             {displayName}
           </span>
         </button>
       </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="end">
-        <DropdownMenu.Item disabled>{displayName}</DropdownMenu.Item>
+      <DropdownMenu.Content
+        align="end"
+        className="min-w-[12rem] max-w-[18rem] whitespace-nowrap"
+      >
+        <DropdownMenu.Item disabled className="max-w-[17rem] truncate">
+          {displayName}
+        </DropdownMenu.Item>
         <DropdownMenu.Separator />
-        <DropdownMenu.Item color="red" onClick={onLogout}>
-          <ExitIcon />
-          {logoutLabel}
+        <DropdownMenu.Item
+          color="red"
+          onClick={onLogout}
+          className="flex items-center gap-2 whitespace-nowrap"
+        >
+          <ExitIcon className="shrink-0" />
+          <span className="whitespace-nowrap">{logoutLabel}</span>
         </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
