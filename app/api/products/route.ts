@@ -50,6 +50,44 @@ function toProduct(row: ProductRow) {
   };
 }
 
+const schemaOptionalFields = [
+  "description",
+  "name_en",
+  "name_zh_tw",
+  "name_zh_cn",
+  "image_urls",
+  "contact_phone",
+  "contact_line_id",
+  "contact_wechat_id",
+] as const;
+
+function withoutUnsupportedSchemaField<T extends Record<string, unknown>>(
+  values: T,
+  message: string
+) {
+  const nextValues = { ...values };
+  const normalizedMessage = message.toLowerCase();
+  let removedField = false;
+
+  for (const field of schemaOptionalFields) {
+    if (normalizedMessage.includes(field)) {
+      delete nextValues[field];
+      removedField = true;
+    }
+  }
+
+  if (!removedField && /schema cache|could not find/i.test(message)) {
+    for (const field of schemaOptionalFields) {
+      delete nextValues[field];
+    }
+  }
+
+  return {
+    values: nextValues,
+    changed: Object.keys(nextValues).length !== Object.keys(values).length,
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -206,34 +244,42 @@ export async function POST(request: NextRequest) {
       status: "available",
     };
 
-    let { data, error } = await supabase
-      .from("products")
-      .insert(insertValues)
-      .select(
-        "product_id, name, description, name_en, name_zh_tw, name_zh_cn, price, category, image_url, image_urls, seller_id, status, quantity"
-      )
-      .single();
+    let currentInsertValues: Record<string, unknown> = insertValues;
+    let data: ProductRow | null = null;
+    let error: any = null;
 
-    if (error && /description|name_(en|zh_tw|zh_cn)|image_urls|contact_(phone|line_id|wechat_id)|schema cache/i.test(error.message ?? "")) {
-      const {
-        description,
-        name_en,
-        name_zh_tw,
-        name_zh_cn,
-        image_urls,
-        contact_phone,
-        contact_line_id,
-        contact_wechat_id,
-        ...legacyValues
-      } = insertValues;
-      const legacyResult = await supabase
+    for (let attempt = 0; attempt <= schemaOptionalFields.length; attempt += 1) {
+      const result = await supabase
         .from("products")
-        .insert(legacyValues)
-        .select("product_id, name, price, category, image_url, seller_id, status, quantity")
+        .insert(currentInsertValues)
+        .select("*")
         .single();
 
-      data = legacyResult.data as any;
-      error = legacyResult.error;
+      data = result.data as ProductRow | null;
+      error = result.error;
+
+      if (!error) {
+        break;
+      }
+
+      if (
+        !/description|name_(en|zh_tw|zh_cn)|image_urls|contact_(phone|line_id|wechat_id)|schema cache|could not find/i.test(
+          error.message ?? ""
+        )
+      ) {
+        break;
+      }
+
+      const fallback = withoutUnsupportedSchemaField(
+        currentInsertValues,
+        error.message ?? ""
+      );
+
+      if (!fallback.changed) {
+        break;
+      }
+
+      currentInsertValues = fallback.values;
     }
 
     if (error) {
