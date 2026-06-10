@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { signOut, useSession } from "next-auth/react";
-import { Avatar, DropdownMenu } from "@radix-ui/themes";
+import { Avatar } from "@radix-ui/themes";
 import {
   Cross2Icon,
   ExitIcon,
@@ -29,50 +29,87 @@ type UserMenuProps = {
 
 function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
   const displayName = user.name || user.email || "Profile";
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  async function handleLogoutClick() {
+    setOpen(false);
+    await onLogout();
+  }
 
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger aria-label={displayName}>
-        <button
-          type="button"
-          className="inline-flex h-11 max-w-[11rem] shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2"
-        >
-          <Avatar
-            fallback={fallback.toUpperCase()}
-            size="2"
-            className="header-avatar-control border border-gray-300"
-            style={{
-              display: "inline-flex",
-              flexShrink: 0,
-              width: 32,
-              minWidth: 32,
-              height: 32,
-              minHeight: 32,
-            }}
-          />
-          <span className="hidden min-w-0 max-w-24 truncate xl:inline-block">
-            {displayName}
-          </span>
-        </button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content
-        align="end"
-        className="min-w-[12rem] max-w-[18rem] whitespace-nowrap"
+    <div ref={menuRef} className="relative inline-flex shrink-0">
+      <button
+        type="button"
+        aria-label={displayName}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="inline-flex h-11 max-w-[11rem] shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-md border border-gray-300 bg-white px-1.5 pr-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2"
       >
-        <DropdownMenu.Item disabled className="max-w-[17rem] truncate">
+        <Avatar
+          fallback={fallback.toUpperCase()}
+          size="2"
+          className="header-avatar-control border border-gray-300"
+          style={{
+            display: "inline-flex",
+            flexShrink: 0,
+            width: 32,
+            minWidth: 32,
+            height: 32,
+            minHeight: 32,
+          }}
+        />
+        <span className="hidden min-w-0 max-w-24 truncate xl:inline-block">
           {displayName}
-        </DropdownMenu.Item>
-        <DropdownMenu.Separator />
-        <DropdownMenu.Item
-          color="red"
-          onClick={onLogout}
-          className="flex items-center gap-2 whitespace-nowrap"
+        </span>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-[calc(100%+0.5rem)] z-[70] w-56 rounded-lg border border-orange-100 bg-white p-1.5 text-sm shadow-xl ring-1 ring-black/5 sm:left-auto sm:right-0"
         >
-          <ExitIcon className="shrink-0" />
-          <span className="whitespace-nowrap">{logoutLabel}</span>
-        </DropdownMenu.Item>
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
+          <div className="block w-full truncate whitespace-nowrap px-3 py-2 text-left font-semibold text-gray-700">
+            {displayName}
+          </div>
+          <div className="my-1 h-px bg-orange-100" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleLogoutClick}
+            className="flex h-10 w-full items-center gap-2 whitespace-nowrap rounded-md px-3 text-left font-semibold text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
+          >
+            <ExitIcon className="h-4 w-4 shrink-0" />
+            <span className="whitespace-nowrap">{logoutLabel}</span>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
