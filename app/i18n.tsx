@@ -53,6 +53,11 @@ const dictionaries = {
     "auth.continueWithGoogle": "Continue with Google",
     "auth.googleSignInError": "Could not start Google sign-in. Please try again.",
     "auth.orContinueWithEmail": "or continue with email",
+    "auth.embeddedBrowserTitle": "Open OSUTrade in Safari or Chrome",
+    "auth.embeddedBrowserBody":
+      "Google sign-in may be blocked inside {appName}. Open this page in Safari or Chrome, then try Google sign-in again.",
+    "auth.copyCurrentLink": "Copy current link",
+    "auth.linkCopied": "Link copied",
     "auth.requiredTitle": "Log in to continue",
     "auth.requiredBody": "Please log in or create an account to continue to {destination}.",
     "home.description":
@@ -323,6 +328,11 @@ const dictionaries = {
     "auth.continueWithGoogle": "使用 Google 繼續",
     "auth.googleSignInError": "無法啟動 Google 登入，請再試一次。",
     "auth.orContinueWithEmail": "或使用 Email 繼續",
+    "auth.embeddedBrowserTitle": "請用 Safari 或 Chrome 開啟 OSUTrade",
+    "auth.embeddedBrowserBody":
+      "Google 登入可能會被 {appName} 內建瀏覽器阻擋。請用 Safari 或 Chrome 開啟此頁，再重新使用 Google 登入。",
+    "auth.copyCurrentLink": "複製目前網址",
+    "auth.linkCopied": "已複製網址",
     "auth.requiredTitle": "請先登入以繼續",
     "auth.requiredBody": "請登入或建立帳號後繼續前往「{destination}」。",
     "home.description":
@@ -597,6 +607,11 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "auth.continueWithGoogle": "使用 Google 继续",
   "auth.googleSignInError": "无法启动 Google 登录，请再试一次。",
   "auth.orContinueWithEmail": "或使用 Email 继续",
+  "auth.embeddedBrowserTitle": "请用 Safari 或 Chrome 打开 OSUTrade",
+  "auth.embeddedBrowserBody":
+    "Google 登录可能会被 {appName} 内置浏览器阻挡。请用 Safari 或 Chrome 打开此页面，再重新使用 Google 登录。",
+  "auth.copyCurrentLink": "复制当前网址",
+  "auth.linkCopied": "已复制网址",
   "auth.requiredTitle": "请先登录以继续",
   "auth.requiredBody": "请登录或创建账号后继续前往「{destination}」。",
   "home.description":
