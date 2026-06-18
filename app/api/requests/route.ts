@@ -4,6 +4,12 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 import { getRequestPriceChange } from "@/app/lib/requestPricing";
 import { notifyTradeEvent } from "@/app/lib/notifications";
+import {
+  isMissingPriceAtRequestError,
+  requestSelectFields,
+  requestSelectFieldsWithoutPrice,
+  stripPriceAtRequest,
+} from "@/app/lib/requestSchema";
 
 type RequestRow = {
   request_id: string;
@@ -119,6 +125,63 @@ async function safeGetEmailByUserId(userId: string | null | undefined) {
   }
 }
 
+async function loadBuyerRequests(
+  supabase: ReturnType<typeof createAdminClient>,
+  buyerId: string
+) {
+  const { data, error } = await supabase
+    .from("trade_requests")
+    .select(requestSelectFields)
+    .eq("buyer_id", buyerId)
+    .order("created_at", { ascending: false });
+
+  if (!error || !isMissingPriceAtRequestError(error)) {
+    return { data, error };
+  }
+
+  console.warn(
+    "trade_requests.price_at_request is missing; falling back to legacy request fields."
+  );
+
+  return supabase
+    .from("trade_requests")
+    .select(requestSelectFieldsWithoutPrice)
+    .eq("buyer_id", buyerId)
+    .order("created_at", { ascending: false });
+}
+
+async function insertTradeRequest(
+  supabase: ReturnType<typeof createAdminClient>,
+  values: {
+    product_id: string;
+    buyer_id: string;
+    quantity: number;
+    note: string | null;
+    price_at_request: number;
+    status: "sent";
+  }
+) {
+  const { data, error } = await supabase
+    .from("trade_requests")
+    .insert(values)
+    .select(requestSelectFields)
+    .single();
+
+  if (!error || !isMissingPriceAtRequestError(error)) {
+    return { data, error };
+  }
+
+  console.warn(
+    "trade_requests.price_at_request is missing; inserting request without price snapshot."
+  );
+
+  return supabase
+    .from("trade_requests")
+    .insert(stripPriceAtRequest(values))
+    .select(requestSelectFieldsWithoutPrice)
+    .single();
+}
+
 export async function GET() {
   try {
     const session = await auth();
@@ -131,11 +194,7 @@ export async function GET() {
     }
 
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("trade_requests")
-      .select("request_id, product_id, buyer_id, quantity, note, status, created_at, price_at_request")
-      .eq("buyer_id", session.user.id)
-      .order("created_at", { ascending: false });
+    const { data, error } = await loadBuyerRequests(supabase, session.user.id);
 
     if (error) {
       throw error;
@@ -213,7 +272,7 @@ export async function PATCH(request: Request) {
     const supabase = createAdminClient();
     const { data: existing, error: lookupError } = await supabase
       .from("trade_requests")
-      .select("request_id, product_id, buyer_id, quantity, note, status, price_at_request")
+      .select("request_id, product_id, buyer_id, quantity, note, status")
       .eq("request_id", requestId)
       .eq("buyer_id", session.user.id)
       .single();
@@ -244,12 +303,14 @@ export async function PATCH(request: Request) {
       .update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("request_id", requestId)
       .eq("buyer_id", session.user.id)
-      .select("request_id, product_id, buyer_id, quantity, note, status, created_at, price_at_request")
+      .select(requestSelectFieldsWithoutPrice)
       .single();
 
     if (error) {
       throw error;
     }
+
+    const updatedRequest = data as RequestRow;
 
     if (product?.seller_id) {
       await safeNotifyTradeEvent({
@@ -259,10 +320,10 @@ export async function PATCH(request: Request) {
           recipientId: product.seller_id,
           actorId: session.user.id,
           request: {
-            id: data.request_id,
-            quantity: data.quantity,
-            note: data.note,
-            priceAtRequest: data.price_at_request,
+            id: updatedRequest.request_id,
+            quantity: updatedRequest.quantity,
+            note: updatedRequest.note,
+            priceAtRequest: updatedRequest.price_at_request ?? null,
           },
           product: {
             id: product.product_id,
@@ -274,7 +335,7 @@ export async function PATCH(request: Request) {
       });
     }
 
-    return NextResponse.json({ request: toRequest(data) });
+    return NextResponse.json({ request: toRequest(updatedRequest) });
   } catch (error) {
     console.error(error);
     const message =
@@ -370,24 +431,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data, error } = await supabase
-      .from("trade_requests")
-      .insert({
-        product_id: itemId,
-        buyer_id: session.user.id,
-        quantity,
-        note: note || null,
-        price_at_request: product.price,
-        status: "sent",
-      })
-      .select(
-        "request_id, product_id, buyer_id, quantity, note, status, created_at, price_at_request"
-      )
-      .single();
+    const { data, error } = await insertTradeRequest(supabase, {
+      product_id: itemId,
+      buyer_id: session.user.id,
+      quantity,
+      note: note || null,
+      price_at_request: product.price,
+      status: "sent",
+    });
 
     if (error) {
       throw error;
     }
+
+    const createdRequest = data as RequestRow;
 
     if (product.seller_id) {
       await safeNotifyTradeEvent({
@@ -397,10 +454,10 @@ export async function POST(request: Request) {
           recipientId: product.seller_id,
           actorId: session.user.id,
           request: {
-            id: data.request_id,
-            quantity: data.quantity,
-            note: data.note,
-            priceAtRequest: data.price_at_request,
+            id: createdRequest.request_id,
+            quantity: createdRequest.quantity,
+            note: createdRequest.note,
+            priceAtRequest: createdRequest.price_at_request ?? null,
           },
           product: {
             id: product.product_id,
@@ -415,7 +472,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: true,
-        request: toRequest(data),
+        request: toRequest(createdRequest),
       },
       { status: 201 }
     );
