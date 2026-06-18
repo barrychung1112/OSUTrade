@@ -1,9 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon, CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
+import {
+  AlertTriangle,
+  Boxes,
+  CheckCircle2,
+  Clock3,
+  DollarSign,
+  PackageCheck,
+  Pencil,
+  Save,
+  Tag,
+  X,
+} from "lucide-react";
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
 import { useI18n } from "../i18n";
@@ -302,10 +314,30 @@ export default function SellerPage() {
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label={t("seller.totalListings")} value={activeListings} />
-              <StatCard label={t("seller.pendingRequests")} value={pendingRequests} />
-              <StatCard label={t("seller.expiredRequests")} value={expiredRequests} />
-              <StatCard label={t("seller.availableUnits")} value={availableUnits} />
+              <StatCard
+                label={t("seller.totalListings")}
+                value={activeListings}
+                icon={<Boxes className="h-5 w-5" />}
+                tone="orange"
+              />
+              <StatCard
+                label={t("seller.pendingRequests")}
+                value={pendingRequests}
+                icon={<Clock3 className="h-5 w-5" />}
+                tone={pendingRequests > 0 ? "amber" : "slate"}
+              />
+              <StatCard
+                label={t("seller.expiredRequests")}
+                value={expiredRequests}
+                icon={<AlertTriangle className="h-5 w-5" />}
+                tone={expiredRequests > 0 ? "red" : "slate"}
+              />
+              <StatCard
+                label={t("seller.availableUnits")}
+                value={availableUnits}
+                icon={<PackageCheck className="h-5 w-5" />}
+                tone="green"
+              />
             </div>
           </div>
 
@@ -449,13 +481,38 @@ export default function SellerPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({
+  label,
+  value,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: number;
+  icon: ReactNode;
+  tone: "orange" | "amber" | "red" | "green" | "slate";
+}) {
+  const toneClass = {
+    orange: "border-orange-200 bg-orange-50 text-[#d73f09]",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+    red: "border-red-200 bg-red-50 text-red-700",
+    green: "border-green-200 bg-green-50 text-green-700",
+    slate: "border-slate-200 bg-slate-50 text-slate-600",
+  }[tone];
+
   return (
-    <div className="rounded-lg border border-orange-100 bg-orange-50/60 px-4 py-3">
-      <Text as="p" size="2" color="gray">
-        {label}
-      </Text>
-      <p className="mt-1 text-2xl font-bold text-gray-950">{value}</p>
+    <div className="rounded-lg border border-orange-100 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Text as="p" size="2" color="gray" className="font-medium">
+            {label}
+          </Text>
+          <p className="mt-1 font-mono text-3xl font-bold leading-none text-gray-950">
+            {value}
+          </p>
+        </div>
+        <div className={`rounded-md border p-2 ${toneClass}`}>{icon}</div>
+      </div>
     </div>
   );
 }
@@ -484,7 +541,7 @@ function SellerRequestSection({
   }
 
   return (
-    <section className="space-y-3 rounded-lg border border-orange-100 bg-white/65 p-3">
+    <section className="space-y-3 rounded-lg border border-orange-100 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Heading size="4" className="text-gray-950">
@@ -500,9 +557,9 @@ function SellerRequestSection({
       </div>
 
       {requests.length === 0 ? (
-        <p className="rounded-md border border-dashed border-orange-200 bg-white px-3 py-2 text-sm text-gray-600">
+        <div className="rounded-md border border-dashed border-orange-200 bg-orange-50/50 px-3 py-3 text-sm text-gray-600">
           {emptyText}
-        </p>
+        </div>
       ) : (
         requests.map((request) => (
           <RequestRow
@@ -562,24 +619,28 @@ function ProductRow({
   const statusActions: Array<{
     status: ProductStatus;
     label: string;
+    icon: ReactNode;
     activeClass: string;
     idleClass: string;
   }> = [
     {
       status: "available",
       label: t("seller.available"),
+      icon: <CheckCircle2 className="h-4 w-4" />,
       activeClass: "border-green-700 bg-green-600 text-white shadow-sm",
       idleClass: "border-green-200 bg-green-50 text-green-800 hover:bg-green-100",
     },
     {
       status: "pending",
       label: t("seller.pending"),
+      icon: <Clock3 className="h-4 w-4" />,
       activeClass: "border-amber-700 bg-amber-500 text-white shadow-sm",
       idleClass: "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100",
     },
     {
       status: "sold",
       label: t("seller.sold"),
+      icon: <PackageCheck className="h-4 w-4" />,
       activeClass: "border-blue-700 bg-blue-600 text-white shadow-sm",
       idleClass: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100",
     },
@@ -587,36 +648,84 @@ function ProductRow({
 
   return (
     <Card
-      className={`app-card p-3 ${
+      className={`app-card overflow-hidden ${
         product.status === "sold" || product.status === "removed"
           ? "opacity-65"
           : ""
       }`}
     >
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="h-1 bg-gradient-to-r from-[#d73f09] via-orange-300 to-transparent" />
+      <div className="flex flex-col gap-4 p-4 sm:flex-row">
         <img
           src={product.imageUrl || "/images/Bike_0.jpg"}
           alt={displayName}
-          className="h-44 w-full shrink-0 rounded-md object-cover sm:h-20 sm:w-20"
+          className="h-44 w-full shrink-0 rounded-md border border-orange-100 object-cover sm:h-24 sm:w-24"
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <Text className="block truncate font-medium">{displayName}</Text>
-              <Text color="gray" size="2">
-                {product.category
-                  ? t(`common.category.${product.category}` as any)
-                  : t("common.category.general")}{" "}
-                - {currency(product.price)}
+              <Text className="block truncate text-base font-semibold text-gray-950">
+                {displayName}
               </Text>
-              <Text as="p" color="gray" size="2" className="mt-1">
-                {t("product.stock", { quantity: product.quantity ?? 1 })}
-              </Text>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                <span className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-1 font-medium text-[#8f2805]">
+                  <Tag className="h-3.5 w-3.5" />
+                  {product.category
+                    ? t(`common.category.${product.category}` as any)
+                    : t("common.category.general")}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 font-semibold text-slate-900">
+                  <DollarSign className="h-3.5 w-3.5" />
+                  {currency(product.price)}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 font-medium text-green-800">
+                  <Boxes className="h-3.5 w-3.5" />
+                  {t("product.stock", { quantity: product.quantity ?? 1 })}
+                </span>
+              </div>
             </div>
             <StatusBadge status={product.status} />
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 rounded-md border border-orange-100 bg-orange-50/50 p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <Text size="2" className="font-semibold text-gray-800">
+                {t("seller.statusControls")}
+              </Text>
+              {busy && (
+                <Text color="gray" size="2">
+                  {t("seller.saving")}
+                </Text>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {statusActions.map((action) => {
+                const active = product.status === action.status;
+
+                return (
+                  <button
+                    key={action.status}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      if (!active) {
+                        onStatus(action.status);
+                      }
+                    }}
+                    disabled={busy}
+                    className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full border px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 ${
+                      active ? action.activeClass : action.idleClass
+                    } ${busy ? "cursor-not-allowed opacity-60" : ""}`}
+                  >
+                    {action.icon}
+                    {action.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             {!isSold ? (
               <Button
                 type="button"
@@ -625,6 +734,7 @@ function ProductRow({
                 onClick={() => setEditing((value) => !value)}
                 disabled={busy}
               >
+                {editing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
                 {editing ? t("seller.cancelEdit") : t("seller.edit")}
               </Button>
             ) : (
@@ -632,43 +742,28 @@ function ProductRow({
                 {t("seller.editLockedSold")}
               </Text>
             )}
-            {statusActions.map((action) => {
-              const active = product.status === action.status;
-
-              return (
-                <button
-                  key={action.status}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => {
-                    if (!active) {
-                      onStatus(action.status);
-                    }
-                  }}
-                  disabled={busy}
-                  className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
-                    active ? action.activeClass : action.idleClass
-                  } ${busy ? "cursor-not-allowed opacity-60" : ""}`}
-                >
-                  {action.label}
-                </button>
-              );
-            })}
-            {busy && (
-              <Text color="gray" size="2" className="self-center">
-                {t("seller.saving")}
-              </Text>
-            )}
+            <SellerContactPreview contact={product.sellerContact} t={t} />
           </div>
           {editing && !isSold && (
             <form
-              className="mt-4 grid gap-3 rounded-md border border-orange-100 bg-white p-3"
+              className="mt-4 grid gap-4 rounded-lg border border-orange-200 bg-white p-4 shadow-sm"
               onSubmit={(event) => {
                 event.preventDefault();
                 onSave(editValues);
                 setEditing(false);
               }}
             >
+              <div className="flex items-center justify-between gap-3 border-b border-orange-100 pb-3">
+                <div>
+                  <Text className="font-semibold text-gray-950">
+                    {t("seller.edit")}
+                  </Text>
+                  <Text as="p" color="gray" size="2">
+                    {t("seller.myListingsHelp")}
+                  </Text>
+                </div>
+                <Pencil className="h-5 w-5 text-[#d73f09]" />
+              </div>
               <label className="text-sm font-medium text-gray-700">
                 {t("sell.itemName")}
                 <input
@@ -806,15 +901,16 @@ function ProductRow({
                   onClick={() => setEditing(false)}
                   disabled={busy}
                 >
+                  <X className="h-4 w-4" />
                   {t("seller.cancelEdit")}
                 </Button>
                 <Button type="submit" highContrast disabled={busy}>
+                  <Save className="h-4 w-4" />
                   {busy ? t("seller.saving") : t("seller.saveEdit")}
                 </Button>
               </div>
             </form>
           )}
-          <SellerContactPreview contact={product.sellerContact} t={t} />
         </div>
       </div>
     </Card>
@@ -839,7 +935,7 @@ function SellerContactPreview({
   }
 
   return (
-    <div className="mt-3 rounded-md border border-orange-100 bg-orange-50 px-3 py-2 text-xs text-gray-700">
+    <div className="inline-flex max-w-full items-center rounded-md border border-orange-100 bg-orange-50 px-3 py-2 text-xs text-gray-700">
       <span className="font-semibold">{t("seller.listingContact")} </span>
       {methods.join(" · ")}
     </div>
@@ -872,45 +968,54 @@ function RequestRow({
 
   return (
     <Card
-      className={`app-card p-4 ${
+      className={`app-card overflow-hidden ${
         request.status !== "sent" ? "opacity-70" : ""
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Text className="block truncate font-medium">
-            {displayName}
-          </Text>
-          <Text color="gray" size="2">
-            {t("requests.qty", { quantity: request.quantity })} -{" "}
-            {t("seller.buyer", { id: request.buyerId.slice(0, 8) })}
-          </Text>
+      <div className="flex gap-3 p-4">
+        <img
+          src={request.product?.imageUrl || "/images/Bike_0.jpg"}
+          alt={displayName}
+          className="h-14 w-14 shrink-0 rounded-md border border-orange-100 object-cover"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <Text className="block truncate font-semibold text-gray-950">
+                {displayName}
+              </Text>
+              <Text color="gray" size="2">
+                {t("requests.qty", { quantity: request.quantity })} -{" "}
+                {t("seller.buyer", { id: request.buyerId.slice(0, 8) })}
+              </Text>
+            </div>
+            <StatusBadge status={request.status} />
+          </div>
         </div>
-        <StatusBadge status={request.status} />
       </div>
 
       {request.note && (
-        <p className="mt-3 rounded-md bg-orange-50 px-3 py-2 text-sm text-gray-700">
+        <p className="mx-4 rounded-md bg-orange-50 px-3 py-2 text-sm text-gray-700">
           {request.note}
         </p>
       )}
 
       {request.status === "accepted" && request.buyerEmail ? (
-        <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+        <div className="mx-4 mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
           {t("seller.buyerContact")}{" "}
           <a className="font-medium underline" href={`mailto:${request.buyerEmail}`}>
             {request.buyerEmail}
           </a>
         </div>
       ) : (
-        <Text className="mt-3 block" color="gray" size="2">
+        <Text className="mx-4 mt-3 block" color="gray" size="2">
           {t("seller.emailAfterAccept")}
         </Text>
       )}
 
       {request.status === "sent" && (
         <p
-          className={`mt-3 rounded-md border px-3 py-2 text-sm ${
+          className={`mx-4 mt-3 rounded-md border px-3 py-2 text-sm ${
             responseExpired
               ? "border-red-200 bg-red-50 text-red-700"
               : "border-amber-200 bg-amber-50 text-amber-900"
@@ -924,7 +1029,7 @@ function RequestRow({
         </p>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-orange-100 bg-slate-50/60 px-4 py-3">
         {request.status === "sent" && (
           <>
             <Button
