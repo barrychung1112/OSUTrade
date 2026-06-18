@@ -19,6 +19,9 @@ type BuyerRequest = {
   note: string;
   status: RequestStatus;
   createdAt: string;
+  priceAtRequest?: number | null;
+  currentPrice?: number | null;
+  priceChanged?: boolean;
   sellerEmail?: string | null;
   sellerContact?: {
     email?: string | null;
@@ -39,6 +42,7 @@ const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const requestResponseWindowMs = 48 * 60 * 60 * 1000;
 const buyerRequestStatusStorageKey = "osutrade:buyer-request-statuses";
+const buyerRequestPriceStorageKey = "osutrade:buyer-request-prices";
 
 function getResponseDeadline(createdAt: string) {
   return new Date(new Date(createdAt).getTime() + requestResponseWindowMs);
@@ -67,12 +71,30 @@ export default function RequestsPage() {
           const previous = JSON.parse(
             window.localStorage.getItem(buyerRequestStatusStorageKey) || "{}"
           ) as Record<string, RequestStatus>;
+          const previousPrices = JSON.parse(
+            window.localStorage.getItem(buyerRequestPriceStorageKey) || "{}"
+          ) as Record<string, number>;
           const changed = nextRequests.find(
             (request) =>
               previous[request.id] && previous[request.id] !== request.status
           );
+          const priceChanged = nextRequests.find(
+            (request) =>
+              request.priceChanged &&
+              request.currentPrice !== null &&
+              request.currentPrice !== undefined &&
+              previousPrices[request.id] !== undefined &&
+              previousPrices[request.id] !== request.currentPrice
+          );
 
-          if (changed) {
+          if (priceChanged && priceChanged.priceAtRequest !== null && priceChanged.priceAtRequest !== undefined && priceChanged.currentPrice !== null && priceChanged.currentPrice !== undefined) {
+            setNotice(
+              t("requests.priceChangedNotice", {
+                oldPrice: currency(priceChanged.priceAtRequest),
+                newPrice: currency(priceChanged.currentPrice),
+              })
+            );
+          } else if (changed) {
             setNotice(
               t("requests.statusChangedNotice", {
                 status: t(`requests.status.${changed.status}` as any),
@@ -86,6 +108,17 @@ export default function RequestsPage() {
           JSON.stringify(
             Object.fromEntries(
               nextRequests.map((request) => [request.id, request.status])
+            )
+          )
+        );
+        window.localStorage.setItem(
+          buyerRequestPriceStorageKey,
+          JSON.stringify(
+            Object.fromEntries(
+              nextRequests.map((request) => [
+                request.id,
+                request.currentPrice ?? request.product?.price ?? null,
+              ])
             )
           )
         );
@@ -397,6 +430,10 @@ function RequestCard({
         locale
       )
     : `Item ${request.itemId}`;
+  const displayPrice =
+    request.status === "accepted" && request.priceAtRequest !== null && request.priceAtRequest !== undefined
+      ? request.priceAtRequest
+      : request.product?.price;
 
   return (
     <Card className="app-card p-4">
@@ -414,7 +451,9 @@ function RequestCard({
               </Text>
               <Text color="gray" size="2">
                 {t("requests.qty", { quantity: request.quantity })}
-                {request.product ? ` - ${currency(request.product.price)}` : ""}
+                {displayPrice !== null && displayPrice !== undefined
+                  ? ` - ${currency(displayPrice)}`
+                  : ""}
               </Text>
             </div>
             <StatusBadge status={request.status} />
@@ -425,6 +464,19 @@ function RequestCard({
               {request.note}
             </p>
           )}
+
+          {request.priceChanged &&
+            request.priceAtRequest !== null &&
+            request.priceAtRequest !== undefined &&
+            request.currentPrice !== null &&
+            request.currentPrice !== undefined && (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {t("requests.priceChangedNotice", {
+                  oldPrice: currency(request.priceAtRequest),
+                  newPrice: currency(request.currentPrice),
+                })}
+              </div>
+            )}
 
           {request.status === "accepted" && request.sellerContact ? (
             <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">

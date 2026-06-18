@@ -16,6 +16,7 @@ type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
 type SellerProduct = {
   id: string | number;
   name: string;
+  description?: string | null;
   nameTranslations?: ProductNameTranslations | null;
   price: number;
   category?: string | null;
@@ -27,6 +28,17 @@ type SellerProduct = {
   } | null;
   status: ProductStatus;
   quantity?: number | null;
+};
+
+type ProductEditValues = {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  quantity: number;
+  contactPhone: string;
+  contactLineId: string;
+  contactWechatId: string;
 };
 
 type SellerRequest = {
@@ -226,7 +238,10 @@ export default function SellerPage() {
     }
   }
 
-  async function updateProduct(productId: string | number, status: ProductStatus) {
+  async function updateProduct(
+    productId: string | number,
+    updates: Partial<ProductEditValues> & { status?: ProductStatus }
+  ) {
     setActionError(null);
     setPendingProductId(productId);
 
@@ -234,7 +249,7 @@ export default function SellerPage() {
       const res = await fetch("/api/seller/products", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ productId, status }),
+        body: JSON.stringify({ productId, ...updates }),
       });
 
       if (!res.ok) {
@@ -351,7 +366,8 @@ export default function SellerPage() {
                     <ProductRow
                       key={product.id}
                       product={product}
-                      onStatus={(status) => updateProduct(product.id, status)}
+                      onStatus={(status) => updateProduct(product.id, { status })}
+                      onSave={(values) => updateProduct(product.id, values)}
                       busy={pendingProductId === product.id}
                       locale={locale}
                       t={t}
@@ -506,17 +522,43 @@ function SellerRequestSection({
 function ProductRow({
   product,
   onStatus,
+  onSave,
   busy,
   locale,
   t,
 }: {
   product: SellerProduct;
   onStatus: (status: ProductStatus) => void;
+  onSave: (values: ProductEditValues) => void;
   busy: boolean;
   locale: ReturnType<typeof useI18n>["locale"];
   t: ReturnType<typeof useI18n>["t"];
 }) {
   const displayName = pickProductName(product.name, product.nameTranslations, locale);
+  const [editing, setEditing] = useState(false);
+  const [editValues, setEditValues] = useState<ProductEditValues>(() => ({
+    name: product.name,
+    description: product.description ?? "",
+    price: Number(product.price ?? 0),
+    category: product.category ?? "general",
+    quantity: product.quantity ?? 0,
+    contactPhone: product.sellerContact?.phone ?? "",
+    contactLineId: product.sellerContact?.lineId ?? "",
+    contactWechatId: product.sellerContact?.wechatId ?? "",
+  }));
+  const isSold = product.status === "sold";
+  useEffect(() => {
+    setEditValues({
+      name: product.name,
+      description: product.description ?? "",
+      price: Number(product.price ?? 0),
+      category: product.category ?? "general",
+      quantity: product.quantity ?? 0,
+      contactPhone: product.sellerContact?.phone ?? "",
+      contactLineId: product.sellerContact?.lineId ?? "",
+      contactWechatId: product.sellerContact?.wechatId ?? "",
+    });
+  }, [product]);
   const statusActions: Array<{
     status: ProductStatus;
     label: string;
@@ -575,6 +617,21 @@ function ProductRow({
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
+            {!isSold ? (
+              <Button
+                type="button"
+                size="2"
+                variant="soft"
+                onClick={() => setEditing((value) => !value)}
+                disabled={busy}
+              >
+                {editing ? t("seller.cancelEdit") : t("seller.edit")}
+              </Button>
+            ) : (
+              <Text color="gray" size="2" className="self-center">
+                {t("seller.editLockedSold")}
+              </Text>
+            )}
             {statusActions.map((action) => {
               const active = product.status === action.status;
 
@@ -603,6 +660,160 @@ function ProductRow({
               </Text>
             )}
           </div>
+          {editing && !isSold && (
+            <form
+              className="mt-4 grid gap-3 rounded-md border border-orange-100 bg-white p-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onSave(editValues);
+                setEditing(false);
+              }}
+            >
+              <label className="text-sm font-medium text-gray-700">
+                {t("sell.itemName")}
+                <input
+                  className="app-input mt-1"
+                  value={editValues.name}
+                  onChange={(event) =>
+                    setEditValues((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </label>
+              <label className="text-sm font-medium text-gray-700">
+                {t("sell.description")}
+                <textarea
+                  className="app-input mt-1 min-h-20"
+                  value={editValues.description}
+                  onChange={(event) =>
+                    setEditValues((current) => ({
+                      ...current,
+                      description: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="text-sm font-medium text-gray-700">
+                  {t("sell.price")}
+                  <input
+                    className="app-input mt-1"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={editValues.price}
+                    onChange={(event) =>
+                      setEditValues((current) => ({
+                        ...current,
+                        price: Number(event.target.value),
+                      }))
+                    }
+                    required
+                  />
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  {t("sell.quantity")}
+                  <input
+                    className="app-input mt-1"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={editValues.quantity}
+                    onChange={(event) =>
+                      setEditValues((current) => ({
+                        ...current,
+                        quantity: Number(event.target.value),
+                      }))
+                    }
+                    required
+                  />
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  {t("marketplace.category")}
+                  <select
+                    className="app-input mt-1"
+                    value={editValues.category}
+                    onChange={(event) =>
+                      setEditValues((current) => ({
+                        ...current,
+                        category: event.target.value,
+                      }))
+                    }
+                  >
+                    {["general", "electronics", "clothing", "books", "home"].map(
+                      (category) => (
+                        <option key={category} value={category}>
+                          {t(`common.category.${category}` as any)}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </label>
+              </div>
+              {Number(editValues.price) !== Number(product.price) && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  {t("seller.priceChangeWarning")}
+                </p>
+              )}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="text-sm font-medium text-gray-700">
+                  {t("contact.phone")}
+                  <input
+                    className="app-input mt-1"
+                    value={editValues.contactPhone}
+                    onChange={(event) =>
+                      setEditValues((current) => ({
+                        ...current,
+                        contactPhone: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  {t("contact.line")}
+                  <input
+                    className="app-input mt-1"
+                    value={editValues.contactLineId}
+                    onChange={(event) =>
+                      setEditValues((current) => ({
+                        ...current,
+                        contactLineId: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  {t("contact.wechat")}
+                  <input
+                    className="app-input mt-1"
+                    value={editValues.contactWechatId}
+                    onChange={(event) =>
+                      setEditValues((current) => ({
+                        ...current,
+                        contactWechatId: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="soft"
+                  onClick={() => setEditing(false)}
+                  disabled={busy}
+                >
+                  {t("seller.cancelEdit")}
+                </Button>
+                <Button type="submit" highContrast disabled={busy}>
+                  {busy ? t("seller.saving") : t("seller.saveEdit")}
+                </Button>
+              </div>
+            </form>
+          )}
           <SellerContactPreview contact={product.sellerContact} t={t} />
         </div>
       </div>

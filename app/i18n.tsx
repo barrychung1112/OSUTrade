@@ -243,6 +243,7 @@ const dictionaries = {
     "requests.completed": "Completed or closed",
     "requests.completedHelp": "Accepted, declined, or cancelled request history.",
     "requests.qty": "Qty {quantity}",
+    "requests.priceChangedNotice": "Seller changed the price from {oldPrice} to {newPrice}. Accepted trades keep their agreed price.",
     "requests.acceptedContact": "Seller accepted. Contact:",
     "requests.contactPending": "Contact details appear after the seller accepts your request.",
     "requests.cancel": "Cancel request",
@@ -284,6 +285,11 @@ const dictionaries = {
     "seller.responseExpired": "Response window expired.",
     "seller.accept": "Accept",
     "seller.decline": "Decline",
+    "seller.edit": "Edit",
+    "seller.cancelEdit": "Cancel",
+    "seller.saveEdit": "Save changes",
+    "seller.editLockedSold": "Sold listings cannot change price or quantity.",
+    "seller.priceChangeWarning": "Changing the price will notify buyers with active requests. Accepted trades are unchanged.",
   },
   zh: {
     "common.language": "語言",
@@ -516,6 +522,7 @@ const dictionaries = {
     "requests.completed": "已完成或已關閉",
     "requests.completedHelp": "已接受、已拒絕或已取消的需求紀錄。",
     "requests.qty": "數量 {quantity}",
+    "requests.priceChangedNotice": "賣家已將價格從 {oldPrice} 改為 {newPrice}。已接受的交易維持原本價格。",
     "requests.acceptedContact": "賣家已接受。聯絡方式：",
     "requests.contactPending": "賣家接受需求後，這裡會顯示聯絡方式。",
     "requests.cancel": "取消需求",
@@ -557,6 +564,11 @@ const dictionaries = {
     "seller.responseExpired": "回覆期限已過。",
     "seller.accept": "接受",
     "seller.decline": "拒絕",
+    "seller.edit": "編輯",
+    "seller.cancelEdit": "取消",
+    "seller.saveEdit": "儲存變更",
+    "seller.editLockedSold": "已售出的商品不能修改價格或數量。",
+    "seller.priceChangeWarning": "修改價格會通知尚未成交的買家；已接受的交易不受影響。",
   },
 } as const;
 
@@ -795,6 +807,7 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "requests.completed": "已完成或已关闭",
   "requests.completedHelp": "已接受、已拒绝或已取消的需求记录。",
   "requests.qty": "数量 {quantity}",
+  "requests.priceChangedNotice": "卖家已将价格从 {oldPrice} 改为 {newPrice}。已接受的交易维持原本价格。",
   "requests.acceptedContact": "卖家已接受。联系方式：",
   "requests.contactPending": "卖家接受需求后才会显示联系方式。",
   "requests.cancel": "取消需求",
@@ -836,6 +849,11 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "seller.responseExpired": "回复期限已过。",
   "seller.accept": "接受",
   "seller.decline": "拒绝",
+  "seller.edit": "编辑",
+  "seller.cancelEdit": "取消",
+  "seller.saveEdit": "保存更改",
+  "seller.editLockedSold": "已售出的商品不能修改价格或数量。",
+  "seller.priceChangeWarning": "修改价格会通知尚未成交的买家；已接受的交易不受影响。",
 };
 
 type I18nContextValue = {

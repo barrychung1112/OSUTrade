@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { buildSellerProductUpdate } from "@/app/lib/sellerProductUpdate";
+import {
+  translateProductDescription,
+  translateProductName,
+} from "@/app/lib/productTranslations";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 
@@ -116,13 +121,14 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const body = await request.json();
-    const productId = String(body.productId ?? "").trim();
-    const status = String(body.status ?? "").trim() as ProductStatus;
+  const body = await request.json();
+  const productId = String(body.productId ?? "").trim();
+  const hasStatus = Object.prototype.hasOwnProperty.call(body, "status");
+  const status = String(body.status ?? "").trim() as ProductStatus;
 
-    if (!productId || !productStatuses.has(status)) {
+    if (!productId || (hasStatus && !productStatuses.has(status))) {
       return NextResponse.json(
-        { message: "Product id and a valid status are required." },
+        { message: "Product id and a valid update are required." },
         { status: 400 }
       );
     }
@@ -130,7 +136,7 @@ export async function PATCH(request: Request) {
     const supabase = createAdminClient();
     const { data: existing, error: lookupError } = await supabase
       .from("products")
-      .select("product_id, quantity")
+      .select("*")
       .eq("product_id", productId)
       .eq("seller_id", session.user.id)
       .single();
@@ -139,15 +145,44 @@ export async function PATCH(request: Request) {
       throw lookupError;
     }
 
+    const updatedAt = new Date().toISOString();
     const currentQuantity = Number(existing.quantity ?? 0);
-    const nextValues =
-      status === "sold"
-        ? { status, quantity: 0, updated_at: new Date().toISOString() }
+    const editResult = buildSellerProductUpdate(existing, body, updatedAt);
+
+    if (editResult.ok === false) {
+      return NextResponse.json({ message: editResult.message }, { status: 400 });
+    }
+
+    const nextValues: Record<string, unknown> = hasStatus
+      ? status === "sold"
+        ? { ...editResult.values, status, quantity: 0, updated_at: updatedAt }
         : {
+            ...editResult.values,
             status,
-            quantity: Math.max(1, currentQuantity),
-            updated_at: new Date().toISOString(),
-          };
+            quantity:
+              Object.prototype.hasOwnProperty.call(editResult.values, "quantity")
+                ? editResult.values.quantity
+                : Math.max(1, currentQuantity),
+            updated_at: updatedAt,
+          }
+      : editResult.values;
+
+    if (Object.prototype.hasOwnProperty.call(body, "name")) {
+      const nameTranslations = await translateProductName(String(nextValues.name));
+      nextValues.name_en = nameTranslations.en;
+      nextValues.name_zh_tw = nameTranslations.zhTw;
+      nextValues.name_zh_cn = nameTranslations.zhCn;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, "description")) {
+      const description = String(body.description ?? "").trim();
+      const descriptionTranslations = description
+        ? await translateProductDescription(description)
+        : { en: "", zhTw: "", zhCn: "" };
+      nextValues.description_en = descriptionTranslations.en || null;
+      nextValues.description_zh_tw = descriptionTranslations.zhTw || null;
+      nextValues.description_zh_cn = descriptionTranslations.zhCn || null;
+    }
 
     const { data, error } = await supabase
       .from("products")
@@ -161,7 +196,7 @@ export async function PATCH(request: Request) {
       throw error;
     }
 
-    if (status === "sold") {
+    if (hasStatus && status === "sold") {
       await supabase
         .from("trade_requests")
         .update({ status: "declined", updated_at: new Date().toISOString() })
