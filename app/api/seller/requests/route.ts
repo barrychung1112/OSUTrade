@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
+import { getAcceptedRequestProductStatus } from "@/app/lib/sellerRequestAcceptance";
 
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
 type ResponseStatus = RequestStatus | "expired";
@@ -284,7 +285,8 @@ export async function PATCH(request: Request) {
     if (status === "accepted") {
       const availableQuantity = Number(product?.quantity ?? 1);
       const remainingQuantity = availableQuantity - data.quantity;
-      const nextProductStatus = remainingQuantity > 0 ? "available" : "sold";
+      const nextProductStatus =
+        getAcceptedRequestProductStatus(remainingQuantity);
 
       const { data: updatedProduct, error: productUpdateError } = await supabase
         .from("products")

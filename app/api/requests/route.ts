@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
+import { getRequestPriceChange } from "@/app/lib/requestPricing";
 
 type RequestRow = {
   request_id: string;
@@ -11,6 +12,7 @@ type RequestRow = {
   note: string | null;
   status: string;
   created_at: string;
+  price_at_request?: number | string | null;
 };
 
 type ProductRow = {
@@ -43,6 +45,7 @@ function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) 
   const imageUrls = product
     ? normalizeImageUrls(product.image_urls, product.image_url)
     : [];
+  const priceChange = getRequestPriceChange(row, product?.price);
 
   return {
     id: row.request_id,
@@ -52,6 +55,9 @@ function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) 
     note: row.note ?? "",
     status,
     createdAt: row.created_at,
+    priceAtRequest: priceChange.priceAtRequest,
+    currentPrice: priceChange.currentPrice,
+    priceChanged: priceChange.changed,
     sellerEmail: status === "accepted" ? sellerEmail ?? null : null,
     sellerContact:
       status === "accepted"
@@ -107,7 +113,7 @@ export async function GET() {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("trade_requests")
-      .select("request_id, product_id, buyer_id, quantity, note, status, created_at")
+      .select("request_id, product_id, buyer_id, quantity, note, status, created_at, price_at_request")
       .eq("buyer_id", session.user.id)
       .order("created_at", { ascending: false });
 
@@ -208,7 +214,7 @@ export async function PATCH(request: Request) {
       .update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("request_id", requestId)
       .eq("buyer_id", session.user.id)
-      .select("request_id, product_id, buyer_id, quantity, note, status, created_at")
+      .select("request_id, product_id, buyer_id, quantity, note, status, created_at, price_at_request")
       .single();
 
     if (error) {
@@ -318,10 +324,11 @@ export async function POST(request: Request) {
         buyer_id: session.user.id,
         quantity,
         note: note || null,
+        price_at_request: product.price,
         status: "sent",
       })
       .select(
-        "request_id, product_id, buyer_id, quantity, note, status, created_at"
+        "request_id, product_id, buyer_id, quantity, note, status, created_at, price_at_request"
       )
       .single();
 

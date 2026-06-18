@@ -53,6 +53,11 @@ const dictionaries = {
     "auth.continueWithGoogle": "Continue with Google",
     "auth.googleSignInError": "Could not start Google sign-in. Please try again.",
     "auth.orContinueWithEmail": "or continue with email",
+    "auth.embeddedBrowserTitle": "Open OSUTrade in Safari or Chrome",
+    "auth.embeddedBrowserBody":
+      "Google sign-in may be blocked inside {appName}. Open this page in Safari or Chrome, then try Google sign-in again.",
+    "auth.copyCurrentLink": "Copy current link",
+    "auth.linkCopied": "Link copied",
     "auth.requiredTitle": "Log in to continue",
     "auth.requiredBody": "Please log in or create an account to continue to {destination}.",
     "home.description":
@@ -238,6 +243,7 @@ const dictionaries = {
     "requests.completed": "Completed or closed",
     "requests.completedHelp": "Accepted, declined, or cancelled request history.",
     "requests.qty": "Qty {quantity}",
+    "requests.priceChangedNotice": "Seller changed the price from {oldPrice} to {newPrice}. Accepted trades keep their agreed price.",
     "requests.acceptedContact": "Seller accepted. Contact:",
     "requests.contactPending": "Contact details appear after the seller accepts your request.",
     "requests.cancel": "Cancel request",
@@ -279,6 +285,11 @@ const dictionaries = {
     "seller.responseExpired": "Response window expired.",
     "seller.accept": "Accept",
     "seller.decline": "Decline",
+    "seller.edit": "Edit",
+    "seller.cancelEdit": "Cancel",
+    "seller.saveEdit": "Save changes",
+    "seller.editLockedSold": "Sold listings cannot change price or quantity.",
+    "seller.priceChangeWarning": "Changing the price will notify buyers with active requests. Accepted trades are unchanged.",
   },
   zh: {
     "common.language": "語言",
@@ -323,6 +334,11 @@ const dictionaries = {
     "auth.continueWithGoogle": "使用 Google 繼續",
     "auth.googleSignInError": "無法啟動 Google 登入，請再試一次。",
     "auth.orContinueWithEmail": "或使用 Email 繼續",
+    "auth.embeddedBrowserTitle": "請用 Safari 或 Chrome 開啟 OSUTrade",
+    "auth.embeddedBrowserBody":
+      "Google 登入可能會被 {appName} 內建瀏覽器阻擋。請用 Safari 或 Chrome 開啟此頁，再重新使用 Google 登入。",
+    "auth.copyCurrentLink": "複製目前網址",
+    "auth.linkCopied": "已複製網址",
     "auth.requiredTitle": "請先登入以繼續",
     "auth.requiredBody": "請登入或建立帳號後繼續前往「{destination}」。",
     "home.description":
@@ -506,6 +522,7 @@ const dictionaries = {
     "requests.completed": "已完成或已關閉",
     "requests.completedHelp": "已接受、已拒絕或已取消的需求紀錄。",
     "requests.qty": "數量 {quantity}",
+    "requests.priceChangedNotice": "賣家已將價格從 {oldPrice} 改為 {newPrice}。已接受的交易維持原本價格。",
     "requests.acceptedContact": "賣家已接受。聯絡方式：",
     "requests.contactPending": "賣家接受需求後，這裡會顯示聯絡方式。",
     "requests.cancel": "取消需求",
@@ -547,6 +564,11 @@ const dictionaries = {
     "seller.responseExpired": "回覆期限已過。",
     "seller.accept": "接受",
     "seller.decline": "拒絕",
+    "seller.edit": "編輯",
+    "seller.cancelEdit": "取消",
+    "seller.saveEdit": "儲存變更",
+    "seller.editLockedSold": "已售出的商品不能修改價格或數量。",
+    "seller.priceChangeWarning": "修改價格會通知尚未成交的買家；已接受的交易不受影響。",
   },
 } as const;
 
@@ -597,6 +619,11 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "auth.continueWithGoogle": "使用 Google 继续",
   "auth.googleSignInError": "无法启动 Google 登录，请再试一次。",
   "auth.orContinueWithEmail": "或使用 Email 继续",
+  "auth.embeddedBrowserTitle": "请用 Safari 或 Chrome 打开 OSUTrade",
+  "auth.embeddedBrowserBody":
+    "Google 登录可能会被 {appName} 内置浏览器阻挡。请用 Safari 或 Chrome 打开此页面，再重新使用 Google 登录。",
+  "auth.copyCurrentLink": "复制当前网址",
+  "auth.linkCopied": "已复制网址",
   "auth.requiredTitle": "请先登录以继续",
   "auth.requiredBody": "请登录或创建账号后继续前往「{destination}」。",
   "home.description":
@@ -780,6 +807,7 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "requests.completed": "已完成或已关闭",
   "requests.completedHelp": "已接受、已拒绝或已取消的需求记录。",
   "requests.qty": "数量 {quantity}",
+  "requests.priceChangedNotice": "卖家已将价格从 {oldPrice} 改为 {newPrice}。已接受的交易维持原本价格。",
   "requests.acceptedContact": "卖家已接受。联系方式：",
   "requests.contactPending": "卖家接受需求后才会显示联系方式。",
   "requests.cancel": "取消需求",
@@ -821,6 +849,11 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "seller.responseExpired": "回复期限已过。",
   "seller.accept": "接受",
   "seller.decline": "拒绝",
+  "seller.edit": "编辑",
+  "seller.cancelEdit": "取消",
+  "seller.saveEdit": "保存更改",
+  "seller.editLockedSold": "已售出的商品不能修改价格或数量。",
+  "seller.priceChangeWarning": "修改价格会通知尚未成交的买家；已接受的交易不受影响。",
 };
 
 type I18nContextValue = {
