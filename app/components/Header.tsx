@@ -13,6 +13,7 @@ import {
   RocketIcon,
 } from "@radix-ui/react-icons";
 import LoginModal from "./LoginModal";
+import NotificationBell from "./NotificationBell";
 import { LanguageToggle, useI18n } from "../i18n";
 
 type HeaderUser = {
@@ -197,6 +198,7 @@ export default function Header() {
 
         <div className="flex min-w-max shrink-0 items-center justify-end gap-2">
           <LanguageToggle />
+          {user && <NotificationBell />}
           <div className="hidden sm:block lg:hidden">{renderAuthControl()}</div>
           <button
             type="button"

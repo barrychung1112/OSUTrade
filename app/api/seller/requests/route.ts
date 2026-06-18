@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 import { getAcceptedRequestProductStatus } from "@/app/lib/sellerRequestAcceptance";
+import { notifyTradeEvent } from "@/app/lib/notifications";
 
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
 type ResponseStatus = RequestStatus | "expired";
@@ -55,6 +56,25 @@ async function getEmailByUserId(userId: string | null | undefined) {
   }
 
   return data.user?.email ?? null;
+}
+
+async function safeNotifyTradeEvent(
+  args: Parameters<typeof notifyTradeEvent>[0]
+) {
+  try {
+    await notifyTradeEvent(args);
+  } catch (error) {
+    console.error("Failed to create trade notification.", error);
+  }
+}
+
+async function safeGetEmailByUserId(userId: string | null | undefined) {
+  try {
+    return await getEmailByUserId(userId);
+  } catch (error) {
+    console.error("Failed to load notification recipient email.", error);
+    return null;
+  }
 }
 
 function toSellerRequest(
@@ -287,6 +307,7 @@ export async function PATCH(request: Request) {
       const remainingQuantity = availableQuantity - data.quantity;
       const nextProductStatus =
         getAcceptedRequestProductStatus(remainingQuantity);
+      let autoDeclinedRequests: RequestRow[] = [];
 
       const { data: updatedProduct, error: productUpdateError } = await supabase
         .from("products")
@@ -353,6 +374,19 @@ export async function PATCH(request: Request) {
       responseProduct = updatedProduct;
 
       if (remainingQuantity === 0) {
+        const { data: pendingRequests, error: pendingRequestsError } =
+          await supabase
+            .from("trade_requests")
+            .select("request_id, product_id, buyer_id, quantity, note, status, created_at")
+            .eq("product_id", data.product_id)
+            .eq("status", "sent");
+
+        if (pendingRequestsError) {
+          throw pendingRequestsError;
+        }
+
+        autoDeclinedRequests = pendingRequests ?? [];
+
         const { error: declinePendingError } = await supabase
           .from("trade_requests")
           .update({ status: "declined", updated_at: updatedAt })
@@ -362,11 +396,59 @@ export async function PATCH(request: Request) {
         if (declinePendingError) {
           throw declinePendingError;
         }
+
+        for (const declinedRequest of autoDeclinedRequests) {
+          await safeNotifyTradeEvent({
+            supabase,
+            input: {
+              type: "request_declined",
+              recipientId: declinedRequest.buyer_id,
+              actorId: session.user.id,
+              request: {
+                id: declinedRequest.request_id,
+                quantity: declinedRequest.quantity,
+                note: declinedRequest.note,
+              },
+              product: {
+                id: responseProduct.product_id,
+                name: responseProduct.name,
+                price: responseProduct.price,
+              },
+            },
+            recipientEmail: await safeGetEmailByUserId(declinedRequest.buyer_id),
+          });
+        }
       }
     }
 
     const buyerEmail =
-      data.status === "accepted" ? await getEmailByUserId(data.buyer_id) : null;
+      data.status === "accepted"
+        ? await getEmailByUserId(data.buyer_id)
+        : data.status === "declined"
+          ? await safeGetEmailByUserId(data.buyer_id)
+          : null;
+
+    if (data.status === "accepted" || data.status === "declined") {
+      await safeNotifyTradeEvent({
+        supabase,
+        input: {
+          type: data.status === "accepted" ? "request_accepted" : "request_declined",
+          recipientId: data.buyer_id,
+          actorId: session.user.id,
+          request: {
+            id: data.request_id,
+            quantity: data.quantity,
+            note: data.note,
+          },
+          product: {
+            id: responseProduct?.product_id ?? data.product_id,
+            name: responseProduct?.name ?? "your requested item",
+            price: responseProduct?.price,
+          },
+        },
+        recipientEmail: buyerEmail,
+      });
+    }
 
     return NextResponse.json({
       request: toSellerRequest(data, responseProduct, buyerEmail),

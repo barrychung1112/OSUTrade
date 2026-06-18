@@ -109,12 +109,16 @@ ENABLE_DEMO_PRODUCTS="false"
 OPENAI_API_KEY=""
 OPENAI_PRICING_MODEL="gpt-4.1-mini"
 OPENAI_TRANSLATION_MODEL="gpt-4.1-mini"
+EMAIL_PROVIDER="console"
+RESEND_API_KEY=""
+EMAIL_FROM="OSUTrade <no-reply@osutrade.com>"
 ```
 
 Notes:
 
 - `OPENAI_API_KEY` is optional for local UI testing, but AI pricing and translation need it.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are required in local `.env.local` and Vercel for Google sign-in.
+- `EMAIL_PROVIDER=console` keeps trade notifications in-app only. Use `EMAIL_PROVIDER=resend` with `RESEND_API_KEY` and `EMAIL_FROM` to send real emails.
 - Use a fresh private key and never commit secrets to the repository.
 - `SUPABASE_SERVICE_ROLE_KEY` must only be used server-side.
 

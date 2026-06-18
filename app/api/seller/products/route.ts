@@ -6,6 +6,10 @@ import {
   translateProductDescription,
   translateProductName,
 } from "@/app/lib/productTranslations";
+import {
+  getActivePriceChangeRecipients,
+  notifyTradeEvent,
+} from "@/app/lib/notifications";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 
@@ -79,6 +83,38 @@ function toProduct(row: ProductRow) {
   };
 }
 
+async function getEmailByUserId(userId: string | null | undefined) {
+  if (!userId) return null;
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+
+  if (error) {
+    throw error;
+  }
+
+  return data.user?.email ?? null;
+}
+
+async function safeNotifyTradeEvent(
+  args: Parameters<typeof notifyTradeEvent>[0]
+) {
+  try {
+    await notifyTradeEvent(args);
+  } catch (error) {
+    console.error("Failed to create trade notification.", error);
+  }
+}
+
+async function safeGetEmailByUserId(userId: string | null | undefined) {
+  try {
+    return await getEmailByUserId(userId);
+  } catch (error) {
+    console.error("Failed to load notification recipient email.", error);
+    return null;
+  }
+}
+
 export async function GET() {
   try {
     const session = await auth();
@@ -121,10 +157,10 @@ export async function PATCH(request: Request) {
       );
     }
 
-  const body = await request.json();
-  const productId = String(body.productId ?? "").trim();
-  const hasStatus = Object.prototype.hasOwnProperty.call(body, "status");
-  const status = String(body.status ?? "").trim() as ProductStatus;
+    const body = await request.json();
+    const productId = String(body.productId ?? "").trim();
+    const hasStatus = Object.prototype.hasOwnProperty.call(body, "status");
+    const status = String(body.status ?? "").trim() as ProductStatus;
 
     if (!productId || (hasStatus && !productStatuses.has(status))) {
       return NextResponse.json(
@@ -202,6 +238,66 @@ export async function PATCH(request: Request) {
         .update({ status: "declined", updated_at: new Date().toISOString() })
         .eq("product_id", productId)
         .eq("status", "sent");
+    }
+
+    const oldPrice = Number(existing.price);
+    const newPrice = Number(data.price);
+    const priceChanged =
+      Object.prototype.hasOwnProperty.call(body, "price") &&
+      Number.isFinite(oldPrice) &&
+      Number.isFinite(newPrice) &&
+      oldPrice !== newPrice;
+
+    if (priceChanged) {
+      const { data: requestRows, error: requestRowsError } = await supabase
+        .from("trade_requests")
+        .select(
+          "request_id, buyer_id, quantity, note, status, created_at, price_at_request"
+        )
+        .eq("product_id", productId)
+        .eq("status", "sent");
+
+      if (requestRowsError) {
+        throw requestRowsError;
+      }
+
+      const recipients = getActivePriceChangeRecipients(
+        requestRows ?? [],
+        newPrice
+      );
+
+      for (const recipient of recipients) {
+        const requestRow = (requestRows ?? []).find(
+          (row) => row.request_id === recipient.requestId
+        );
+
+        if (!requestRow) continue;
+
+        await safeNotifyTradeEvent({
+          supabase,
+          input: {
+            type: "price_changed",
+            recipientId: recipient.buyerId,
+            actorId: session.user.id,
+            request: {
+              id: requestRow.request_id,
+              quantity: requestRow.quantity,
+              note: requestRow.note,
+              priceAtRequest: recipient.oldPrice,
+            },
+            product: {
+              id: data.product_id,
+              name: data.name,
+              price: data.price,
+            },
+            priceChange: {
+              oldPrice: recipient.oldPrice,
+              newPrice: recipient.newPrice,
+            },
+          },
+          recipientEmail: await safeGetEmailByUserId(recipient.buyerId),
+        });
+      }
     }
 
     return NextResponse.json({ product: toProduct(data) });

@@ -88,7 +88,6 @@ const requestStatusPriority: Record<RequestStatus, number> = {
   cancelled: 3,
   expired: 4,
 };
-const sellerRequestIdsStorageKey = "osutrade:seller-request-ids";
 
 function getResponseDeadline(createdAt: string) {
   return new Date(new Date(createdAt).getTime() + requestResponseWindowMs);
@@ -101,12 +100,11 @@ export default function SellerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [pendingProductId, setPendingProductId] = useState<string | number | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
 
-  async function loadSellerData(options: { notify?: boolean } = {}) {
-    if (!options.notify) {
+  async function loadSellerData(options: { background?: boolean } = {}) {
+    if (!options.background) {
       setLoading(true);
     }
     setError(null);
@@ -125,30 +123,6 @@ export default function SellerPage() {
       const requestsPayload = await requestsRes.json();
       const nextRequests = (requestsPayload.data ?? []) as SellerRequest[];
 
-      if (options.notify) {
-        const previousIds = new Set(
-          JSON.parse(
-            window.localStorage.getItem(sellerRequestIdsStorageKey) || "[]"
-          ) as string[]
-        );
-        const newPendingRequests = nextRequests.filter(
-          (request) => request.status === "sent" && !previousIds.has(request.id)
-        );
-
-        if (newPendingRequests.length > 0 && previousIds.size > 0) {
-          setNotice(
-            t("seller.newRequestNotice", {
-              count: newPendingRequests.length,
-            })
-          );
-        }
-      }
-
-      window.localStorage.setItem(
-        sellerRequestIdsStorageKey,
-        JSON.stringify(nextRequests.map((request) => request.id))
-      );
-
       setProducts(productsPayload.data ?? []);
       setRequests(nextRequests);
     } catch (err) {
@@ -161,7 +135,7 @@ export default function SellerPage() {
   useEffect(() => {
     void loadSellerData();
     const timer = window.setInterval(() => {
-      void loadSellerData({ notify: true });
+      void loadSellerData({ background: true });
     }, 60_000);
 
     return () => window.clearInterval(timer);
@@ -351,19 +325,6 @@ export default function SellerPage() {
               {actionError}
             </p>
           )}
-          {notice && (
-            <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-              <span>{notice}</span>
-              <button
-                type="button"
-                className="font-semibold text-green-900"
-                onClick={() => setNotice(null)}
-              >
-                {t("common.clear")}
-              </button>
-            </div>
-          )}
-
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,1fr)]">
             <section className="app-panel">
               <div className="mb-4 flex items-start justify-between gap-3">

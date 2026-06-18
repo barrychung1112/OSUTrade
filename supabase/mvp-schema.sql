@@ -123,3 +123,57 @@ create policy "Buyers can read their trade requests"
   for select
   to authenticated
   using (buyer_id = auth.uid());
+
+create table if not exists public.notifications (
+  notification_id uuid primary key default gen_random_uuid(),
+  recipient_id uuid not null references auth.users(id) on delete cascade,
+  actor_id uuid references auth.users(id) on delete set null,
+  type text not null,
+  title text not null,
+  body text not null,
+  request_id uuid references public.trade_requests(request_id) on delete cascade,
+  product_id text,
+  payload jsonb not null default '{}'::jsonb,
+  read_at timestamptz,
+  emailed_at timestamptz,
+  email_error text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.notifications
+  add column if not exists recipient_id uuid references auth.users(id) on delete cascade,
+  add column if not exists actor_id uuid references auth.users(id) on delete set null,
+  add column if not exists type text,
+  add column if not exists title text,
+  add column if not exists body text,
+  add column if not exists request_id uuid references public.trade_requests(request_id) on delete cascade,
+  add column if not exists product_id text,
+  add column if not exists payload jsonb not null default '{}'::jsonb,
+  add column if not exists read_at timestamptz,
+  add column if not exists emailed_at timestamptz,
+  add column if not exists email_error text,
+  add column if not exists created_at timestamptz not null default now();
+
+create index if not exists notifications_recipient_created_idx
+  on public.notifications (recipient_id, created_at desc);
+
+create index if not exists notifications_recipient_unread_idx
+  on public.notifications (recipient_id, read_at)
+  where read_at is null;
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "Users can read their notifications" on public.notifications;
+create policy "Users can read their notifications"
+  on public.notifications
+  for select
+  to authenticated
+  using (recipient_id = auth.uid());
+
+drop policy if exists "Users can update their notifications" on public.notifications;
+create policy "Users can update their notifications"
+  on public.notifications
+  for update
+  to authenticated
+  using (recipient_id = auth.uid())
+  with check (recipient_id = auth.uid());
