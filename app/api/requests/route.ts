@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 import { getRequestPriceChange } from "@/app/lib/requestPricing";
+import { notifyTradeEvent } from "@/app/lib/notifications";
 
 type RequestRow = {
   request_id: string;
@@ -99,6 +100,25 @@ async function getEmailByUserId(userId: string | null | undefined) {
   return data.user?.email ?? null;
 }
 
+async function safeNotifyTradeEvent(
+  args: Parameters<typeof notifyTradeEvent>[0]
+) {
+  try {
+    await notifyTradeEvent(args);
+  } catch (error) {
+    console.error("Failed to create trade notification.", error);
+  }
+}
+
+async function safeGetEmailByUserId(userId: string | null | undefined) {
+  try {
+    return await getEmailByUserId(userId);
+  } catch (error) {
+    console.error("Failed to load notification recipient email.", error);
+    return null;
+  }
+}
+
 export async function GET() {
   try {
     const session = await auth();
@@ -193,7 +213,7 @@ export async function PATCH(request: Request) {
     const supabase = createAdminClient();
     const { data: existing, error: lookupError } = await supabase
       .from("trade_requests")
-      .select("request_id, buyer_id, status")
+      .select("request_id, product_id, buyer_id, quantity, note, status, price_at_request")
       .eq("request_id", requestId)
       .eq("buyer_id", session.user.id)
       .single();
@@ -209,6 +229,16 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("*")
+      .eq("product_id", existing.product_id)
+      .single();
+
+    if (productError) {
+      throw productError;
+    }
+
     const { data, error } = await supabase
       .from("trade_requests")
       .update({ status: "cancelled", updated_at: new Date().toISOString() })
@@ -219,6 +249,29 @@ export async function PATCH(request: Request) {
 
     if (error) {
       throw error;
+    }
+
+    if (product?.seller_id) {
+      await safeNotifyTradeEvent({
+        supabase,
+        input: {
+          type: "request_cancelled",
+          recipientId: product.seller_id,
+          actorId: session.user.id,
+          request: {
+            id: data.request_id,
+            quantity: data.quantity,
+            note: data.note,
+            priceAtRequest: data.price_at_request,
+          },
+          product: {
+            id: product.product_id,
+            name: product.name,
+            price: product.price,
+          },
+        },
+        recipientEmail: await safeGetEmailByUserId(product.seller_id),
+      });
     }
 
     return NextResponse.json({ request: toRequest(data) });
@@ -334,6 +387,29 @@ export async function POST(request: Request) {
 
     if (error) {
       throw error;
+    }
+
+    if (product.seller_id) {
+      await safeNotifyTradeEvent({
+        supabase,
+        input: {
+          type: "request_created",
+          recipientId: product.seller_id,
+          actorId: session.user.id,
+          request: {
+            id: data.request_id,
+            quantity: data.quantity,
+            note: data.note,
+            priceAtRequest: data.price_at_request,
+          },
+          product: {
+            id: product.product_id,
+            name: product.name,
+            price: product.price,
+          },
+        },
+        recipientEmail: await safeGetEmailByUserId(product.seller_id),
+      });
     }
 
     return NextResponse.json(
