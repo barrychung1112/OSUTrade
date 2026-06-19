@@ -73,6 +73,70 @@ function normalizePrice(value: number | string | null | undefined) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function getAppUrl() {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    "https://osutrade.com"
+  ).replace(/\/$/, "");
+}
+
+function buildActionUrl(path: string) {
+  return `${getAppUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function formatBuyerNote(note: string | null | undefined) {
+  const trimmed = note?.trim();
+  return trimmed ? trimmed : "No note provided.";
+}
+
+function buildEmailText({
+  intro,
+  productName,
+  quantity,
+  buyerNote,
+  status,
+  nextStep,
+  actionLabel,
+  actionHref,
+  closing,
+}: {
+  intro: string;
+  productName: string;
+  quantity: number;
+  buyerNote?: string | null;
+  status: string;
+  nextStep: string;
+  actionLabel: string;
+  actionHref: string;
+  closing: string;
+}) {
+  const details = [
+    `Item: ${productName}`,
+    `Quantity: ${quantity}`,
+    buyerNote === undefined ? null : `Buyer note: ${formatBuyerNote(buyerNote)}`,
+    `Status: ${status}`,
+  ].filter(Boolean);
+
+  return [
+    "Hi,",
+    "",
+    intro,
+    "",
+    ...details,
+    "",
+    `Next step: ${nextStep}`,
+    "",
+    `${actionLabel}:`,
+    buildActionUrl(actionHref),
+    "",
+    closing,
+    "",
+    "OSUTrade",
+    "Campus secondhand marketplace",
+  ].join("\n");
+}
+
 export function buildTradeNotification(
   input: TradeNotificationInput
 ): BuiltNotification {
@@ -104,8 +168,20 @@ export function buildTradeNotification(
       ...base,
       title: `New request for ${productName}`,
       body: `A buyer requested ${quantity} item(s). Review it from your seller dashboard.`,
-      emailSubject: `New OSUTrade request: ${productName}`,
-      emailText: `A buyer requested ${quantity} item(s) of ${productName}. Open your seller dashboard to accept or decline the request.`,
+      emailSubject: `[OSUTrade] New request for ${productName}`,
+      emailText: buildEmailText({
+        intro: "You received a new buyer request on OSUTrade.",
+        productName,
+        quantity,
+        buyerNote: input.request.note,
+        status: "Waiting for your response",
+        nextStep:
+          "Open your Seller Dashboard to accept or decline this request.",
+        actionLabel: "Open Seller Dashboard",
+        actionHref: "/seller",
+        closing:
+          "If you accept the request, OSUTrade will share contact details so both sides can arrange pickup.",
+      }),
       actionHref: "/seller",
     };
   }
@@ -115,8 +191,19 @@ export function buildTradeNotification(
       ...base,
       title: `Request accepted for ${productName}`,
       body: "The seller accepted your request. Contact details are now available.",
-      emailSubject: `Your OSUTrade request was accepted: ${productName}`,
-      emailText: `The seller accepted your request for ${productName}. Open My Requests to view contact details.`,
+      emailSubject: `[OSUTrade] Your request was accepted: ${productName}`,
+      emailText: buildEmailText({
+        intro: "Good news. The seller accepted your request.",
+        productName,
+        quantity,
+        status: "Accepted",
+        nextStep:
+          "Open My Requests to view contact details and arrange pickup.",
+        actionLabel: "Open My Requests",
+        actionHref: "/requests",
+        closing:
+          "Contact the seller directly from the shared details and confirm pickup time and location.",
+      }),
       actionHref: "/requests",
     };
   }
@@ -126,8 +213,19 @@ export function buildTradeNotification(
       ...base,
       title: `Request declined for ${productName}`,
       body: "The seller declined your request.",
-      emailSubject: `Your OSUTrade request was declined: ${productName}`,
-      emailText: `The seller declined your request for ${productName}. You can browse other available listings on OSUTrade.`,
+      emailSubject: `[OSUTrade] Your request was declined: ${productName}`,
+      emailText: buildEmailText({
+        intro: "The seller declined your request on OSUTrade.",
+        productName,
+        quantity,
+        status: "Declined",
+        nextStep:
+          "Open My Requests to review the update, or browse the marketplace for another listing.",
+        actionLabel: "Open My Requests",
+        actionHref: "/requests",
+        closing:
+          "You can send a new request if the seller relists the item or choose another available listing.",
+      }),
       actionHref: "/requests",
     };
   }
@@ -137,8 +235,20 @@ export function buildTradeNotification(
       ...base,
       title: `Request cancelled for ${productName}`,
       body: "The buyer cancelled their request.",
-      emailSubject: `OSUTrade request cancelled: ${productName}`,
-      emailText: `A buyer cancelled their request for ${productName}.`,
+      emailSubject: `[OSUTrade] Request cancelled: ${productName}`,
+      emailText: buildEmailText({
+        intro: "A buyer cancelled their request on OSUTrade.",
+        productName,
+        quantity,
+        buyerNote: input.request.note,
+        status: "Cancelled",
+        nextStep:
+          "Open your Seller Dashboard to review your active listings and requests.",
+        actionLabel: "Open Seller Dashboard",
+        actionHref: "/seller",
+        closing:
+          "No action is required unless you want to update the listing status or quantity.",
+      }),
       actionHref: "/seller",
     };
   }
@@ -150,8 +260,25 @@ export function buildTradeNotification(
     ...base,
     title: `Price changed for ${productName}`,
     body: `The seller changed the price from ${formatPrice(oldPrice)} to ${formatPrice(newPrice)}. Accepted trades keep their agreed price.`,
-    emailSubject: `OSUTrade price update: ${productName}`,
-    emailText: `The seller changed ${productName} from ${formatPrice(oldPrice)} to ${formatPrice(newPrice)}. Accepted trades keep their agreed price.`,
+    emailSubject: `[OSUTrade] Price update: ${productName}`,
+    emailText: [
+      "Hi,",
+      "",
+      "A seller changed the price for an item you requested on OSUTrade.",
+      "",
+      `Item: ${productName}`,
+      `Old price: ${formatPrice(oldPrice)}`,
+      `New price: ${formatPrice(newPrice)}`,
+      "Status: Price updated",
+      "",
+      "Next step: Open My Requests to review the update. Accepted trades keep their agreed price.",
+      "",
+      "Open My Requests:",
+      buildActionUrl("/requests"),
+      "",
+      "OSUTrade",
+      "Campus secondhand marketplace",
+    ].join("\n"),
     actionHref: "/requests",
   };
 }
@@ -195,7 +322,7 @@ export async function notifyTradeEvent({
     await sendEmail({
       to: recipientEmail,
       subject: notification.emailSubject,
-      text: `${notification.emailText}\n\nOpen OSUTrade: ${notification.actionHref}`,
+      text: notification.emailText,
     });
     await supabase
       .from("notifications")

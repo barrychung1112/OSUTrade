@@ -37,12 +37,50 @@ describe("trade notifications", () => {
       productId: "product-1",
     });
     expect(notification.body).toContain("2");
-    expect(notification.emailSubject).toContain("New OSUTrade request");
+    expect(notification.emailSubject).toContain("[OSUTrade] New request");
     expect(notification.payload).toMatchObject({
       productName: "Desk lamp",
       quantity: 2,
       priceAtRequest: 35,
     });
+  });
+
+  test("builds clear seller email copy for new requests", () => {
+    const notification = buildTradeNotification(baseInput);
+
+    expect(notification.emailSubject).toBe("[OSUTrade] New request for Desk lamp");
+    expect(notification.emailText).toContain(
+      "You received a new buyer request on OSUTrade."
+    );
+    expect(notification.emailText).toContain("Item: Desk lamp");
+    expect(notification.emailText).toContain("Quantity: 2");
+    expect(notification.emailText).toContain(
+      "Buyer note: Can meet near the library."
+    );
+    expect(notification.emailText).toContain(
+      "Next step: Open your Seller Dashboard to accept or decline this request."
+    );
+    expect(notification.emailText).toContain("https://osutrade.com/seller");
+  });
+
+  test("builds clear buyer email copy for accepted requests", () => {
+    const notification = buildTradeNotification({
+      ...baseInput,
+      type: "request_accepted",
+    });
+
+    expect(notification.emailSubject).toBe(
+      "[OSUTrade] Your request was accepted: Desk lamp"
+    );
+    expect(notification.emailText).toContain(
+      "Good news. The seller accepted your request."
+    );
+    expect(notification.emailText).toContain("Item: Desk lamp");
+    expect(notification.emailText).toContain("Quantity: 2");
+    expect(notification.emailText).toContain(
+      "Next step: Open My Requests to view contact details and arrange pickup."
+    );
+    expect(notification.emailText).toContain("https://osutrade.com/requests");
   });
 
   test("records email errors without failing the trade flow", async () => {
