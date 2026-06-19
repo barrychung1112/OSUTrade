@@ -13,6 +13,7 @@ import {
 } from "@radix-ui/themes";
 import {
   ArrowLeftIcon,
+  CheckCircledIcon,
   CheckIcon,
   MinusIcon,
   PlusIcon,
@@ -222,10 +223,13 @@ export default function CartPage() {
               <Heading size="8" className="app-title">
                 {t("cart.title")}
               </Heading>
+              <Text as="p" color="gray" className="mt-2 max-w-2xl leading-6">
+                {t("cart.emptyHelp")}
+              </Text>
             </div>
 
-            <Link href="/overview" className="inline-flex items-center gap-2">
-              <Button variant="soft">
+            <Link href="/overview" className="inline-flex">
+              <Button variant="soft" size="3">
                 <ArrowLeftIcon /> {t("cart.backMarketplace")}
               </Button>
             </Link>
@@ -269,12 +273,39 @@ export default function CartPage() {
             </section>
 
             <aside>
-              <Card className="app-card p-6">
-                <Heading size="5" className="mb-4">
-                  {t("cart.summary")}
-                </Heading>
+              <Card className="app-card sticky top-24 overflow-hidden p-0">
+                <div className="border-b border-orange-100 bg-orange-50/60 px-5 py-4">
+                  <Heading size="5">{t("cart.summary")}</Heading>
+                  <Text as="p" color="gray" size="2" className="mt-1">
+                    {allSent ? t("cart.complete") : t("cart.pendingTotal")}
+                  </Text>
+                </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3 p-5">
+                  <div className="grid grid-cols-3 gap-2">
+                    <SummaryMetric label={t("cart.items")} value={String(items.length)} />
+                    <SummaryMetric label={t("cart.sent")} value={String(sentCount)} tone="success" />
+                    <SummaryMetric label={t("cart.failed")} value={String(errorCount)} tone="danger" />
+                  </div>
+
+                  <div className="rounded-lg border border-orange-100 bg-white p-3">
+                    <div className="mb-2 flex items-center justify-between text-sm font-semibold text-gray-700">
+                      <span>{t("cart.pendingTotal")}</span>
+                      <span>{`${pendingCount} / ${items.length}`}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-orange-100">
+                      <div
+                        className="h-full rounded-full bg-[#d73f09] transition-all"
+                        style={{
+                          width: items.length
+                            ? `${Math.round((sentCount / items.length) * 100)}%`
+                            : "0%",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
                   <SummaryRow label={t("cart.items")} value={String(items.length)} />
                   <SummaryRow label={t("cart.subtotal")} value={currency(subtotal)} />
                   <SummaryRow
@@ -285,10 +316,10 @@ export default function CartPage() {
                   <SummaryRow label={t("cart.failed")} value={String(errorCount)} />
                 </div>
 
-                <Separator my="3" size="4" />
+                  <Separator my="2" size="4" />
 
                 {allSent && (
-                  <p className="mb-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                  <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm leading-6 text-green-800">
                     {t("cart.complete")}
                   </p>
                 )}
@@ -302,6 +333,7 @@ export default function CartPage() {
                   {allSent ? <CheckIcon /> : <RocketIcon />}
                   {allSent ? t("cart.allSent") : t("cart.sendAll")}
                 </button>
+                </div>
               </Card>
             </aside>
           </div>
@@ -338,31 +370,34 @@ function ItemCard({
   const displayName = pickProductName(item.name, item.nameTranslations, locale);
 
   return (
-    <Card className="app-card p-4">
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <div className="h-48 w-full shrink-0 overflow-hidden rounded-md bg-gray-100 sm:h-28 sm:w-28">
+    <Card className="app-card overflow-hidden p-0">
+      <div className="grid gap-0 lg:grid-cols-[160px,1fr,190px]">
+        <div className="relative h-56 w-full overflow-hidden bg-gray-100 sm:h-64 lg:h-full lg:min-h-[248px]">
           <img
             src={item.imageUrl || "/images/Bike_0.jpg"}
             alt={displayName}
             className="h-full w-full object-cover"
           />
+          <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold capitalize text-gray-700 shadow-sm">
+            {item.category || "general"}
+          </div>
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <Text className="block truncate text-base font-medium">
+              <Text className="block text-xl font-bold leading-7 text-gray-950">
                 {displayName}
               </Text>
-              <Text color="gray" size="2">
-                {item.category || "general"}
+              <Text color="gray" size="2" className="mt-1 block">
+                {t("product.stock", { quantity: item.availableQuantity ?? 1 })}
               </Text>
             </div>
 
             <button
               type="button"
               onClick={onRemove}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-100"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
               aria-label={t("cart.remove")}
               title={t("cart.remove")}
             >
@@ -370,12 +405,12 @@ function ItemCard({
             </button>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center overflow-hidden rounded-lg border border-gray-300 bg-white">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <div className="inline-flex items-center overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm">
               <button
                 type="button"
                 onClick={onMinus}
-                className="flex h-10 w-10 items-center justify-center transition hover:bg-gray-50 active:scale-95"
+                className="flex h-11 w-11 items-center justify-center transition hover:bg-gray-50 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-inset"
                 aria-label={t("cart.decrease")}
               >
                 <MinusIcon />
@@ -390,22 +425,19 @@ function ItemCard({
                   Number.isInteger(item.availableQuantity) &&
                   item.quantity >= Number(item.availableQuantity)
                 }
-                className="flex h-10 w-10 items-center justify-center transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+                className="flex h-11 w-11 items-center justify-center transition hover:bg-gray-50 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-45"
                 aria-label={t("cart.increase")}
               >
                 <PlusIcon />
               </button>
             </div>
 
-            <Text className="text-base font-medium">
+            <Text className="rounded-full bg-orange-50 px-4 py-2 text-lg font-bold text-[#d73f09]">
               {currency(item.price * item.quantity)}
             </Text>
           </div>
-          <Text as="p" color="gray" size="1" className="mt-2">
-            {t("product.stock", { quantity: item.availableQuantity ?? 1 })}
-          </Text>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-[1fr,auto] sm:items-end">
+          <div className="mt-5">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 {t("cart.note")}
@@ -418,7 +450,7 @@ function ItemCard({
                 className="app-input"
                 disabled={disabled}
               />
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <StatusBadge status={state?.status ?? "idle"} />
                 {state?.status === "error" && state?.errorMsg ? (
                   <Text color="red" size="2">
@@ -431,10 +463,31 @@ function ItemCard({
                 ) : null}
               </div>
             </div>
+          </div>
+        </div>
 
+        <div className="flex flex-col justify-between gap-4 border-t border-orange-100 bg-orange-50/40 p-5 lg:border-l lg:border-t-0">
+          {state?.status === "sent" || requestBlocked ? (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-900">
+              <div className="mb-2 flex items-center gap-2 font-semibold">
+                <CheckCircledIcon /> {t("cart.sent")}
+              </div>
+              <Text as="p" size="2" className="leading-6 text-green-800">
+                {t("cart.requestAlreadySent")}
+              </Text>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-orange-100 bg-white p-4">
+              <Text as="p" size="2" color="gray" className="leading-6">
+                {t("cart.notePlaceholder")}
+              </Text>
+            </div>
+          )}
+
+          <div className="space-y-3">
             <button
               type="button"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#b43305] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600 sm:w-auto sm:min-w-[168px]"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#b43305] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
               disabled={disabled || state?.status === "sent"}
               onClick={onSend}
             >
@@ -445,14 +498,15 @@ function ItemCard({
                   ? t("cart.sent")
                   : t("cart.send")}
             </button>
+
+            {(state?.status === "sent" || requestBlocked) && (
+              <Link href="/requests" className="block">
+                <Button variant="soft" size="3" className="w-full">
+                  <ArrowLeftIcon /> {t("cart.viewRequests")}
+                </Button>
+              </Link>
+            )}
           </div>
-          {(state?.status === "sent" || requestBlocked) && (
-            <Link href="/requests" className="mt-3 inline-flex">
-              <Button variant="soft" size="2">
-                <ArrowLeftIcon /> {t("cart.viewRequests")}
-              </Button>
-            </Link>
-          )}
         </div>
       </div>
     </Card>
@@ -470,9 +524,35 @@ function StatusBadge({ status }: { status: ItemState["status"] }) {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <Text>{label}</Text>
-      <Text>{value}</Text>
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <Text color="gray">{label}</Text>
+      <Text className="font-semibold tabular-nums">{value}</Text>
+    </div>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "success" | "danger";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-green-200 bg-green-50 text-green-800"
+      : tone === "danger"
+        ? "border-red-200 bg-red-50 text-red-800"
+        : "border-orange-100 bg-white text-gray-900";
+
+  return (
+    <div className={`rounded-lg border p-3 ${toneClass}`}>
+      <div className="text-xs font-semibold uppercase tracking-wide opacity-75">
+        {label}
+      </div>
+      <div className="mt-1 text-xl font-bold tabular-nums">{value}</div>
     </div>
   );
 }
