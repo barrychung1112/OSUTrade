@@ -1,20 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { requiresLogin } from "@/app/lib/routeAccess";
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname, search } = req.nextUrl;
 
-  const protectedPrefixes = [
-    "/overview",
-    "/sell",
-    "/cart",
-    "/seller",
-    "/requests",
-  ];
-  const isProtected = protectedPrefixes.some((prefix) =>
-    pathname.startsWith(prefix)
-  );
+  const isProtected = requiresLogin(pathname);
   const isAuthPage = pathname === "/";
 
   if (isProtected && !isLoggedIn) {
@@ -36,7 +28,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/overview/:path*",
     "/sell/:path*",
     "/cart/:path*",
     "/seller/:path*",

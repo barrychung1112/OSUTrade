@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Heading, Theme } from "@radix-ui/themes";
 import {
@@ -13,46 +13,27 @@ import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
 import ProductCard from "../components/ProductCard";
 import { useProducts } from "../hook/useProducts";
-import type { Product } from "../lib/products";
 import { useI18n } from "../i18n";
 import { pickProductName } from "../lib/productTranslations";
+import { canLoadMoreProducts } from "../lib/productPagination";
 
 const categories = ["all", "electronics", "clothing", "books", "home", "general"];
 
-function sortProductsByPrice(products: Product[], order: string) {
-  if (order === "asc") {
-    return [...products].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-  }
-  if (order === "desc") {
-    return [...products].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-  }
-  return products;
-}
-
 export default function ProductListPage() {
   const { t, locale } = useI18n();
-  const { products, loading, error, refetch } = useProducts();
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [priceSort, setPriceSort] = useState("none");
 
-  const filteredProducts = useMemo(() => {
-    let updated = products;
-
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      updated = updated.filter((p) =>
-        pickProductName(p.name, p.nameTranslations, locale).toLowerCase().includes(q)
-      );
-    }
-
-    if (category !== "all") {
-      updated = updated.filter((p) => p.category === category);
-    }
-
-    return sortProductsByPrice(updated, priceSort);
-  }, [products, search, category, priceSort, locale]);
+  const { products, loading, loadingMore, error, total, refetch, loadMore, hasMore } =
+    useProducts({
+      limit: 12,
+      name: search,
+      category: category === "all" ? undefined : category,
+      sort: priceSort === "asc" || priceSort === "desc" ? priceSort : undefined,
+    });
+  const canLoadMore = canLoadMoreProducts({ hasMore, loading, loadingMore });
 
   const hasFilters = search.trim() || category !== "all" || priceSort !== "none";
 
@@ -174,19 +155,19 @@ export default function ProductListPage() {
 
             <div className="mt-3 text-sm text-gray-600">
               {t("marketplace.showing", {
-                shown: filteredProducts.length,
-                total: products.length,
+                shown: products.length,
+                total,
               })}
             </div>
           </section>
 
           <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {loading ? (
+            {loading && products.length === 0 ? (
               <div className="col-span-full rounded-lg border border-dashed border-orange-200 bg-white/90 px-6 py-12 text-center text-gray-600 shadow-sm">
                 {t("marketplace.loadingListings")}
               </div>
-            ) : filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
+            ) : products.length > 0 ? (
+              products.map((product) => (
                 <ProductCard
                   key={product.id}
                   productId={product.id}
@@ -226,6 +207,30 @@ export default function ProductListPage() {
               </div>
             )}
           </section>
+
+          {products.length > 0 && (
+            <div className="mt-8 flex justify-center">
+              {hasMore ? (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={!canLoadMore}
+                  className="app-action-secondary min-w-44"
+                >
+                  {loading || loadingMore ? (
+                    <ReloadIcon className="animate-spin" />
+                  ) : (
+                    <PlusIcon />
+                  )}
+                  {loading || loadingMore
+                    ? t("marketplace.loadingMore")
+                    : t("marketplace.loadMore")}
+                </button>
+              ) : (
+                <p className="text-sm text-gray-500">{t("marketplace.endOfList")}</p>
+              )}
+            </div>
+          )}
         </div>
       </main>
     </Theme>
