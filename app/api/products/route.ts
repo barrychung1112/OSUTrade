@@ -27,6 +27,7 @@ type ProductRow = {
   seller_id: string | null;
   status: string | null;
   quantity: number | null;
+  created_at?: string | null;
 };
 
 function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | null) {
@@ -60,6 +61,7 @@ function toProduct(row: ProductRow) {
     sellerId: row.seller_id,
     status: row.status ?? "available",
     quantity: row.quantity ?? 1,
+    createdAt: row.created_at ?? null,
   };
 }
 
