@@ -36,9 +36,35 @@ export type ProductListResponse = {
   limit: number;
 };
 
-export async function fetchProducts(signal?: AbortSignal): Promise<Product[]> {
-  const res = await fetch("/api/products", {
-    signal,
+export type ProductListOptions = {
+  page?: number;
+  limit?: number;
+  name?: string;
+  category?: string;
+  sort?: "asc" | "desc";
+  signal?: AbortSignal;
+};
+
+function buildProductListUrl(options: ProductListOptions = {}) {
+  const params = new URLSearchParams();
+
+  if (options.page) params.set("page", String(options.page));
+  if (options.limit) params.set("limit", String(options.limit));
+  if (options.name?.trim()) params.set("name", options.name.trim());
+  if (options.category?.trim()) params.set("category", options.category.trim());
+  if (options.sort === "asc" || options.sort === "desc") {
+    params.set("sort", options.sort);
+  }
+
+  const query = params.toString();
+  return query ? `/api/products?${query}` : "/api/products";
+}
+
+export async function fetchProducts(
+  options: ProductListOptions = {}
+): Promise<ProductListResponse> {
+  const res = await fetch(buildProductListUrl(options), {
+    signal: options.signal,
     cache: "no-store",
   });
 
@@ -47,7 +73,12 @@ export async function fetchProducts(signal?: AbortSignal): Promise<Product[]> {
   }
 
   const payload = (await res.json()) as ProductListResponse;
-  return payload.data ?? [];
+  return {
+    data: payload.data ?? [],
+    total: payload.total ?? 0,
+    page: payload.page ?? options.page ?? 1,
+    limit: payload.limit ?? options.limit ?? 12,
+  };
 }
 
 export async function fetchProduct(

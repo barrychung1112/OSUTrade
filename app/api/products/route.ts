@@ -7,6 +7,8 @@ import {
   translateProductDescription,
   translateProductName,
 } from "@/app/lib/productTranslations";
+import { buildProductNameSearchFilter } from "@/app/lib/productSearch";
+import { applyProductListSort } from "@/app/lib/productSort";
 
 type ProductRow = {
   product_id: string | number;
@@ -128,17 +130,15 @@ export async function GET(request: NextRequest) {
       .eq("status", "available")
       .gt("quantity", 0);
 
-    if (name) {
-      query = query.ilike("name", `%${name}%`);
+    if (name?.trim()) {
+      query = query.or(buildProductNameSearchFilter(name));
     }
 
     if (category) {
       query = query.eq("category", category);
     }
 
-    if (sort === "asc" || sort === "desc") {
-      query = query.order("price", { ascending: sort === "asc" });
-    }
+    query = applyProductListSort(query, sort);
 
     query = query.range(rangeFrom, rangeTo);
 
