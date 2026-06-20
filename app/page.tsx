@@ -20,6 +20,7 @@ import ProductListCard from "./components/ProductListCard";
 import TipProgressCard from "./components/TipProgressCard";
 import Header from "./components/Header";
 import { useI18n } from "./i18n";
+import { getHomeCtaAction } from "./lib/homeCtaAccess";
 
 export default function HomePage() {
   const { t } = useI18n();
@@ -46,12 +47,18 @@ export default function HomePage() {
   function handleProtectedCta(path: string) {
     if (status === "loading") return;
 
-    if (status === "authenticated" && session?.user) {
-      router.push(path);
+    const action = getHomeCtaAction({
+      path,
+      authStatus: status,
+      hasUser: !!session?.user,
+    });
+
+    if (action.type === "navigate") {
+      router.push(action.path);
       return;
     }
 
-    setLoginPromptPath(path);
+    setLoginPromptPath(action.path);
   }
 
   return (
