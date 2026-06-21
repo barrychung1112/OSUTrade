@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   Badge,
   Button,
@@ -22,8 +23,10 @@ import {
 } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
+import LoginModal from "../components/LoginModal";
 import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
+import { shouldPromptLoginForRequestAction } from "../lib/requestActionAccess";
 
 type CartItem = {
   id: string;
@@ -60,19 +63,28 @@ async function saveCart(items: CartItem[]) {
 
 export default function CartPage() {
   const { t, locale } = useI18n();
+  const { data: session, status } = useSession();
   const [items, setItems] = useState<CartItem[]>([]);
   const [states, setStates] = useState<Record<string, ItemState>>({});
   const [activeRequestItemIds, setActiveRequestItemIds] = useState<Set<string>>(
     () => new Set()
   );
   const [loading, setLoading] = useState(true);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
   useEffect(() => {
+    if (status === "loading") return;
+
+    const requestStatus =
+      status === "authenticated" && session?.user
+        ? fetch("/api/requests", { cache: "no-store" }).then((res) =>
+            res.ok ? res.json() : { data: [] }
+          )
+        : Promise.resolve({ data: [] });
+
     Promise.all([
       fetch("/api/cart", { cache: "no-store" }).then((res) => res.json()),
-      fetch("/api/requests", { cache: "no-store" }).then((res) =>
-        res.ok ? res.json() : { data: [] }
-      ),
+      requestStatus,
     ])
       .then(([cartPayload, requestsPayload]) => {
         const cart = (cartPayload.data ?? []) as CartItem[];
@@ -98,7 +110,7 @@ export default function CartPage() {
         );
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [session?.user, status]);
 
   const subtotal = useMemo(
     () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
@@ -150,6 +162,16 @@ export default function CartPage() {
   }
 
   async function sendRequest(id: string) {
+    if (
+      shouldPromptLoginForRequestAction({
+        authStatus: status,
+        hasUser: !!session?.user,
+      })
+    ) {
+      setLoginPromptOpen(true);
+      return;
+    }
+
     const item = items.find((candidate) => candidate.id === id);
     if (!item) return;
     if (activeRequestItemIds.has(String(id))) {
@@ -201,6 +223,15 @@ export default function CartPage() {
 
   async function sendAll() {
     if (allSent) return;
+    if (
+      shouldPromptLoginForRequestAction({
+        authStatus: status,
+        hasUser: !!session?.user,
+      })
+    ) {
+      setLoginPromptOpen(true);
+      return;
+    }
 
     for (const item of items) {
       if (
@@ -216,6 +247,12 @@ export default function CartPage() {
     <Theme appearance="light" accentColor="orange" grayColor="sand">
       <main className="app-page">
         <Header />
+        <LoginModal
+          redirectTo="/cart"
+          open={loginPromptOpen}
+          onOpenChange={setLoginPromptOpen}
+          trigger={null}
+        />
         <div className="app-container">
           <div className="app-hero flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
