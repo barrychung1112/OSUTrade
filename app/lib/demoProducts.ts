@@ -6,6 +6,7 @@ export type DemoProduct = {
   category: string;
   imageUrl: string;
   quantity: number;
+  createdAt: string;
 };
 
 export const demoProducts: DemoProduct[] = [
@@ -17,6 +18,7 @@ export const demoProducts: DemoProduct[] = [
     category: "general",
     imageUrl: "/images/Bike_0.jpg",
     quantity: 1,
+    createdAt: "2026-06-19T12:00:00.000Z",
   },
   {
     id: "demo-dell-monitor",
@@ -26,6 +28,7 @@ export const demoProducts: DemoProduct[] = [
     category: "electronics",
     imageUrl: "/images/DellMonitor_0.jpg",
     quantity: 2,
+    createdAt: "2026-06-18T12:00:00.000Z",
   },
   {
     id: "demo-mini-fridge",
@@ -35,6 +38,7 @@ export const demoProducts: DemoProduct[] = [
     category: "electronics",
     imageUrl: "/images/Fridge1_0.jpg",
     quantity: 1,
+    createdAt: "2026-06-17T12:00:00.000Z",
   },
   {
     id: "demo-led-lamp",
@@ -44,6 +48,7 @@ export const demoProducts: DemoProduct[] = [
     category: "home",
     imageUrl: "/images/LED lamp_0.jpg",
     quantity: 3,
+    createdAt: "2026-06-16T12:00:00.000Z",
   },
   {
     id: "demo-bookshelf",
@@ -53,6 +58,7 @@ export const demoProducts: DemoProduct[] = [
     category: "home",
     imageUrl: "/images/shelf_0.jpg",
     quantity: 1,
+    createdAt: "2026-06-14T12:00:00.000Z",
   },
   {
     id: "demo-study-table",
@@ -62,6 +68,7 @@ export const demoProducts: DemoProduct[] = [
     category: "home",
     imageUrl: "/images/table_0.jpg",
     quantity: 1,
+    createdAt: "2026-06-12T12:00:00.000Z",
   },
   {
     id: "demo-textbook",
@@ -71,6 +78,7 @@ export const demoProducts: DemoProduct[] = [
     category: "books",
     imageUrl: "/images/Fridge2_0.jpg",
     quantity: 4,
+    createdAt: "2026-06-10T12:00:00.000Z",
   },
   {
     id: "demo-bike-helmet",
@@ -80,6 +88,7 @@ export const demoProducts: DemoProduct[] = [
     category: "clothing",
     imageUrl: "/images/Bike2_0.jpg",
     quantity: 1,
+    createdAt: "2026-06-08T12:00:00.000Z",
   },
 ];
 

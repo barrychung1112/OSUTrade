@@ -20,6 +20,7 @@ export type Product = {
   status?: string | null;
   quantity?: number | null;
   sellerContact?: SellerContact | null;
+  createdAt?: string | null;
 };
 
 export type SellerContact = {

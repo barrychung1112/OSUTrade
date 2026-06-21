@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import TimezoneCards from "./components/TimezoneCards";
-import OnlineUsersCard from "./components/OnlineUsersCard";
+import HomeMarketSignalsCard from "./components/HomeMarketSignalsCard";
 import LoginModal from "./components/LoginModal";
 import SignUpModal from "./components/SignUpModal";
 import ProductListCard from "./components/ProductListCard";
@@ -187,7 +187,7 @@ export default function HomePage() {
           <section className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
             <div className="grid gap-6 md:grid-cols-2">
               <TipProgressCard />
-              <OnlineUsersCard />
+              <HomeMarketSignalsCard />
             </div>
             <div className="flex flex-col gap-6">
               <div className="app-panel">
