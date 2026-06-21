@@ -1,25 +1,21 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { requiresLogin } from "@/app/lib/routeAccess";
+import { getMiddlewareRedirect } from "@/app/lib/routeAccess";
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname, search } = req.nextUrl;
 
-  const isProtected = requiresLogin(pathname);
-  const isAuthPage = pathname === "/";
+  const redirect = getMiddlewareRedirect({
+    pathname,
+    search,
+    isLoggedIn,
+  });
 
-  if (isProtected && !isLoggedIn) {
+  if (redirect) {
     const url = req.nextUrl.clone();
-    url.pathname = "/";
-    url.searchParams.set("from", pathname + (search || ""));
-    return NextResponse.redirect(url);
-  }
-
-  if (isAuthPage && isLoggedIn) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/overview";
-    url.search = "";
+    url.pathname = redirect.pathname;
+    url.searchParams.set("from", redirect.from);
     return NextResponse.redirect(url);
   }
 
