@@ -11,3 +11,19 @@ export function requiresLogin(path: string) {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 }
+
+export function getMiddlewareRedirect({
+  pathname,
+  search,
+  isLoggedIn,
+}: {
+  pathname: string;
+  search: string;
+  isLoggedIn: boolean;
+}) {
+  if (requiresLogin(pathname) && !isLoggedIn) {
+    return { pathname: "/", from: pathname + (search || "") };
+  }
+
+  return null;
+}
