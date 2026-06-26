@@ -45,8 +45,8 @@ export default function ProductListPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand" radius="large">
+      <Header />
       <main className="app-page">
-        <Header />
 
         <div className="app-container">
           <section className="app-hero flex flex-col gap-5">

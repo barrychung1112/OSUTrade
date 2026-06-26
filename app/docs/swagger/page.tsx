@@ -16,8 +16,8 @@ const SwaggerUI = dynamic(
 export default function SwaggerDocsPage() {
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
+      <Header />
       <main className="app-page">
-        <Header />
         <section className="app-container">
           <div className="app-hero">
             <p className="app-eyebrow">API</p>

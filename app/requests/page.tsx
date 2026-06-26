@@ -191,9 +191,8 @@ export default function RequestsPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
+      <Header />
       <main className="app-page">
-        <Header />
-
         <section className="mx-auto max-w-5xl">
           <div className="app-hero">
             <div>

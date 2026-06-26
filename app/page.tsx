@@ -68,8 +68,8 @@ export default function HomePage() {
       grayColor="sand"
       radius="large"
     >
+      <Header />
       <div className="app-page">
-        <Header />
         <div className="app-container space-y-6">
           {redirectPath && (
             <Card className="app-card border-amber-200 bg-amber-50 p-4">

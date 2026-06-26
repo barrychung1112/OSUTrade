@@ -236,8 +236,8 @@ export default function SellPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
+      <Header />
       <main className="app-page">
-        <Header />
         <section className="mx-auto max-w-5xl">
           <div className="app-hero text-center md:text-left">
             <p className="app-eyebrow">{t("nav.sell")}</p>
