@@ -105,8 +105,8 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <Theme appearance="light" accentColor="orange" grayColor="sand">
+        <Header />
         <main className="app-page">
-          <Header />
           <div className="mx-auto max-w-5xl rounded-lg border border-orange-100 bg-white/85 p-8 text-center text-gray-600 shadow-sm">
             {t("product.loading")}
           </div>
@@ -118,8 +118,8 @@ export default function ProductDetailPage() {
   if (error || !product) {
     return (
       <Theme appearance="light" accentColor="orange" grayColor="sand">
+        <Header />
         <main className="app-page">
-          <Header />
           <div className="mx-auto max-w-3xl rounded-lg border border-red-100 bg-white/85 p-8 text-center shadow-sm">
             <h1 className="text-2xl font-bold text-gray-900">{t("product.unavailable")}</h1>
             <p className="mt-2 text-gray-600">{error || t("product.notFound")}</p>
@@ -150,8 +150,8 @@ export default function ProductDetailPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
+      <Header />
       <main className="app-page">
-        <Header />
         <div className="mx-auto max-w-6xl">
           <Link
             href="/overview"

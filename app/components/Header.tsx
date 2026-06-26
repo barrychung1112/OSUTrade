@@ -169,7 +169,7 @@ export default function Header() {
 
   return (
     <motion.header
-      className="fixed top-0 z-50 w-full border-b border-orange-100 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-md"
+      className="fixed left-0 right-0 top-0 z-50 w-full border-b border-orange-100 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-md"
       initial={{ y: -50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}

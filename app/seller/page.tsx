@@ -255,9 +255,8 @@ export default function SellerPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
+      <Header />
       <main className="app-page">
-        <Header />
-
         <section className="app-container">
           <div className="app-hero">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">

@@ -245,14 +245,14 @@ export default function CartPage() {
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
+      <Header />
+      <LoginModal
+        redirectTo="/cart"
+        open={loginPromptOpen}
+        onOpenChange={setLoginPromptOpen}
+        trigger={null}
+      />
       <main className="app-page">
-        <Header />
-        <LoginModal
-          redirectTo="/cart"
-          open={loginPromptOpen}
-          onOpenChange={setLoginPromptOpen}
-          trigger={null}
-        />
         <div className="app-container">
           <div className="app-hero flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
