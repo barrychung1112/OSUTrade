@@ -1,6 +1,5 @@
 "use client";
 
-import "@radix-ui/themes/styles.css";
 import { useEffect, useMemo, useState } from "react";
 import { Theme, Heading, Text, Button, Card } from "@radix-ui/themes";
 import {

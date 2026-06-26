@@ -9,9 +9,12 @@ import {
   Boxes,
   CheckCircle2,
   Clock3,
+  Copy,
   DollarSign,
+  Megaphone,
   PackageCheck,
   Pencil,
+  RefreshCw,
   Save,
   Tag,
   X,
@@ -19,6 +22,7 @@ import {
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
 import { useI18n } from "../i18n";
+import type { CrossPostCopy, CrossPostPlatform } from "../lib/crossPostCopy";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 import { requestResponseWindowMs } from "../lib/requestExpiry";
 
@@ -88,6 +92,18 @@ const requestStatusPriority: Record<RequestStatus, number> = {
   cancelled: 3,
   expired: 4,
 };
+
+const crossPostPlatformLabels: Record<CrossPostPlatform, string> = {
+  facebook: "Facebook",
+  craigslist: "Craigslist",
+  line: "LINE",
+  wechat: "WeChat",
+  discord: "Discord",
+};
+
+const crossPostPlatforms = Object.keys(
+  crossPostPlatformLabels
+) as CrossPostPlatform[];
 
 function getResponseDeadline(createdAt: string) {
   return new Date(new Date(createdAt).getTime() + requestResponseWindowMs);
@@ -564,6 +580,18 @@ function ProductRow({
     contactWechatId: product.sellerContact?.wechatId ?? "",
   }));
   const isSold = product.status === "sold";
+  const [includeCrossPostContact, setIncludeCrossPostContact] = useState(false);
+  const [crossPostLoading, setCrossPostLoading] = useState(false);
+  const [crossPostError, setCrossPostError] = useState<string | null>(null);
+  const [crossPostCopies, setCrossPostCopies] = useState<CrossPostCopy[]>([]);
+  const [crossPostSource, setCrossPostSource] = useState<"ai" | "fallback" | null>(
+    null
+  );
+  const [selectedCrossPostPlatform, setSelectedCrossPostPlatform] =
+    useState<CrossPostPlatform>("facebook");
+  const [copiedCrossPostPlatform, setCopiedCrossPostPlatform] =
+    useState<CrossPostPlatform | null>(null);
+
   useEffect(() => {
     setEditValues({
       name: product.name,
@@ -576,6 +604,77 @@ function ProductRow({
       contactWechatId: product.sellerContact?.wechatId ?? "",
     });
   }, [product]);
+
+  useEffect(() => {
+    setCrossPostCopies([]);
+    setCrossPostSource(null);
+    setCrossPostError(null);
+    setCopiedCrossPostPlatform(null);
+  }, [
+    product.name,
+    product.description,
+    product.price,
+    product.category,
+    product.quantity,
+    product.imageUrl,
+    product.sellerContact?.phone,
+    product.sellerContact?.lineId,
+    product.sellerContact?.wechatId,
+  ]);
+
+  const selectedCrossPostCopy =
+    crossPostCopies.find((copy) => copy.platform === selectedCrossPostPlatform) ??
+    null;
+
+  async function generateCrossPostCopy() {
+    setCrossPostLoading(true);
+    setCrossPostError(null);
+    setCopiedCrossPostPlatform(null);
+
+    try {
+      const res = await fetch(`/api/seller/products/${product.id}/cross-post`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          includeContactInfo: includeCrossPostContact,
+        }),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.message || t("seller.crossPostGenerateError"));
+      }
+
+      const payload = (await res.json()) as {
+        source: "ai" | "fallback";
+        copies: CrossPostCopy[];
+      };
+      setCrossPostCopies(payload.copies ?? []);
+      setCrossPostSource(payload.source ?? "fallback");
+      if (!payload.copies?.some((copy) => copy.platform === selectedCrossPostPlatform)) {
+        setSelectedCrossPostPlatform("facebook");
+      }
+    } catch (err) {
+      setCrossPostError(
+        err instanceof Error ? err.message : t("seller.crossPostGenerateError")
+      );
+    } finally {
+      setCrossPostLoading(false);
+    }
+  }
+
+  async function copyCrossPostCopy() {
+    if (!selectedCrossPostCopy) return;
+    const text = `${selectedCrossPostCopy.title}\n\n${selectedCrossPostCopy.body}`;
+
+    try {
+      await window.navigator.clipboard.writeText(text);
+      setCopiedCrossPostPlatform(selectedCrossPostCopy.platform);
+    } catch {
+      setCrossPostError(t("seller.crossPostCopyError"));
+    }
+  }
+
   const statusActions: Array<{
     status: ProductStatus;
     label: string;
@@ -704,6 +803,29 @@ function ProductRow({
             )}
             <SellerContactPreview contact={product.sellerContact} t={t} />
           </div>
+
+          <CrossPostCopyPanel
+            t={t}
+            includeContact={includeCrossPostContact}
+            onIncludeContactChange={(checked) => {
+              setIncludeCrossPostContact(checked);
+              setCrossPostCopies([]);
+              setCrossPostSource(null);
+              setCrossPostError(null);
+              setCopiedCrossPostPlatform(null);
+            }}
+            loading={crossPostLoading}
+            error={crossPostError}
+            source={crossPostSource}
+            copies={crossPostCopies}
+            selectedPlatform={selectedCrossPostPlatform}
+            copiedPlatform={copiedCrossPostPlatform}
+            selectedCopy={selectedCrossPostCopy}
+            onGenerate={generateCrossPostCopy}
+            onSelectPlatform={setSelectedCrossPostPlatform}
+            onCopy={copyCrossPostCopy}
+          />
+
           {editing && !isSold && (
             <form
               className="mt-4 grid gap-4 rounded-lg border border-orange-200 bg-white p-4 shadow-sm"
@@ -874,6 +996,150 @@ function ProductRow({
         </div>
       </div>
     </Card>
+  );
+}
+
+function CrossPostCopyPanel({
+  t,
+  includeContact,
+  onIncludeContactChange,
+  loading,
+  error,
+  source,
+  copies,
+  selectedPlatform,
+  copiedPlatform,
+  selectedCopy,
+  onGenerate,
+  onSelectPlatform,
+  onCopy,
+}: {
+  t: ReturnType<typeof useI18n>["t"];
+  includeContact: boolean;
+  onIncludeContactChange: (checked: boolean) => void;
+  loading: boolean;
+  error: string | null;
+  source: "ai" | "fallback" | null;
+  copies: CrossPostCopy[];
+  selectedPlatform: CrossPostPlatform;
+  copiedPlatform: CrossPostPlatform | null;
+  selectedCopy: CrossPostCopy | null;
+  onGenerate: () => void;
+  onSelectPlatform: (platform: CrossPostPlatform) => void;
+  onCopy: () => void;
+}) {
+  const hasCopies = copies.length > 0;
+
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-orange-200 bg-white text-[#d73f09] shadow-sm">
+            <Megaphone className="h-5 w-5" />
+          </div>
+          <div>
+            <Text className="font-semibold text-gray-950">
+              {t("seller.crossPostTitle")}
+            </Text>
+            <Text as="p" color="gray" size="2" className="mt-1">
+              {t("seller.crossPostHelp")}
+            </Text>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <label className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm">
+            <input
+              type="checkbox"
+              checked={includeContact}
+              onChange={(event) => onIncludeContactChange(event.target.checked)}
+              className="h-4 w-4 accent-[#d73f09]"
+            />
+            {t("seller.crossPostIncludeContact")}
+          </label>
+          <Button
+            type="button"
+            variant="soft"
+            onClick={onGenerate}
+            disabled={loading}
+            className="whitespace-nowrap"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {loading
+              ? t("seller.crossPostGenerating")
+              : hasCopies
+                ? t("seller.crossPostRegenerate")
+                : t("seller.crossPostGenerate")}
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      {hasCopies && (
+        <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {crossPostPlatforms.map((platform) => {
+              const selected = selectedPlatform === platform;
+              return (
+                <button
+                  key={platform}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => onSelectPlatform(platform)}
+                  className={`min-h-10 rounded-md border px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 ${
+                    selected
+                      ? "border-[#d73f09] bg-[#d73f09] text-white shadow-sm"
+                      : "border-slate-200 bg-white text-gray-700 hover:border-orange-200 hover:bg-orange-50"
+                  }`}
+                >
+                  {crossPostPlatformLabels[platform]}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedCopy && (
+            <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Text className="font-semibold text-gray-950">
+                      {selectedCopy.title}
+                    </Text>
+                    {source && (
+                      <span className="rounded-md bg-orange-50 px-2 py-1 text-xs font-semibold text-[#8f2805]">
+                        {source === "ai"
+                          ? t("seller.crossPostAiDraft")
+                          : t("seller.crossPostFallback")}
+                      </span>
+                    )}
+                  </div>
+                  <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-slate-100 bg-slate-50 p-3 text-sm leading-6 text-gray-700">
+                    {selectedCopy.body}
+                  </pre>
+                </div>
+                <Button
+                  type="button"
+                  highContrast
+                  onClick={onCopy}
+                  className="shrink-0 whitespace-nowrap"
+                >
+                  <Copy className="h-4 w-4" />
+                  {copiedPlatform === selectedCopy.platform
+                    ? t("seller.crossPostCopied")
+                    : t("seller.crossPostCopy")}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
