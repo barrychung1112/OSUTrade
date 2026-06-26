@@ -174,7 +174,7 @@ export default function Header() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
+      <div className="mx-auto flex w-full max-w-[96rem] items-center justify-between gap-3">
         <Link
           href="/"
           className="shrink-0 text-xl font-bold text-[#d73f09] sm:text-2xl"
@@ -214,7 +214,7 @@ export default function Header() {
       </div>
 
       {menuOpen && (
-        <div className="mx-auto mt-3 w-full max-w-7xl rounded-lg border border-orange-100 bg-white p-3 shadow-lg lg:hidden">
+        <div className="mx-auto mt-3 w-full max-w-[96rem] rounded-lg border border-orange-100 bg-white p-3 shadow-lg lg:hidden">
           <nav className="grid gap-1">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href} className={navLinkClass(item.href)}>
