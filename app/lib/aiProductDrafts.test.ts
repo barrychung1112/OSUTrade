@@ -1,10 +1,22 @@
 import { describe, expect, test } from "vitest";
 import {
+  createBulkDraftResponseFormat,
   createFallbackDrafts,
   extractAiDraftResponseText,
   parseAiDraftResponse,
   prepareDraftsForClient,
 } from "./aiProductDrafts";
+
+describe("createBulkDraftResponseFormat", () => {
+  test("uses an OpenAI-compatible strict object schema", () => {
+    const format = createBulkDraftResponseFormat();
+    const draftItem = format.schema.properties.drafts.items;
+
+    expect(format.strict).toBe(true);
+    expect(format.schema.additionalProperties).toBe(false);
+    expect(draftItem.additionalProperties).toBe(false);
+  });
+});
 
 describe("parseAiDraftResponse", () => {
   test("normalizes AI drafts and keeps only valid image indexes", () => {

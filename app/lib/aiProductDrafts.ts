@@ -38,6 +38,48 @@ const categoryAliases: Record<string, string> = {
   books: "books",
 };
 
+export function createBulkDraftResponseFormat() {
+  return {
+    type: "json_schema",
+    name: "bulk_product_drafts",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        drafts: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              description: { type: "string" },
+              category: { type: "string" },
+              price: { type: "number" },
+              quantity: { type: "integer" },
+              confidence: { type: "number" },
+              warnings: { type: "array", items: { type: "string" } },
+              imageIndexes: { type: "array", items: { type: "integer" } },
+            },
+            required: [
+              "name",
+              "description",
+              "category",
+              "price",
+              "quantity",
+              "confidence",
+              "warnings",
+              "imageIndexes",
+            ],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["drafts"],
+      additionalProperties: false,
+    },
+  } as const;
+}
+
 function cleanText(value: unknown, fallback: string) {
   const text = String(value ?? "").trim();
   return text || fallback;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
+  createBulkDraftResponseFormat,
   createFallbackDrafts,
   extractAiDraftResponseText,
   parseAiDraftResponse,
@@ -60,46 +61,7 @@ async function generateAiDrafts(images: File[]) {
           },
         ],
         text: {
-          format: {
-            type: "json_schema",
-            name: "bulk_product_drafts",
-            strict: false,
-            schema: {
-              type: "object",
-              properties: {
-                drafts: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string" },
-                      description: { type: "string" },
-                      category: { type: "string" },
-                      price: { type: "number" },
-                      quantity: { type: "integer" },
-                      confidence: { type: "number" },
-                      warnings: { type: "array", items: { type: "string" } },
-                      imageIndexes: {
-                        type: "array",
-                        items: { type: "integer" },
-                      },
-                    },
-                    required: [
-                      "name",
-                      "description",
-                      "category",
-                      "price",
-                      "quantity",
-                      "confidence",
-                      "warnings",
-                      "imageIndexes",
-                    ],
-                  },
-                },
-              },
-              required: ["drafts"],
-            },
-          },
+          format: createBulkDraftResponseFormat(),
         },
       }),
     });
