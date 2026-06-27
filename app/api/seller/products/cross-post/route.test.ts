@@ -115,6 +115,10 @@ describe("seller batch cross-post route", () => {
     );
 
     expect(response.status).toBe(200);
+    const selectedColumns = query.select.mock.calls[0]?.[0] as string;
+    expect(selectedColumns).toContain("product_id");
+    expect(selectedColumns).not.toBe("*");
+    expect(selectedColumns).not.toContain("contact_");
     expect(query.in).toHaveBeenCalledWith("product_id", ["p-2", "p-1"]);
     expect(query.eq).toHaveBeenNthCalledWith(1, "seller_id", "seller-1");
     expect(query.eq).toHaveBeenNthCalledWith(2, "status", "available");

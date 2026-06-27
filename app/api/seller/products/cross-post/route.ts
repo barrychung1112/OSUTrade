@@ -93,7 +93,11 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("products")
-      .select("*")
+      .select(
+        "product_id,name,description,description_en,description_zh_tw," +
+          "description_zh_cn,name_en,name_zh_tw,name_zh_cn,price,category," +
+          "image_url,image_urls,seller_id,status,quantity"
+      )
       .in("product_id", productIds)
       .eq("seller_id", session.user.id)
       .eq("status", "available");
