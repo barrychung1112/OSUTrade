@@ -17,9 +17,6 @@ type ProductRow = {
   category: string | null;
   image_url: string | null;
   image_urls?: string[] | null;
-  contact_phone?: string | null;
-  contact_line_id?: string | null;
-  contact_wechat_id?: string | null;
   seller_id: string | null;
   status: string | null;
   quantity: number | null;
@@ -56,18 +53,24 @@ function toProduct(row: ProductRow) {
     sellerId: row.seller_id,
     status: row.status ?? "available",
     quantity: row.quantity ?? 1,
-    sellerContact: {
-      phone: row.contact_phone ?? null,
-      lineId: row.contact_line_id ?? null,
-      wechatId: row.contact_wechat_id ?? null,
-    },
   };
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+function normalizeProductIds(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const valueId of value) {
+    const id = String(valueId ?? "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
+export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
@@ -78,42 +81,51 @@ export async function POST(
       );
     }
 
-    const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const includeContactInfo = body?.includeContactInfo === true;
-    const productUrl = `${request.nextUrl.origin}/product/${id}`;
+    const productIds = normalizeProductIds(body?.productIds);
+    if (productIds.length < 1 || productIds.length > 10) {
+      return NextResponse.json(
+        { message: "Select between 1 and 10 products." },
+        { status: 400 }
+      );
+    }
 
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("products")
       .select("*")
-      .eq("product_id", id)
+      .in("product_id", productIds)
       .eq("seller_id", session.user.id)
-      .single();
+      .eq("status", "available");
 
-    if (error) {
-      if (error.code === "PGRST116") {
-        return NextResponse.json(
-          { message: "Product not found." },
-          { status: 404 }
-        );
-      }
+    if (error) throw error;
 
-      throw error;
+    const rows = (data ?? []) as ProductRow[];
+    if (rows.length !== productIds.length) {
+      return NextResponse.json(
+        { message: "One or more selected products are unavailable." },
+        { status: 400 }
+      );
     }
 
-    const result = await generateCrossPostCopies(toProduct(data), {
-      includeContactInfo,
-      productUrl,
+    const rowsById = new Map(
+      rows.map((row) => [String(row.product_id), row] as const)
+    );
+    const listings = productIds.map((id) => {
+      const row = rowsById.get(id)!;
+      return {
+        product: toProduct(row),
+        productUrl: `${request.nextUrl.origin}/product/${encodeURIComponent(id)}`,
+      };
     });
 
+    const result = await generateCrossPostCopies(listings);
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error(error);
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to generate cross-post copy.";
-    return NextResponse.json({ message }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to generate cross-post copy." },
+      { status: 500 }
+    );
   }
 }
