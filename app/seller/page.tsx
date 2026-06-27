@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon, CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
@@ -23,6 +23,12 @@ import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
 import { useI18n } from "../i18n";
 import type { CrossPostCopy, CrossPostPlatform } from "../lib/crossPostCopy";
+import {
+  maxCrossPostProducts,
+  reconcileCrossPostSelection,
+  selectAllAvailable,
+  toggleCrossPostSelection,
+} from "../lib/crossPostSelection";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 import { requestResponseWindowMs } from "../lib/requestExpiry";
 
@@ -118,6 +124,18 @@ export default function SellerPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingProductId, setPendingProductId] = useState<string | number | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [crossPostLoading, setCrossPostLoading] = useState(false);
+  const [crossPostError, setCrossPostError] = useState<string | null>(null);
+  const [crossPostCopies, setCrossPostCopies] = useState<CrossPostCopy[]>([]);
+  const [crossPostSource, setCrossPostSource] = useState<"ai" | "fallback" | null>(
+    null
+  );
+  const [selectedCrossPostPlatform, setSelectedCrossPostPlatform] =
+    useState<CrossPostPlatform>("facebook");
+  const [copiedCrossPostPlatform, setCopiedCrossPostPlatform] =
+    useState<CrossPostPlatform | null>(null);
+  const selectedProductIdsRef = useRef<string[]>([]);
 
   async function loadSellerData(options: { background?: boolean } = {}) {
     if (!options.background) {
@@ -137,9 +155,17 @@ export default function SellerPage() {
 
       const productsPayload = await productsRes.json();
       const requestsPayload = await requestsRes.json();
+      const nextProducts = (productsPayload.data ?? []) as SellerProduct[];
       const nextRequests = (requestsPayload.data ?? []) as SellerRequest[];
 
-      setProducts(productsPayload.data ?? []);
+      setProducts(nextProducts);
+      setSelectedProductIds((current) => {
+        const next = reconcileCrossPostSelection(current, nextProducts);
+        return current.length === next.length &&
+          current.every((id, index) => id === next[index])
+          ? current
+          : next;
+      });
       setRequests(nextRequests);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard.");
@@ -186,6 +212,51 @@ export default function SellerPage() {
       ),
     [products]
   );
+  const selectedProducts = useMemo(() => {
+    const productsById = new Map(
+      products.map((product) => [String(product.id), product] as const)
+    );
+    return selectedProductIds
+      .map((id) => productsById.get(id))
+      .filter((product): product is SellerProduct => Boolean(product));
+  }, [products, selectedProductIds]);
+  const selectedProductsFingerprint = useMemo(
+    () =>
+      JSON.stringify(
+        selectedProducts.map((product) => ({
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          nameTranslations: product.nameTranslations,
+          price: product.price,
+          category: product.category,
+          quantity: product.quantity,
+          imageUrl: product.imageUrl,
+          status: product.status,
+        }))
+      ),
+    [selectedProducts]
+  );
+  const availableSelectionIds = useMemo(
+    () => selectAllAvailable(sortedProducts),
+    [sortedProducts]
+  );
+  const allAvailableSelected =
+    availableSelectionIds.length > 0 &&
+    availableSelectionIds.every((id) => selectedProductIds.includes(id));
+  const selectedCrossPostCopy =
+    crossPostCopies.find(
+      (copy) => copy.platform === selectedCrossPostPlatform
+    ) ?? null;
+
+  useEffect(() => {
+    selectedProductIdsRef.current = selectedProductIds;
+    setCrossPostCopies([]);
+    setCrossPostSource(null);
+    setCrossPostError(null);
+    setCopiedCrossPostPlatform(null);
+  }, [selectedProductIds, selectedProductsFingerprint]);
+
   const sortedRequests = useMemo(
     () =>
       [...requests].sort(
@@ -210,6 +281,96 @@ export default function SellerPage() {
       ),
     [sortedRequests]
   );
+
+  function updateCrossPostSelection(
+    productId: string | number,
+    checked: boolean
+  ) {
+    setSelectedProductIds((current) => {
+      const next = toggleCrossPostSelection(current, productId, checked);
+      selectedProductIdsRef.current = next;
+      return next;
+    });
+  }
+
+  function selectAvailableProducts() {
+    const next = selectAllAvailable(sortedProducts);
+    selectedProductIdsRef.current = next;
+    setSelectedProductIds(next);
+  }
+
+  function clearCrossPostSelection() {
+    selectedProductIdsRef.current = [];
+    setSelectedProductIds([]);
+  }
+
+  async function generateCrossPostCopy() {
+    if (selectedProductIds.length < 1) return;
+
+    const submittedIds = [...selectedProductIds];
+    const submittedKey = submittedIds.join("\u0000");
+    setCrossPostLoading(true);
+    setCrossPostError(null);
+    setCopiedCrossPostPlatform(null);
+
+    try {
+      const res = await fetch("/api/seller/products/cross-post", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ productIds: submittedIds }),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        if (res.status === 400) {
+          await loadSellerData({ background: true });
+        }
+        throw new Error(
+          res.status === 400
+            ? t("seller.crossPostSelectionStale")
+            : payload?.message || t("seller.crossPostGenerateError")
+        );
+      }
+
+      const payload = (await res.json()) as {
+        source: "ai" | "fallback";
+        copies: CrossPostCopy[];
+      };
+      if (selectedProductIdsRef.current.join("\u0000") !== submittedKey) {
+        return;
+      }
+
+      setCrossPostCopies(payload.copies ?? []);
+      setCrossPostSource(payload.source ?? "fallback");
+      if (
+        !payload.copies?.some(
+          (copy) => copy.platform === selectedCrossPostPlatform
+        )
+      ) {
+        setSelectedCrossPostPlatform("facebook");
+      }
+    } catch (err) {
+      if (selectedProductIdsRef.current.join("\u0000") === submittedKey) {
+        setCrossPostError(
+          err instanceof Error ? err.message : t("seller.crossPostGenerateError")
+        );
+      }
+    } finally {
+      setCrossPostLoading(false);
+    }
+  }
+
+  async function copyCrossPostCopy() {
+    if (!selectedCrossPostCopy) return;
+    const text = `${selectedCrossPostCopy.title}\n\n${selectedCrossPostCopy.body}`;
+
+    try {
+      await window.navigator.clipboard.writeText(text);
+      setCopiedCrossPostPlatform(selectedCrossPostCopy.platform);
+    } catch {
+      setCrossPostError(t("seller.crossPostCopyError"));
+    }
+  }
 
   async function updateRequest(requestId: string, status: RequestStatus) {
     setActionError(null);
@@ -262,6 +423,9 @@ export default function SellerPage() {
       setProducts((current) =>
         current.map((item) => (item.id === productId ? payload.product : item))
       );
+      if (payload.product?.status !== "available") {
+        updateCrossPostSelection(productId, false);
+      }
     } catch {
       setActionError(t("seller.actionError"));
     } finally {
@@ -342,7 +506,7 @@ export default function SellerPage() {
           )}
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,1fr)]">
             <section className="app-panel">
-              <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <Heading size="5" className="text-gray-950">
                     {t("seller.myListings")}
@@ -351,8 +515,58 @@ export default function SellerPage() {
                     {t("seller.myListingsHelp")}
                   </Text>
                 </div>
-                <Badge color="orange">{products.length}</Badge>
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <Badge color="orange">{products.length}</Badge>
+                  {!loading && products.length > 0 && (
+                    <>
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                        {t("seller.crossPostSelectedCount", {
+                          count: selectedProductIds.length,
+                          max: maxCrossPostProducts,
+                        })}
+                      </span>
+                      <Button
+                        type="button"
+                        size="1"
+                        variant="soft"
+                        onClick={selectAvailableProducts}
+                        disabled={
+                          availableSelectionIds.length === 0 ||
+                          allAvailableSelected
+                        }
+                      >
+                        {t("seller.crossPostSelectAll")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="1"
+                        variant="ghost"
+                        onClick={clearCrossPostSelection}
+                        disabled={selectedProductIds.length === 0}
+                      >
+                        {t("seller.crossPostClear")}
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
+
+              {selectedProductIds.length > 0 && (
+                <BatchCrossPostPanel
+                  t={t}
+                  selectedCount={selectedProducts.length}
+                  loading={crossPostLoading}
+                  error={crossPostError}
+                  source={crossPostSource}
+                  copies={crossPostCopies}
+                  selectedPlatform={selectedCrossPostPlatform}
+                  copiedPlatform={copiedCrossPostPlatform}
+                  selectedCopy={selectedCrossPostCopy}
+                  onGenerate={generateCrossPostCopy}
+                  onSelectPlatform={setSelectedCrossPostPlatform}
+                  onCopy={copyCrossPostCopy}
+                />
+              )}
 
               <div className="space-y-3">
                 {loading ? (
@@ -379,6 +593,20 @@ export default function SellerPage() {
                       busy={pendingProductId === product.id}
                       locale={locale}
                       t={t}
+                      selected={selectedProductIds.includes(String(product.id))}
+                      selectionDisabled={
+                        product.status !== "available" ||
+                        (!selectedProductIds.includes(String(product.id)) &&
+                          selectedProductIds.length >= maxCrossPostProducts)
+                      }
+                      selectionLimitReached={
+                        product.status === "available" &&
+                        !selectedProductIds.includes(String(product.id)) &&
+                        selectedProductIds.length >= maxCrossPostProducts
+                      }
+                      onSelectionChange={(checked) =>
+                        updateCrossPostSelection(product.id, checked)
+                      }
                     />
                   ))
                 )}
@@ -559,6 +787,10 @@ function ProductRow({
   busy,
   locale,
   t,
+  selected,
+  selectionDisabled,
+  selectionLimitReached,
+  onSelectionChange,
 }: {
   product: SellerProduct;
   onStatus: (status: ProductStatus) => void;
@@ -566,6 +798,10 @@ function ProductRow({
   busy: boolean;
   locale: ReturnType<typeof useI18n>["locale"];
   t: ReturnType<typeof useI18n>["t"];
+  selected: boolean;
+  selectionDisabled: boolean;
+  selectionLimitReached: boolean;
+  onSelectionChange: (checked: boolean) => void;
 }) {
   const displayName = pickProductName(product.name, product.nameTranslations, locale);
   const [editing, setEditing] = useState(false);
@@ -580,17 +816,14 @@ function ProductRow({
     contactWechatId: product.sellerContact?.wechatId ?? "",
   }));
   const isSold = product.status === "sold";
-  const [includeCrossPostContact, setIncludeCrossPostContact] = useState(false);
-  const [crossPostLoading, setCrossPostLoading] = useState(false);
-  const [crossPostError, setCrossPostError] = useState<string | null>(null);
-  const [crossPostCopies, setCrossPostCopies] = useState<CrossPostCopy[]>([]);
-  const [crossPostSource, setCrossPostSource] = useState<"ai" | "fallback" | null>(
-    null
-  );
-  const [selectedCrossPostPlatform, setSelectedCrossPostPlatform] =
-    useState<CrossPostPlatform>("facebook");
-  const [copiedCrossPostPlatform, setCopiedCrossPostPlatform] =
-    useState<CrossPostPlatform | null>(null);
+  const selectionLabel =
+    product.status !== "available"
+      ? t("seller.crossPostUnavailable")
+      : selectionLimitReached
+        ? t("seller.crossPostLimitReached")
+        : selected
+          ? t("seller.crossPostSelected")
+          : t("seller.crossPostSelectProduct");
 
   useEffect(() => {
     setEditValues({
@@ -604,76 +837,6 @@ function ProductRow({
       contactWechatId: product.sellerContact?.wechatId ?? "",
     });
   }, [product]);
-
-  useEffect(() => {
-    setCrossPostCopies([]);
-    setCrossPostSource(null);
-    setCrossPostError(null);
-    setCopiedCrossPostPlatform(null);
-  }, [
-    product.name,
-    product.description,
-    product.price,
-    product.category,
-    product.quantity,
-    product.imageUrl,
-    product.sellerContact?.phone,
-    product.sellerContact?.lineId,
-    product.sellerContact?.wechatId,
-  ]);
-
-  const selectedCrossPostCopy =
-    crossPostCopies.find((copy) => copy.platform === selectedCrossPostPlatform) ??
-    null;
-
-  async function generateCrossPostCopy() {
-    setCrossPostLoading(true);
-    setCrossPostError(null);
-    setCopiedCrossPostPlatform(null);
-
-    try {
-      const res = await fetch(`/api/seller/products/${product.id}/cross-post`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          includeContactInfo: includeCrossPostContact,
-        }),
-      });
-
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null);
-        throw new Error(payload?.message || t("seller.crossPostGenerateError"));
-      }
-
-      const payload = (await res.json()) as {
-        source: "ai" | "fallback";
-        copies: CrossPostCopy[];
-      };
-      setCrossPostCopies(payload.copies ?? []);
-      setCrossPostSource(payload.source ?? "fallback");
-      if (!payload.copies?.some((copy) => copy.platform === selectedCrossPostPlatform)) {
-        setSelectedCrossPostPlatform("facebook");
-      }
-    } catch (err) {
-      setCrossPostError(
-        err instanceof Error ? err.message : t("seller.crossPostGenerateError")
-      );
-    } finally {
-      setCrossPostLoading(false);
-    }
-  }
-
-  async function copyCrossPostCopy() {
-    if (!selectedCrossPostCopy) return;
-    const text = `${selectedCrossPostCopy.title}\n\n${selectedCrossPostCopy.body}`;
-
-    try {
-      await window.navigator.clipboard.writeText(text);
-      setCopiedCrossPostPlatform(selectedCrossPostCopy.platform);
-    } catch {
-      setCrossPostError(t("seller.crossPostCopyError"));
-    }
-  }
 
   const statusActions: Array<{
     status: ProductStatus;
@@ -715,11 +878,34 @@ function ProductRow({
     >
       <div className="h-1 bg-gradient-to-r from-[#d73f09] via-orange-300 to-transparent" />
       <div className="flex flex-col gap-4 p-4 sm:flex-row">
-        <img
-          src={product.imageUrl || "/images/Bike_0.jpg"}
-          alt={displayName}
-          className="h-44 w-full shrink-0 rounded-md border border-orange-100 object-cover sm:h-24 sm:w-24"
-        />
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-24">
+          <label
+            className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-md border px-2 text-xs font-semibold transition ${
+              selected
+                ? "border-[#d73f09] bg-orange-50 text-[#8f2805]"
+                : "border-slate-200 bg-white text-slate-700"
+            } ${
+              selectionDisabled
+                ? "cursor-not-allowed opacity-55"
+                : "cursor-pointer hover:border-orange-300"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={selected}
+              disabled={selectionDisabled}
+              onChange={(event) => onSelectionChange(event.target.checked)}
+              aria-label={`${selectionLabel}: ${displayName}`}
+              className="h-4 w-4 shrink-0 accent-[#d73f09]"
+            />
+            <span className="min-w-0 truncate">{selectionLabel}</span>
+          </label>
+          <img
+            src={product.imageUrl || "/images/Bike_0.jpg"}
+            alt={displayName}
+            className="h-44 w-full rounded-md border border-orange-100 object-cover sm:h-24 sm:w-24"
+          />
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -803,28 +989,6 @@ function ProductRow({
             )}
             <SellerContactPreview contact={product.sellerContact} t={t} />
           </div>
-
-          <CrossPostCopyPanel
-            t={t}
-            includeContact={includeCrossPostContact}
-            onIncludeContactChange={(checked) => {
-              setIncludeCrossPostContact(checked);
-              setCrossPostCopies([]);
-              setCrossPostSource(null);
-              setCrossPostError(null);
-              setCopiedCrossPostPlatform(null);
-            }}
-            loading={crossPostLoading}
-            error={crossPostError}
-            source={crossPostSource}
-            copies={crossPostCopies}
-            selectedPlatform={selectedCrossPostPlatform}
-            copiedPlatform={copiedCrossPostPlatform}
-            selectedCopy={selectedCrossPostCopy}
-            onGenerate={generateCrossPostCopy}
-            onSelectPlatform={setSelectedCrossPostPlatform}
-            onCopy={copyCrossPostCopy}
-          />
 
           {editing && !isSold && (
             <form
@@ -999,10 +1163,9 @@ function ProductRow({
   );
 }
 
-function CrossPostCopyPanel({
+function BatchCrossPostPanel({
   t,
-  includeContact,
-  onIncludeContactChange,
+  selectedCount,
   loading,
   error,
   source,
@@ -1015,8 +1178,7 @@ function CrossPostCopyPanel({
   onCopy,
 }: {
   t: ReturnType<typeof useI18n>["t"];
-  includeContact: boolean;
-  onIncludeContactChange: (checked: boolean) => void;
+  selectedCount: number;
   loading: boolean;
   error: string | null;
   source: "ai" | "fallback" | null;
@@ -1031,7 +1193,7 @@ function CrossPostCopyPanel({
   const hasCopies = copies.length > 0;
 
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+    <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-orange-200 bg-white text-[#d73f09] shadow-sm">
@@ -1044,19 +1206,13 @@ function CrossPostCopyPanel({
             <Text as="p" color="gray" size="2" className="mt-1">
               {t("seller.crossPostHelp")}
             </Text>
+            <span className="mt-2 inline-flex rounded-md bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+              {t("seller.crossPostBatchCount", { count: selectedCount })}
+            </span>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2 sm:justify-end">
-          <label className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm">
-            <input
-              type="checkbox"
-              checked={includeContact}
-              onChange={(event) => onIncludeContactChange(event.target.checked)}
-              className="h-4 w-4 accent-[#d73f09]"
-            />
-            {t("seller.crossPostIncludeContact")}
-          </label>
           <Button
             type="button"
             variant="soft"
