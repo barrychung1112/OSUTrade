@@ -14,3 +14,7 @@ export function createBulkDraftRequestTracker() {
     },
   };
 }
+
+export function isBulkDraftMutationLocked(bulkPublishing: boolean) {
+  return bulkPublishing;
+}

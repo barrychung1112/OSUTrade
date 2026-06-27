@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { createBulkDraftRequestTracker } from "./bulkDraftRequest";
+import {
+  createBulkDraftRequestTracker,
+  isBulkDraftMutationLocked,
+} from "./bulkDraftRequest";
 
 describe("createBulkDraftRequestTracker", () => {
   test("invalidates responses from an earlier photo selection", () => {
@@ -11,5 +14,12 @@ describe("createBulkDraftRequestTracker", () => {
 
     expect(tracker.isCurrent(firstRequest)).toBe(false);
     expect(tracker.isCurrent(secondRequest)).toBe(true);
+  });
+});
+
+describe("isBulkDraftMutationLocked", () => {
+  test("locks draft changes only while publishing", () => {
+    expect(isBulkDraftMutationLocked(true)).toBe(true);
+    expect(isBulkDraftMutationLocked(false)).toBe(false);
   });
 });

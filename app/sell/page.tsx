@@ -7,7 +7,10 @@ import { Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import type { AiProductDraft } from "../lib/aiProductDrafts";
-import { createBulkDraftRequestTracker } from "../lib/bulkDraftRequest";
+import {
+  createBulkDraftRequestTracker,
+  isBulkDraftMutationLocked,
+} from "../lib/bulkDraftRequest";
 import type { Product } from "../lib/products";
 import { useI18n } from "../i18n";
 
@@ -93,6 +96,7 @@ export default function SellPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkSuccessCount, setBulkSuccessCount] = useState(0);
   const bulkDraftRequestTracker = useRef(createBulkDraftRequestTracker());
+  const bulkMutationLocked = isBulkDraftMutationLocked(bulkPublishing);
 
   useEffect(() => {
     if (imageFiles.length === 0) {
@@ -879,12 +883,18 @@ export default function SellPage() {
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
                       multiple
+                      disabled={bulkMutationLocked}
                       onChange={(event) => selectBulkImageFiles(event.target.files)}
                     />
                     <div className="mt-3 flex flex-wrap gap-3">
                       <label
                         htmlFor="ai-bulk-images"
-                        className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#b43305]"
+                        aria-disabled={bulkMutationLocked}
+                        className={`inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white shadow-sm transition ${
+                          bulkMutationLocked
+                            ? "pointer-events-none cursor-not-allowed opacity-50"
+                            : "cursor-pointer hover:bg-[#b43305]"
+                        }`}
                       >
                         <PlusIcon /> {t("sell.aiBulkUpload")}
                       </label>
@@ -892,6 +902,7 @@ export default function SellPage() {
                         <button
                           type="button"
                           className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-3 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50"
+                          disabled={bulkMutationLocked}
                           onClick={clearBulkImageFiles}
                         >
                           <Cross2Icon /> {t("common.clear")}
@@ -911,7 +922,9 @@ export default function SellPage() {
                       type="button"
                       highContrast
                       className="mt-4 w-full"
-                      disabled={bulkLoading || bulkImageFiles.length === 0}
+                      disabled={
+                        bulkLoading || bulkMutationLocked || bulkImageFiles.length === 0
+                      }
                       onClick={generateBulkDrafts}
                     >
                       <CheckIcon />
@@ -955,18 +968,21 @@ export default function SellPage() {
                         className="app-input"
                         type="tel"
                         value={contactPhone}
+                        disabled={bulkMutationLocked}
                         onChange={(event) => setContactPhone(event.target.value)}
                         placeholder={t("sell.contactPhone")}
                       />
                       <input
                         className="app-input"
                         value={contactLineId}
+                        disabled={bulkMutationLocked}
                         onChange={(event) => setContactLineId(event.target.value)}
                         placeholder={t("sell.contactLine")}
                       />
                       <input
                         className="app-input"
                         value={contactWechatId}
+                        disabled={bulkMutationLocked}
                         onChange={(event) => setContactWechatId(event.target.value)}
                         placeholder={t("sell.contactWechat")}
                       />
@@ -1013,6 +1029,8 @@ export default function SellPage() {
                           .map((imageIndex) => bulkImagePreviewUrls[imageIndex])
                           .filter(Boolean);
                         const confidence = Math.round(draft.confidence * 100);
+                        const draftMutationDisabled =
+                          bulkMutationLocked || draft.status === "published";
 
                         return (
                           <article
@@ -1043,7 +1061,7 @@ export default function SellPage() {
                                     <input
                                       type="checkbox"
                                       checked={draft.selected}
-                                      disabled={draft.status === "published"}
+                                      disabled={draftMutationDisabled}
                                       onChange={(event) =>
                                         updateBulkDraft(draft.id, {
                                           selected: event.target.checked,
@@ -1055,6 +1073,7 @@ export default function SellPage() {
                                   <button
                                     type="button"
                                     className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                                    disabled={draftMutationDisabled}
                                     onClick={() => deleteBulkDraft(draft.id)}
                                   >
                                     <Cross2Icon /> {t("sell.aiBulkDelete")}
@@ -1064,6 +1083,7 @@ export default function SellPage() {
                                 <input
                                   className="app-input"
                                   value={draft.name}
+                                  disabled={draftMutationDisabled}
                                   onChange={(event) =>
                                     updateBulkDraft(draft.id, {
                                       name: event.target.value,
@@ -1075,6 +1095,7 @@ export default function SellPage() {
                                 <textarea
                                   className="app-input min-h-24"
                                   value={draft.description}
+                                  disabled={draftMutationDisabled}
                                   onChange={(event) =>
                                     updateBulkDraft(draft.id, {
                                       description: event.target.value,
@@ -1090,6 +1111,7 @@ export default function SellPage() {
                                     min="0.01"
                                     step="0.01"
                                     value={draft.price}
+                                    disabled={draftMutationDisabled}
                                     onChange={(event) =>
                                       updateBulkDraft(draft.id, {
                                         price: Number(event.target.value),
@@ -1103,6 +1125,7 @@ export default function SellPage() {
                                     min="1"
                                     step="1"
                                     value={draft.quantity}
+                                    disabled={draftMutationDisabled}
                                     onChange={(event) =>
                                       updateBulkDraft(draft.id, {
                                         quantity: Number(event.target.value),
@@ -1113,6 +1136,7 @@ export default function SellPage() {
                                   <select
                                     className="app-input"
                                     value={draft.category}
+                                    disabled={draftMutationDisabled}
                                     onChange={(event) =>
                                       updateBulkDraft(draft.id, {
                                         category: event.target.value,
