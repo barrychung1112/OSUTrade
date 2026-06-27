@@ -1,12 +1,13 @@
 "use client";
 
-import { FormEvent, type ReactNode, useEffect, useState } from "react";
+import { FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import type { AiProductDraft } from "../lib/aiProductDrafts";
+import { createBulkDraftRequestTracker } from "../lib/bulkDraftRequest";
 import type { Product } from "../lib/products";
 import { useI18n } from "../i18n";
 
@@ -91,6 +92,7 @@ export default function SellPage() {
   const [bulkPublishing, setBulkPublishing] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkSuccessCount, setBulkSuccessCount] = useState(0);
+  const bulkDraftRequestTracker = useRef(createBulkDraftRequestTracker());
 
   useEffect(() => {
     if (imageFiles.length === 0) {
@@ -267,6 +269,8 @@ export default function SellPage() {
 
   function selectBulkImageFiles(files: FileList | null) {
     const selectedFiles = Array.from(files ?? []);
+    bulkDraftRequestTracker.current.invalidate();
+    setBulkLoading(false);
     setBulkImageFiles(selectedFiles.slice(0, maxAiBulkImages));
     setBulkDrafts([]);
     setBulkSuccessCount(0);
@@ -287,6 +291,7 @@ export default function SellPage() {
     setBulkLoading(true);
     setBulkError(null);
     setBulkSuccessCount(0);
+    const requestId = bulkDraftRequestTracker.current.start();
 
     try {
       const formData = new FormData();
@@ -303,6 +308,8 @@ export default function SellPage() {
       }
 
       const payload = (await res.json()) as { drafts?: AiProductDraft[] };
+      if (!bulkDraftRequestTracker.current.isCurrent(requestId)) return;
+
       const nextDrafts = (payload.drafts ?? []).map((draft) => ({
         ...draft,
         selected: true,
@@ -312,10 +319,22 @@ export default function SellPage() {
 
       setBulkDrafts(nextDrafts);
     } catch (err) {
+      if (!bulkDraftRequestTracker.current.isCurrent(requestId)) return;
       setBulkError(err instanceof Error ? err.message : t("sell.aiBulkError"));
     } finally {
-      setBulkLoading(false);
+      if (bulkDraftRequestTracker.current.isCurrent(requestId)) {
+        setBulkLoading(false);
+      }
     }
+  }
+
+  function clearBulkImageFiles() {
+    bulkDraftRequestTracker.current.invalidate();
+    setBulkLoading(false);
+    setBulkImageFiles([]);
+    setBulkDrafts([]);
+    setBulkSuccessCount(0);
+    setBulkError(null);
   }
 
   function updateBulkDraft(
@@ -873,11 +892,7 @@ export default function SellPage() {
                         <button
                           type="button"
                           className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-3 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50"
-                          onClick={() => {
-                            setBulkImageFiles([]);
-                            setBulkDrafts([]);
-                            setBulkSuccessCount(0);
-                          }}
+                          onClick={clearBulkImageFiles}
                         >
                           <Cross2Icon /> {t("common.clear")}
                         </button>
