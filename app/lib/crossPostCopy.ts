@@ -1,4 +1,4 @@
-import type { Product, SellerContact } from "./products";
+import type { Product } from "./products";
 import {
   pickProductDescription,
   pickProductName,
@@ -28,9 +28,15 @@ export type CrossPostGenerationResult = {
   copies: CrossPostCopy[];
 };
 
-type CrossPostOptions = {
-  includeContactInfo?: boolean;
-  productUrl?: string;
+export type CrossPostListing = {
+  product: Product;
+  productUrl: string;
+};
+
+type AiPlatformDraft = {
+  platform: CrossPostPlatform;
+  title: string;
+  introduction: string;
 };
 
 export const platformLanguage: Record<CrossPostPlatform, CrossPostLanguage> = {
@@ -100,32 +106,6 @@ function localizedCategory(value: unknown, language: CrossPostLanguage) {
   return categoryLabels[language][category] ?? category;
 }
 
-function contactLines(contact: SellerContact | null | undefined, language: CrossPostLanguage) {
-  if (!contact) return [];
-
-  if (language === "zhCn") {
-    return [
-      contact.phone ? `电话: ${contact.phone}` : null,
-      contact.lineId ? `LINE: ${contact.lineId}` : null,
-      contact.wechatId ? `微信: ${contact.wechatId}` : null,
-    ].filter(Boolean) as string[];
-  }
-
-  if (language === "zhTw") {
-    return [
-      contact.phone ? `電話: ${contact.phone}` : null,
-      contact.lineId ? `LINE: ${contact.lineId}` : null,
-      contact.wechatId ? `微信: ${contact.wechatId}` : null,
-    ].filter(Boolean) as string[];
-  }
-
-  return [
-    contact.phone ? `Phone: ${contact.phone}` : null,
-    contact.lineId ? `LINE: ${contact.lineId}` : null,
-    contact.wechatId ? `WeChat: ${contact.wechatId}` : null,
-  ].filter(Boolean) as string[];
-}
-
 function localizedProduct(product: Product, language: CrossPostLanguage) {
   const locale = languageToLocale(language);
   return {
@@ -138,7 +118,10 @@ function localizedProduct(product: Product, language: CrossPostLanguage) {
   };
 }
 
-function appendOptionalLines(lines: string[], optionalLines: Array<string | null | undefined>) {
+function appendOptionalLines(
+  lines: string[],
+  optionalLines: Array<string | null | undefined>
+) {
   for (const line of optionalLines) {
     const text = clean(line);
     if (text) lines.push(text);
@@ -146,132 +129,122 @@ function appendOptionalLines(lines: string[], optionalLines: Array<string | null
   return lines;
 }
 
-function buildFallbackCopy(
-  product: Product,
+function fallbackHeading(
+  listings: CrossPostListing[],
+  platform: CrossPostPlatform
+): { title: string; introduction: string } {
+  const count = listings.length;
+
+  if (platform === "line") {
+    return {
+      title: count === 1 ? "商品出售" : `${count} 項商品出售`,
+      introduction: "以下商品目前可在 OSUTrade 上購買：",
+    };
+  }
+
+  if (platform === "wechat") {
+    return {
+      title: count === 1 ? "商品出售" : `${count} 件商品出售`,
+      introduction: "以下商品目前可在 OSUTrade 上购买：",
+    };
+  }
+
+  return {
+    title: count === 1 ? "Item for sale" : `${count} items for sale`,
+    introduction: "These items are currently available on OSUTrade:",
+  };
+}
+
+function buildItemBlock(
+  listing: CrossPostListing,
   platform: CrossPostPlatform,
-  options: CrossPostOptions
-): CrossPostCopy {
+  index: number
+) {
   const language = platformLanguage[platform];
-  const localized = localizedProduct(product, language);
-  const price = money(product.price);
-  const quantity = Number(product.quantity ?? 1);
-  const category = localizedCategory(product.category, language);
-  const imageUrl = clean(product.imageUrl || product.imageUrls?.[0]);
-  const contact = options.includeContactInfo
-    ? contactLines(product.sellerContact, language)
-    : [];
+  const localized = localizedProduct(listing.product, language);
+  const price = money(listing.product.price);
+  const quantity = Number(listing.product.quantity ?? 1);
+  const category = localizedCategory(listing.product.category, language);
+  const imageUrl = clean(
+    listing.product.imageUrl || listing.product.imageUrls?.[0]
+  );
+  const productUrl = clean(listing.productUrl);
 
   if (language === "zhTw") {
-    const lines = appendOptionalLines(
+    return appendOptionalLines(
       [
-        `出售：${localized.name}`,
+        `${index + 1}. ${localized.name}`,
         `價格：${price}`,
         `分類：${category}`,
         `數量：${quantity}`,
       ],
-      [localized.description, imageUrl ? `照片：${imageUrl}` : null, options.productUrl]
-    );
-    lines.push(...contact);
-    return {
-      platform,
-      language,
-      title: localized.name,
-      body: lines.join("\n"),
-    };
+      [
+        localized.description,
+        imageUrl ? `照片：${imageUrl}` : null,
+        productUrl ? `OSUTrade：${productUrl}` : null,
+      ]
+    ).join("\n");
   }
 
   if (language === "zhCn") {
-    const lines = appendOptionalLines(
+    return appendOptionalLines(
       [
-        `出售：${localized.name}`,
+        `${index + 1}. ${localized.name}`,
         `价格：${price}`,
         `分类：${category}`,
         `数量：${quantity}`,
       ],
-      [localized.description, imageUrl ? `照片：${imageUrl}` : null, options.productUrl]
-    );
-    lines.push(...contact);
-    return {
-      platform,
-      language,
-      title: localized.name,
-      body: lines.join("\n"),
-    };
-  }
-
-  if (platform === "discord") {
-    const lines = appendOptionalLines(
-      [
-        `**Selling: ${localized.name}**`,
-        `Price: ${price}`,
-        `Category: ${category}`,
-        `Quantity: ${quantity}`,
-      ],
       [
         localized.description,
-        imageUrl ? `Photo: ${imageUrl}` : null,
-        options.productUrl ? `OSUTrade: ${options.productUrl}` : null,
+        imageUrl ? `照片：${imageUrl}` : null,
+        productUrl ? `OSUTrade：${productUrl}` : null,
       ]
-    );
-    lines.push(...contact);
-    return {
-      platform,
-      language,
-      title: localized.name,
-      body: lines.join("\n"),
-    };
+    ).join("\n");
   }
 
-  if (platform === "craigslist") {
-    const lines = appendOptionalLines(
-      [
-        `Item: ${localized.name}`,
-        `Price: ${price}`,
-        `Category: ${category}`,
-        `Quantity: ${quantity}`,
-      ],
-      [
-        localized.description,
-        imageUrl ? `Photo: ${imageUrl}` : null,
-        options.productUrl ? `OSUTrade listing: ${options.productUrl}` : null,
-      ]
-    );
-    lines.push(...contact);
-    return {
-      platform,
-      language,
-      title: `${localized.name} - ${price}`,
-      body: lines.join("\n"),
-    };
-  }
+  const nameLine =
+    platform === "discord"
+      ? `${index + 1}. **${localized.name}**`
+      : `${index + 1}. ${localized.name}`;
 
-  const lines = appendOptionalLines(
+  return appendOptionalLines(
     [
-      `Selling ${localized.name} for ${price}.`,
+      nameLine,
+      `Price: ${price}`,
       `Category: ${category}`,
-      `Quantity available: ${quantity}`,
+      `Quantity: ${quantity}`,
     ],
     [
       localized.description,
       imageUrl ? `Photo: ${imageUrl}` : null,
-      options.productUrl ? `OSUTrade listing: ${options.productUrl}` : null,
+      productUrl ? `OSUTrade: ${productUrl}` : null,
     ]
+  ).join("\n");
+}
+
+function assembleCopy(
+  listings: CrossPostListing[],
+  platform: CrossPostPlatform,
+  heading: { title: string; introduction: string }
+): CrossPostCopy {
+  const introduction = clean(heading.introduction);
+  const itemBlocks = listings.map((listing, index) =>
+    buildItemBlock(listing, platform, index)
   );
-  lines.push(...contact);
+
   return {
     platform,
-    language,
-    title: localized.name,
-    body: lines.join("\n"),
+    language: platformLanguage[platform],
+    title: clean(heading.title),
+    body: [introduction, ...itemBlocks].filter(Boolean).join("\n\n"),
   };
 }
 
 export function buildFallbackCrossPostCopies(
-  product: Product,
-  options: CrossPostOptions = {}
+  listings: CrossPostListing[]
 ): CrossPostCopy[] {
   return crossPostPlatforms.map((platform) =>
-    buildFallbackCopy(product, platform, options)
+    assembleCopy(listings, platform, fallbackHeading(listings, platform))
   );
 }
 
@@ -301,7 +274,8 @@ function parseJsonBlock(text: string) {
   return JSON.parse(trimmed);
 }
 
-function productFacts(product: Product, options: CrossPostOptions) {
+function listingFacts(listing: CrossPostListing) {
+  const { product, productUrl } = listing;
   return {
     id: product.id,
     price: product.price,
@@ -310,9 +284,7 @@ function productFacts(product: Product, options: CrossPostOptions) {
     imageUrls: product.imageUrls?.length
       ? product.imageUrls
       : [product.imageUrl].filter(Boolean),
-    productUrl: options.productUrl ?? null,
-    includeContactInfo: options.includeContactInfo === true,
-    contact: options.includeContactInfo === true ? product.sellerContact ?? null : null,
+    productUrl,
     localizedText: {
       en: localizedProduct(product, "en"),
       zhTw: localizedProduct(product, "zhTw"),
@@ -321,37 +293,29 @@ function productFacts(product: Product, options: CrossPostOptions) {
   };
 }
 
-function normalizeAiCopies(parsed: any, fallback: CrossPostCopy[]) {
-  const byPlatform = new Map<CrossPostPlatform, any>();
-  const copies = Array.isArray(parsed?.copies) ? parsed.copies : [];
+function normalizeAiDrafts(parsed: any): Map<CrossPostPlatform, AiPlatformDraft> | null {
+  const drafts = Array.isArray(parsed?.copies) ? parsed.copies : [];
+  if (drafts.length !== crossPostPlatforms.length) return null;
 
-  for (const copy of copies) {
-    if (crossPostPlatforms.includes(copy?.platform)) {
-      byPlatform.set(copy.platform, copy);
-    }
+  const byPlatform = new Map<CrossPostPlatform, AiPlatformDraft>();
+  for (const draft of drafts) {
+    if (!crossPostPlatforms.includes(draft?.platform)) return null;
+
+    const platform = draft.platform as CrossPostPlatform;
+    const title = clean(draft?.title);
+    const introduction = clean(draft?.introduction);
+    if (!title || !introduction || byPlatform.has(platform)) return null;
+
+    byPlatform.set(platform, { platform, title, introduction });
   }
 
-  return fallback.map((fallbackCopy) => {
-    const aiCopy = byPlatform.get(fallbackCopy.platform);
-    const title = clean(aiCopy?.title);
-    const body = clean(aiCopy?.body);
-
-    if (!title || !body) return fallbackCopy;
-
-    return {
-      platform: fallbackCopy.platform,
-      language: fallbackCopy.language,
-      title,
-      body,
-    };
-  });
+  return byPlatform.size === crossPostPlatforms.length ? byPlatform : null;
 }
 
 export async function generateCrossPostCopies(
-  product: Product,
-  options: CrossPostOptions = {}
+  listings: CrossPostListing[]
 ): Promise<CrossPostGenerationResult> {
-  const fallback = buildFallbackCrossPostCopies(product, options);
+  const fallback = buildFallbackCrossPostCopies(listings);
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -373,7 +337,7 @@ export async function generateCrossPostCopies(
           {
             role: "system",
             content:
-              "Use only the provided facts to write marketplace cross-post copy. Do not invent condition, warranty, delivery, discount, pickup details, accessories, or brand/model facts. Preserve brand and model names. Generate each platform in its required language. Include contact info only when includeContactInfo is true.",
+              "Use only the provided facts. Write a short title and introduction for each marketplace platform in its required language. Do not repeat item details, links, contact information, condition, warranty, delivery, discounts, pickup details, accessories, or brand/model facts in the introduction. Item details and links are appended by the application.",
           },
           {
             role: "user",
@@ -384,7 +348,7 @@ export async function generateCrossPostCopies(
                 language: platformLanguage[platform],
                 languageName: languageNames[platformLanguage[platform]],
               })),
-              product: productFacts(product, options),
+              listings: listings.map(listingFacts),
             }),
           },
         ],
@@ -410,9 +374,9 @@ export async function generateCrossPostCopies(
                         enum: [...crossPostPlatforms],
                       },
                       title: { type: "string" },
-                      body: { type: "string" },
+                      introduction: { type: "string" },
                     },
-                    required: ["platform", "title", "body"],
+                    required: ["platform", "title", "introduction"],
                   },
                 },
               },
@@ -433,9 +397,16 @@ export async function generateCrossPostCopies(
       return { source: "fallback", copies: fallback };
     }
 
+    const aiDrafts = normalizeAiDrafts(parseJsonBlock(responseText));
+    if (!aiDrafts) {
+      return { source: "fallback", copies: fallback };
+    }
+
     return {
       source: "ai",
-      copies: normalizeAiCopies(parseJsonBlock(responseText), fallback),
+      copies: crossPostPlatforms.map((platform) =>
+        assembleCopy(listings, platform, aiDrafts.get(platform)!)
+      ),
     };
   } catch {
     return { source: "fallback", copies: fallback };
