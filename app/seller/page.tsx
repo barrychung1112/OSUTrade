@@ -310,6 +310,7 @@ export default function SellerPage() {
     const submittedIds = [...selectedProductIds];
     const submittedKey = submittedIds.join("\u0000");
     setCrossPostLoading(true);
+    setActionError(null);
     setCrossPostError(null);
     setCopiedCrossPostPlatform(null);
 
@@ -324,12 +325,10 @@ export default function SellerPage() {
         const payload = await res.json().catch(() => null);
         if (res.status === 400) {
           await loadSellerData({ background: true });
+          setActionError(t("seller.crossPostSelectionStale"));
+          return;
         }
-        throw new Error(
-          res.status === 400
-            ? t("seller.crossPostSelectionStale")
-            : payload?.message || t("seller.crossPostGenerateError")
-        );
+        throw new Error(payload?.message || t("seller.crossPostGenerateError"));
       }
 
       const payload = (await res.json()) as {
