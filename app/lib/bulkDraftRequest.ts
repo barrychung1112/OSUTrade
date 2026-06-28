@@ -1,3 +1,6 @@
+import type { PublishedCrossPostProduct } from "./crossPostFinalizer";
+import type { CrossPostFlowStage } from "./crossPostPreview";
+
 export function createBulkDraftRequestTracker() {
   let currentRequestId = 0;
 
@@ -15,6 +18,35 @@ export function createBulkDraftRequestTracker() {
   };
 }
 
-export function isBulkDraftMutationLocked(bulkPublishing: boolean) {
-  return bulkPublishing;
+export function isBulkDraftMutationLocked(
+  bulkPublishing: boolean,
+  crossPostStage: CrossPostFlowStage = "idle"
+) {
+  return (
+    bulkPublishing ||
+    crossPostStage === "generating" ||
+    crossPostStage === "reviewing" ||
+    crossPostStage === "publishing"
+  );
+}
+
+export function getPendingCrossPostDraftIds(
+  snapshotIds: string[],
+  publishedProducts: PublishedCrossPostProduct[]
+) {
+  const publishedIds = new Set(
+    publishedProducts.map((product) => product.clientId)
+  );
+  const seen = new Set<string>();
+  return snapshotIds.filter((draftId) => {
+    if (seen.has(draftId) || publishedIds.has(draftId)) return false;
+    seen.add(draftId);
+    return true;
+  });
+}
+
+export function isBulkPublishActionBarVisible(stage: CrossPostFlowStage) {
+  return (
+    stage === "idle" || stage === "generating" || stage === "finalized"
+  );
 }

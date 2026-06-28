@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 import {
   createBulkDraftRequestTracker,
+  getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
+  isBulkPublishActionBarVisible,
 } from "./bulkDraftRequest";
 
 describe("createBulkDraftRequestTracker", () => {
@@ -18,8 +20,47 @@ describe("createBulkDraftRequestTracker", () => {
 });
 
 describe("isBulkDraftMutationLocked", () => {
-  test("locks draft changes only while publishing", () => {
-    expect(isBulkDraftMutationLocked(true)).toBe(true);
-    expect(isBulkDraftMutationLocked(false)).toBe(false);
+  test("locks draft changes while a preview snapshot is active", () => {
+    expect(isBulkDraftMutationLocked(false, "idle")).toBe(false);
+    expect(isBulkDraftMutationLocked(false, "generating")).toBe(true);
+    expect(isBulkDraftMutationLocked(false, "reviewing")).toBe(true);
+    expect(isBulkDraftMutationLocked(false, "publishing")).toBe(true);
+    expect(isBulkDraftMutationLocked(false, "finalized")).toBe(false);
+    expect(isBulkDraftMutationLocked(true, "idle")).toBe(true);
+  });
+});
+
+describe("getPendingCrossPostDraftIds", () => {
+  test("returns only unpublished snapshot ids in their original order", () => {
+    expect(
+      getPendingCrossPostDraftIds(
+        ["a", "b", "c"],
+        [
+          {
+            clientId: "b",
+            productId: "p-2",
+            name: "B",
+            productUrl: "/product/p-2",
+          },
+        ]
+      )
+    ).toEqual(["a", "c"]);
+  });
+
+  test("deduplicates snapshot ids without reordering them", () => {
+    expect(getPendingCrossPostDraftIds(["a", "a", "b"], [])).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+});
+
+describe("isBulkPublishActionBarVisible", () => {
+  test("keeps actions available after finishing a subset of drafts", () => {
+    expect(isBulkPublishActionBarVisible("idle")).toBe(true);
+    expect(isBulkPublishActionBarVisible("generating")).toBe(true);
+    expect(isBulkPublishActionBarVisible("reviewing")).toBe(false);
+    expect(isBulkPublishActionBarVisible("publishing")).toBe(false);
+    expect(isBulkPublishActionBarVisible("finalized")).toBe(true);
   });
 });

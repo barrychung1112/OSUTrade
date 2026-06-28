@@ -5,13 +5,29 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
+import CrossPostPreviewEditor from "../components/CrossPostPreviewEditor";
 import Header from "../components/Header";
 import type { AiProductDraft } from "../lib/aiProductDrafts";
 import {
   createBulkDraftRequestTracker,
+  getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
+  isBulkPublishActionBarVisible,
 } from "../lib/bulkDraftRequest";
 import type { Product } from "../lib/products";
+import type { CrossPostCopy } from "../lib/crossPostCopy";
+import {
+  mergePublishedCrossPostProducts,
+  type PublishedCrossPostProduct,
+} from "../lib/crossPostFinalizer";
+import type { CrossPostFlowStage } from "../lib/crossPostPreview";
+import { buildBulkCrossPostPreviewItems } from "../lib/bulkCrossPost";
+import {
+  buildManualCrossPostPreviewItem,
+  buildPublishedCrossPostProduct,
+  isDirectManualPublishAllowed,
+  parseCrossPostPreviewResponse,
+} from "../lib/manualCrossPost";
 import { useI18n } from "../i18n";
 
 const categories = ["general", "electronics", "clothing", "books", "home"];
@@ -42,6 +58,11 @@ type BulkDraft = AiProductDraft & {
   selected: boolean;
   status: "draft" | "publishing" | "published" | "error";
   error?: string | null;
+};
+
+type BulkPublishResult = {
+  successes: Array<{ draftId: string; product: Product }>;
+  failures: Array<{ draftId: string; message: string }>;
 };
 
 function FormSection({ step, title, description, children }: FormSectionProps) {
@@ -88,6 +109,20 @@ export default function SellPage() {
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [pricingAdvice, setPricingAdvice] = useState<PricingAdvice | null>(null);
+  const [manualCrossPostStage, setManualCrossPostStage] =
+    useState<CrossPostFlowStage>("idle");
+  const [manualCrossPostCopies, setManualCrossPostCopies] = useState<
+    CrossPostCopy[]
+  >([]);
+  const [manualCrossPostSource, setManualCrossPostSource] = useState<
+    "ai" | "fallback"
+  >("fallback");
+  const [manualPublishedProducts, setManualPublishedProducts] = useState<
+    PublishedCrossPostProduct[]
+  >([]);
+  const [manualCrossPostError, setManualCrossPostError] = useState<
+    string | null
+  >(null);
   const [bulkImageFiles, setBulkImageFiles] = useState<File[]>([]);
   const [bulkImagePreviewUrls, setBulkImagePreviewUrls] = useState<string[]>([]);
   const [bulkDrafts, setBulkDrafts] = useState<BulkDraft[]>([]);
@@ -95,8 +130,32 @@ export default function SellPage() {
   const [bulkPublishing, setBulkPublishing] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkSuccessCount, setBulkSuccessCount] = useState(0);
+  const [bulkCrossPostStage, setBulkCrossPostStage] =
+    useState<CrossPostFlowStage>("idle");
+  const [bulkCrossPostCopies, setBulkCrossPostCopies] = useState<
+    CrossPostCopy[]
+  >([]);
+  const [bulkCrossPostSource, setBulkCrossPostSource] = useState<
+    "ai" | "fallback"
+  >("fallback");
+  const [bulkPublishedProducts, setBulkPublishedProducts] = useState<
+    PublishedCrossPostProduct[]
+  >([]);
+  const [bulkCrossPostDraftIds, setBulkCrossPostDraftIds] = useState<string[]>(
+    []
+  );
+  const [bulkCrossPostError, setBulkCrossPostError] = useState<string | null>(
+    null
+  );
+  const manualFormRef = useRef<HTMLFormElement>(null);
+  const manualCrossPostRequestId = useRef(0);
+  const bulkCrossPostRequestId = useRef(0);
   const bulkDraftRequestTracker = useRef(createBulkDraftRequestTracker());
-  const bulkMutationLocked = isBulkDraftMutationLocked(bulkPublishing);
+  const bulkMutationLocked = isBulkDraftMutationLocked(
+    bulkPublishing,
+    bulkCrossPostStage
+  );
+  const manualFormLocked = manualCrossPostStage !== "idle";
 
   useEffect(() => {
     if (imageFiles.length === 0) {
@@ -112,14 +171,14 @@ export default function SellPage() {
 
   useEffect(() => {
     if (!successProduct) return;
-    if (listingMode !== "manual") return;
+    if (listingMode !== "manual" || manualCrossPostStage !== "idle") return;
 
     const timer = window.setTimeout(() => {
       router.push(`/product/${successProduct.id}`);
     }, 1800);
 
     return () => window.clearTimeout(timer);
-  }, [listingMode, router, successProduct]);
+  }, [listingMode, manualCrossPostStage, router, successProduct]);
 
   useEffect(() => {
     if (bulkImageFiles.length === 0) {
@@ -133,85 +192,178 @@ export default function SellPage() {
     return () => objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
   }, [bulkImageFiles]);
 
+  async function publishManualProduct() {
+    let nextImageUrls = imageUrl.trim() ? [imageUrl.trim()] : [];
+    if (imageFiles.length > maxProductImages) {
+      throw new Error(t("sell.imageLimitError"));
+    }
+
+    if (imageFiles.length > 0) {
+      const uploadForm = new FormData();
+      imageFiles.forEach((file) => uploadForm.append("images", file));
+
+      const uploadRes = await fetch("/api/products/images", {
+        method: "POST",
+        body: uploadForm,
+      });
+
+      if (!uploadRes.ok) {
+        const payload = await uploadRes.json().catch(() => null);
+        throw new Error(payload?.message || t("sell.uploadError"));
+      }
+
+      const uploadPayload = await uploadRes.json();
+      nextImageUrls = Array.isArray(uploadPayload.imageUrls)
+        ? uploadPayload.imageUrls
+        : [uploadPayload.imageUrl].filter(Boolean);
+    }
+
+    if (nextImageUrls.length === 0) {
+      throw new Error(t("sell.imageRequired"));
+    }
+
+    if (nextImageUrls.length > maxProductImages) {
+      throw new Error(t("sell.imageLimitError"));
+    }
+
+    const res = await fetch("/api/products", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name,
+        description,
+        price: Number(price),
+        quantity: Number(quantity),
+        category,
+        imageUrl: nextImageUrls[0] ?? "",
+        imageUrls: nextImageUrls,
+        contactPhone,
+        contactLineId,
+        contactWechatId,
+      }),
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw new Error(payload?.message || t("sell.listError"));
+    }
+
+    return (await res.json()) as Product;
+  }
+
+  function resetManualForm() {
+    setName("");
+    setDescription("");
+    setPrice("");
+    setQuantity("1");
+    setCategory("general");
+    setImageUrl("");
+    setImageFiles([]);
+    setContactPhone("");
+    setContactLineId("");
+    setContactWechatId("");
+    setPricingAdvice(null);
+    setPricingError(null);
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isDirectManualPublishAllowed(manualCrossPostStage)) return;
     setLoading(true);
     setError(null);
     setSuccessProduct(null);
 
-    let nextImageUrls = imageUrl.trim() ? [imageUrl.trim()] : [];
-
     try {
-      if (imageFiles.length > maxProductImages) {
-        throw new Error(t("sell.imageLimitError"));
-      }
-
-      if (imageFiles.length > 0) {
-        const uploadForm = new FormData();
-        imageFiles.forEach((file) => uploadForm.append("images", file));
-
-        const uploadRes = await fetch("/api/products/images", {
-          method: "POST",
-          body: uploadForm,
-        });
-
-        if (!uploadRes.ok) {
-          const payload = await uploadRes.json().catch(() => null);
-          throw new Error(payload?.message || t("sell.uploadError"));
-        }
-
-        const uploadPayload = await uploadRes.json();
-        nextImageUrls = Array.isArray(uploadPayload.imageUrls)
-          ? uploadPayload.imageUrls
-          : [uploadPayload.imageUrl].filter(Boolean);
-      }
-
-      if (nextImageUrls.length === 0) {
-        throw new Error(t("sell.imageRequired"));
-      }
-
-      if (nextImageUrls.length > maxProductImages) {
-        throw new Error(t("sell.imageLimitError"));
-      }
-
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name,
-          description,
-          price: Number(price),
-          quantity: Number(quantity),
-          category,
-          imageUrl: nextImageUrls[0] ?? "",
-          imageUrls: nextImageUrls,
-          contactPhone,
-          contactLineId,
-          contactWechatId,
-        }),
-      });
-
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null);
-        throw new Error(payload?.message || t("sell.listError"));
-      }
-
-      const product = (await res.json()) as Product;
+      const product = await publishManualProduct();
       setSuccessProduct(product);
-      setName("");
-      setDescription("");
-      setPrice("");
-      setQuantity("1");
-      setCategory("general");
-      setImageUrl("");
-      setImageFiles([]);
-      setContactPhone("");
-      setContactLineId("");
-      setContactWechatId("");
-      setPricingAdvice(null);
-      setPricingError(null);
+      resetManualForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("sell.listError"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function generateManualCrossPostPreview() {
+    if (!manualFormRef.current?.reportValidity()) return;
+    if (imageFiles.length === 0 && !imageUrl.trim()) {
+      setError(t("sell.imageRequired"));
+      return;
+    }
+
+    const requestId = manualCrossPostRequestId.current + 1;
+    manualCrossPostRequestId.current = requestId;
+    setManualCrossPostStage("generating");
+    setManualCrossPostError(null);
+    setError(null);
+    setSuccessProduct(null);
+
+    try {
+      const item = buildManualCrossPostPreviewItem({
+        name,
+        description,
+        price,
+        quantity,
+        category,
+      });
+      const response = await fetch("/api/products/cross-post-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ items: [item] }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          payload?.message || t("sell.crossPostPreviewError")
+        );
+      }
+
+      const result = parseCrossPostPreviewResponse(await response.json());
+      if (!result) throw new Error(t("sell.crossPostPreviewError"));
+      if (manualCrossPostRequestId.current !== requestId) return;
+
+      setManualCrossPostSource(result.source);
+      setManualCrossPostCopies(result.copies);
+      setManualPublishedProducts([]);
+      setManualCrossPostStage("reviewing");
+    } catch (err) {
+      if (manualCrossPostRequestId.current !== requestId) return;
+      setError(
+        err instanceof Error ? err.message : t("sell.crossPostPreviewError")
+      );
+      setManualCrossPostStage("idle");
+    }
+  }
+
+  function returnToManualListing() {
+    manualCrossPostRequestId.current += 1;
+    setManualCrossPostStage("idle");
+    setManualCrossPostCopies([]);
+    setManualPublishedProducts([]);
+    setManualCrossPostError(null);
+  }
+
+  async function confirmManualCrossPost() {
+    setManualCrossPostStage("publishing");
+    setManualCrossPostError(null);
+    setLoading(true);
+
+    try {
+      const product = await publishManualProduct();
+      const publishedProduct = buildPublishedCrossPostProduct(
+        "manual-1",
+        product,
+        window.location.origin
+      );
+      setSuccessProduct(product);
+      setManualPublishedProducts([publishedProduct]);
+      setManualCrossPostStage("finalized");
+      resetManualForm();
+    } catch (err) {
+      setManualCrossPostError(
+        err instanceof Error ? err.message : t("sell.listError")
+      );
+      setManualCrossPostStage("reviewing");
     } finally {
       setLoading(false);
     }
@@ -236,6 +388,10 @@ export default function SellPage() {
   function listAnotherItem() {
     setSuccessProduct(null);
     setError(null);
+    setManualCrossPostStage("idle");
+    setManualCrossPostCopies([]);
+    setManualPublishedProducts([]);
+    setManualCrossPostError(null);
   }
 
   async function requestPricingAdvice() {
@@ -271,6 +427,16 @@ export default function SellPage() {
     }
   }
 
+  function resetBulkCrossPost() {
+    bulkCrossPostRequestId.current += 1;
+    setBulkCrossPostStage("idle");
+    setBulkCrossPostCopies([]);
+    setBulkCrossPostSource("fallback");
+    setBulkPublishedProducts([]);
+    setBulkCrossPostDraftIds([]);
+    setBulkCrossPostError(null);
+  }
+
   function selectBulkImageFiles(files: FileList | null) {
     const selectedFiles = Array.from(files ?? []);
     bulkDraftRequestTracker.current.invalidate();
@@ -278,6 +444,7 @@ export default function SellPage() {
     setBulkImageFiles(selectedFiles.slice(0, maxAiBulkImages));
     setBulkDrafts([]);
     setBulkSuccessCount(0);
+    resetBulkCrossPost();
 
     if (selectedFiles.length > maxAiBulkImages) {
       setBulkError(t("sell.aiBulkLimit"));
@@ -295,6 +462,7 @@ export default function SellPage() {
     setBulkLoading(true);
     setBulkError(null);
     setBulkSuccessCount(0);
+    resetBulkCrossPost();
     const requestId = bulkDraftRequestTracker.current.start();
 
     try {
@@ -339,6 +507,7 @@ export default function SellPage() {
     setBulkDrafts([]);
     setBulkSuccessCount(0);
     setBulkError(null);
+    resetBulkCrossPost();
   }
 
   function updateBulkDraft(
@@ -387,21 +556,10 @@ export default function SellPage() {
       : [uploadPayload.imageUrl].filter(Boolean);
   }
 
-  async function publishBulkDrafts() {
-    const selectedDrafts = bulkDrafts.filter(
-      (draft) => draft.selected && draft.status !== "published"
-    );
-
-    if (selectedDrafts.length === 0) {
-      setBulkError(t("sell.aiBulkNeedsSelection"));
-      return;
-    }
-
-    setBulkPublishing(true);
-    setBulkError(null);
-    setBulkSuccessCount(0);
-
-    let publishedCount = 0;
+  async function publishBulkDraftSet(
+    selectedDrafts: BulkDraft[]
+  ): Promise<BulkPublishResult> {
+    const result: BulkPublishResult = { successes: [], failures: [] };
 
     for (const draft of selectedDrafts) {
       setBulkDrafts((drafts) =>
@@ -438,7 +596,8 @@ export default function SellPage() {
           throw new Error(payload?.message || t("sell.listError"));
         }
 
-        publishedCount += 1;
+        const product = (await res.json()) as Product;
+        result.successes.push({ draftId: draft.id, product });
         setBulkDrafts((drafts) =>
           drafts.map((item) =>
             item.id === draft.id ? { ...item, status: "published", selected: false } : item
@@ -447,6 +606,7 @@ export default function SellPage() {
       } catch (err) {
         const message =
           err instanceof Error ? err.message : t("sell.aiBulkPublishError");
+        result.failures.push({ draftId: draft.id, message });
         setBulkDrafts((drafts) =>
           drafts.map((item) =>
             item.id === draft.id ? { ...item, status: "error", error: message } : item
@@ -455,11 +615,126 @@ export default function SellPage() {
       }
     }
 
-    setBulkSuccessCount(publishedCount);
-    if (publishedCount < selectedDrafts.length) {
+    return result;
+  }
+
+  async function publishBulkDrafts() {
+    const selectedDrafts = bulkDrafts.filter(
+      (draft) => draft.selected && draft.status !== "published"
+    );
+
+    if (selectedDrafts.length === 0) {
+      setBulkError(t("sell.aiBulkNeedsSelection"));
+      return;
+    }
+
+    setBulkPublishing(true);
+    setBulkError(null);
+    setBulkSuccessCount(0);
+
+    const result = await publishBulkDraftSet(selectedDrafts);
+    setBulkSuccessCount(result.successes.length);
+    if (result.failures.length > 0) {
       setBulkError(t("sell.aiBulkPublishError"));
     }
     setBulkPublishing(false);
+  }
+
+  async function generateBulkCrossPostPreview() {
+    const selectedDrafts = bulkDrafts.filter(
+      (draft) => draft.selected && draft.status !== "published"
+    );
+    if (selectedDrafts.length === 0) {
+      setBulkError(t("sell.aiBulkNeedsSelection"));
+      return;
+    }
+
+    const requestId = bulkCrossPostRequestId.current + 1;
+    bulkCrossPostRequestId.current = requestId;
+    setBulkCrossPostStage("generating");
+    setBulkCrossPostError(null);
+    setBulkError(null);
+    setBulkSuccessCount(0);
+
+    try {
+      const items = buildBulkCrossPostPreviewItems(selectedDrafts);
+      const response = await fetch("/api/products/cross-post-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          payload?.message || t("sell.crossPostPreviewError")
+        );
+      }
+
+      const result = parseCrossPostPreviewResponse(await response.json());
+      if (!result) throw new Error(t("sell.crossPostPreviewError"));
+      if (bulkCrossPostRequestId.current !== requestId) return;
+
+      setBulkCrossPostDraftIds(selectedDrafts.map((draft) => draft.id));
+      setBulkCrossPostSource(result.source);
+      setBulkCrossPostCopies(result.copies);
+      setBulkPublishedProducts([]);
+      setBulkCrossPostStage("reviewing");
+    } catch (err) {
+      if (bulkCrossPostRequestId.current !== requestId) return;
+      setBulkError(
+        err instanceof Error ? err.message : t("sell.crossPostPreviewError")
+      );
+      setBulkCrossPostStage("idle");
+    }
+  }
+
+  function returnToBulkDrafts() {
+    if (bulkPublishedProducts.length > 0) return;
+    resetBulkCrossPost();
+  }
+
+  async function confirmBulkCrossPost() {
+    const pendingIds = getPendingCrossPostDraftIds(
+      bulkCrossPostDraftIds,
+      bulkPublishedProducts
+    );
+    const draftsById = new Map(bulkDrafts.map((draft) => [draft.id, draft]));
+    const pendingDrafts = pendingIds
+      .map((draftId) => draftsById.get(draftId))
+      .filter((draft): draft is BulkDraft => Boolean(draft));
+
+    if (pendingDrafts.length === 0) {
+      setBulkCrossPostStage("finalized");
+      return;
+    }
+
+    setBulkCrossPostStage("publishing");
+    setBulkCrossPostError(null);
+    setBulkPublishing(true);
+
+    const result = await publishBulkDraftSet(pendingDrafts);
+    const incomingProducts = result.successes.map(({ draftId, product }) =>
+      buildPublishedCrossPostProduct(
+        draftId,
+        product,
+        window.location.origin
+      )
+    );
+    const nextPublishedProducts = mergePublishedCrossPostProducts(
+      bulkPublishedProducts,
+      incomingProducts
+    );
+
+    setBulkPublishedProducts(nextPublishedProducts);
+    setBulkSuccessCount(nextPublishedProducts.length);
+    setBulkPublishing(false);
+
+    if (result.failures.length > 0) {
+      setBulkCrossPostError(t("sell.crossPostPublishPartial"));
+      setBulkCrossPostStage("reviewing");
+    } else {
+      setBulkCrossPostStage("finalized");
+    }
   }
 
   return (
@@ -506,9 +781,11 @@ export default function SellPage() {
               <Text as="p" size="2" className="mt-2 text-green-800">
                 {t("sell.successBody", { name: successProduct.name })}
               </Text>
-              <Text as="p" size="1" color="gray" className="mt-1">
-                {t("sell.redirecting")}
-              </Text>
+              {manualCrossPostStage === "idle" && (
+                <Text as="p" size="1" color="gray" className="mt-1">
+                  {t("sell.redirecting")}
+                </Text>
+              )}
               <div className="mt-4 flex flex-wrap gap-3">
                 <Button type="button" highContrast onClick={goToProductNow}>
                   <CheckIcon /> {t("sell.viewListing")}
@@ -527,7 +804,11 @@ export default function SellPage() {
 
           {listingMode === "manual" ? (
           <Card className="app-card overflow-hidden p-0">
-            <form onSubmit={onSubmit}>
+            <form ref={manualFormRef} onSubmit={onSubmit}>
+              <fieldset
+                disabled={manualFormLocked}
+                className="m-0 min-w-0 border-0 p-0"
+              >
               <FormSection
                 step="1"
                 title={t("sell.sectionDetails")}
@@ -833,7 +1114,10 @@ export default function SellPage() {
                   </div>
                 </div>
               </FormSection>
+              </fieldset>
 
+              {(manualCrossPostStage === "idle" ||
+                manualCrossPostStage === "generating") && (
               <div className="flex flex-col gap-3 bg-white p-5 md:flex-row md:items-center md:justify-between md:p-6">
                 {error ? (
                   <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -845,17 +1129,52 @@ export default function SellPage() {
                   </Text>
                 )}
 
-                <Button
-                  highContrast
-                  size="3"
-                  type="submit"
-                  disabled={loading}
-                  className="md:min-w-36"
-                >
-                  <PlusIcon />
-                  {loading ? t("sell.listing") : t("sell.submit")}
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="3"
+                    disabled={loading || manualCrossPostStage === "generating"}
+                    onClick={generateManualCrossPostPreview}
+                  >
+                    <CheckIcon />
+                    {manualCrossPostStage === "generating"
+                      ? t("sell.crossPostPreviewGenerating")
+                      : t("sell.crossPostPreviewAction")}
+                  </Button>
+                  <Button
+                    highContrast
+                    size="3"
+                    type="submit"
+                    disabled={loading || manualCrossPostStage === "generating"}
+                    className="md:min-w-36"
+                  >
+                    <PlusIcon />
+                    {loading ? t("sell.listing") : t("sell.submit")}
+                  </Button>
+                </div>
               </div>
+              )}
+
+              {(manualCrossPostStage === "reviewing" ||
+                manualCrossPostStage === "publishing" ||
+                manualCrossPostStage === "finalized") && (
+                <div className="border-t border-orange-100 p-5 md:p-6">
+                  <CrossPostPreviewEditor
+                    copies={manualCrossPostCopies}
+                    source={manualCrossPostSource}
+                    publishedProducts={manualPublishedProducts}
+                    busy={manualCrossPostStage === "publishing"}
+                    error={manualCrossPostError}
+                    confirmLabel={t("sell.crossPostPreviewConfirm")}
+                    canGoBack={manualCrossPostStage === "reviewing"}
+                    canConfirm={manualCrossPostStage === "reviewing"}
+                    onCopiesChange={setManualCrossPostCopies}
+                    onBack={returnToManualListing}
+                    onConfirm={confirmManualCrossPost}
+                  />
+                </div>
+              )}
             </form>
           </Card>
           ) : (
@@ -1193,11 +1512,60 @@ export default function SellPage() {
                     </div>
                   )}
 
+                  {(bulkCrossPostStage === "reviewing" ||
+                    bulkCrossPostStage === "publishing" ||
+                    bulkCrossPostStage === "finalized") && (
+                    <CrossPostPreviewEditor
+                      copies={bulkCrossPostCopies}
+                      source={bulkCrossPostSource}
+                      publishedProducts={bulkPublishedProducts}
+                      busy={bulkCrossPostStage === "publishing"}
+                      error={bulkCrossPostError}
+                      confirmLabel={
+                        bulkPublishedProducts.length > 0
+                          ? t("sell.crossPostPreviewRetry")
+                          : t("sell.crossPostPreviewConfirm")
+                      }
+                      canGoBack={
+                        bulkCrossPostStage === "reviewing" &&
+                        bulkPublishedProducts.length === 0
+                      }
+                      canConfirm={
+                        bulkCrossPostStage === "reviewing" &&
+                        getPendingCrossPostDraftIds(
+                          bulkCrossPostDraftIds,
+                          bulkPublishedProducts
+                        ).length > 0
+                      }
+                      onCopiesChange={setBulkCrossPostCopies}
+                      onBack={returnToBulkDrafts}
+                      onConfirm={confirmBulkCrossPost}
+                    />
+                  )}
+
+                  {isBulkPublishActionBarVisible(bulkCrossPostStage) && (
                   <div className="sticky bottom-4 rounded-lg border border-orange-100 bg-white/95 p-4 shadow-lg backdrop-blur">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <Text as="p" size="2" className="text-gray-600">
                         {t("sell.aiBulkDraftsHelp")}
                       </Text>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="3"
+                        disabled={
+                          bulkPublishing ||
+                          bulkCrossPostStage === "generating" ||
+                          bulkDrafts.length === 0
+                        }
+                        onClick={generateBulkCrossPostPreview}
+                      >
+                        <CheckIcon />
+                        {bulkCrossPostStage === "generating"
+                          ? t("sell.crossPostPreviewGenerating")
+                          : t("sell.crossPostPreviewAction")}
+                      </Button>
                       <Button
                         type="button"
                         highContrast
@@ -1210,8 +1578,10 @@ export default function SellPage() {
                           ? t("sell.aiBulkPublishing")
                           : t("sell.aiBulkPublishSelected")}
                       </Button>
+                      </div>
                     </div>
                   </div>
+                  )}
                 </section>
               </div>
             </Card>

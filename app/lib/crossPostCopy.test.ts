@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
+  assembleCrossPostCopies,
   buildFallbackCrossPostCopies,
   generateCrossPostCopies,
   platformLanguage,
+  type CrossPostHeadings,
   type CrossPostListing,
 } from "./crossPostCopy";
 
@@ -119,6 +121,28 @@ describe("cross-post copy", () => {
       wechat: "zhCn",
       discord: "en",
     });
+  });
+
+  test("assembles preview copies without inventing OSUTrade links", () => {
+    const headings: CrossPostHeadings = {
+      facebook: { title: "Preview", introduction: "Available soon." },
+      craigslist: { title: "Preview", introduction: "Available soon." },
+      line: { title: "預覽", introduction: "商品即將上架。" },
+      wechat: { title: "预览", introduction: "商品即将上架。" },
+      discord: { title: "Preview", introduction: "Available soon." },
+    };
+    const previewListings = listings.map((listing) => ({
+      ...listing,
+      productUrl: undefined,
+    }));
+
+    const copies = assembleCrossPostCopies(previewListings, headings);
+
+    expect(copies).toHaveLength(5);
+    expect(copies.find((copy) => copy.platform === "facebook")?.title).toBe(
+      "Preview"
+    );
+    expect(JSON.stringify(copies)).not.toContain("/product/");
   });
 
   test("builds ordered localized item blocks with every listing URL and no contacts", () => {
