@@ -10,12 +10,17 @@ import Header from "../components/Header";
 import type { AiProductDraft } from "../lib/aiProductDrafts";
 import {
   createBulkDraftRequestTracker,
+  getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
 } from "../lib/bulkDraftRequest";
 import type { Product } from "../lib/products";
 import type { CrossPostCopy } from "../lib/crossPostCopy";
-import type { PublishedCrossPostProduct } from "../lib/crossPostFinalizer";
+import {
+  mergePublishedCrossPostProducts,
+  type PublishedCrossPostProduct,
+} from "../lib/crossPostFinalizer";
 import type { CrossPostFlowStage } from "../lib/crossPostPreview";
+import { buildBulkCrossPostPreviewItems } from "../lib/bulkCrossPost";
 import {
   buildManualCrossPostPreviewItem,
   buildPublishedCrossPostProduct,
@@ -51,6 +56,11 @@ type BulkDraft = AiProductDraft & {
   selected: boolean;
   status: "draft" | "publishing" | "published" | "error";
   error?: string | null;
+};
+
+type BulkPublishResult = {
+  successes: Array<{ draftId: string; product: Product }>;
+  failures: Array<{ draftId: string; message: string }>;
 };
 
 function FormSection({ step, title, description, children }: FormSectionProps) {
@@ -118,10 +128,31 @@ export default function SellPage() {
   const [bulkPublishing, setBulkPublishing] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkSuccessCount, setBulkSuccessCount] = useState(0);
+  const [bulkCrossPostStage, setBulkCrossPostStage] =
+    useState<CrossPostFlowStage>("idle");
+  const [bulkCrossPostCopies, setBulkCrossPostCopies] = useState<
+    CrossPostCopy[]
+  >([]);
+  const [bulkCrossPostSource, setBulkCrossPostSource] = useState<
+    "ai" | "fallback"
+  >("fallback");
+  const [bulkPublishedProducts, setBulkPublishedProducts] = useState<
+    PublishedCrossPostProduct[]
+  >([]);
+  const [bulkCrossPostDraftIds, setBulkCrossPostDraftIds] = useState<string[]>(
+    []
+  );
+  const [bulkCrossPostError, setBulkCrossPostError] = useState<string | null>(
+    null
+  );
   const manualFormRef = useRef<HTMLFormElement>(null);
   const manualCrossPostRequestId = useRef(0);
+  const bulkCrossPostRequestId = useRef(0);
   const bulkDraftRequestTracker = useRef(createBulkDraftRequestTracker());
-  const bulkMutationLocked = isBulkDraftMutationLocked(bulkPublishing);
+  const bulkMutationLocked = isBulkDraftMutationLocked(
+    bulkPublishing,
+    bulkCrossPostStage
+  );
   const manualFormLocked = manualCrossPostStage !== "idle";
 
   useEffect(() => {
@@ -393,6 +424,16 @@ export default function SellPage() {
     }
   }
 
+  function resetBulkCrossPost() {
+    bulkCrossPostRequestId.current += 1;
+    setBulkCrossPostStage("idle");
+    setBulkCrossPostCopies([]);
+    setBulkCrossPostSource("fallback");
+    setBulkPublishedProducts([]);
+    setBulkCrossPostDraftIds([]);
+    setBulkCrossPostError(null);
+  }
+
   function selectBulkImageFiles(files: FileList | null) {
     const selectedFiles = Array.from(files ?? []);
     bulkDraftRequestTracker.current.invalidate();
@@ -400,6 +441,7 @@ export default function SellPage() {
     setBulkImageFiles(selectedFiles.slice(0, maxAiBulkImages));
     setBulkDrafts([]);
     setBulkSuccessCount(0);
+    resetBulkCrossPost();
 
     if (selectedFiles.length > maxAiBulkImages) {
       setBulkError(t("sell.aiBulkLimit"));
@@ -417,6 +459,7 @@ export default function SellPage() {
     setBulkLoading(true);
     setBulkError(null);
     setBulkSuccessCount(0);
+    resetBulkCrossPost();
     const requestId = bulkDraftRequestTracker.current.start();
 
     try {
@@ -461,6 +504,7 @@ export default function SellPage() {
     setBulkDrafts([]);
     setBulkSuccessCount(0);
     setBulkError(null);
+    resetBulkCrossPost();
   }
 
   function updateBulkDraft(
@@ -509,21 +553,10 @@ export default function SellPage() {
       : [uploadPayload.imageUrl].filter(Boolean);
   }
 
-  async function publishBulkDrafts() {
-    const selectedDrafts = bulkDrafts.filter(
-      (draft) => draft.selected && draft.status !== "published"
-    );
-
-    if (selectedDrafts.length === 0) {
-      setBulkError(t("sell.aiBulkNeedsSelection"));
-      return;
-    }
-
-    setBulkPublishing(true);
-    setBulkError(null);
-    setBulkSuccessCount(0);
-
-    let publishedCount = 0;
+  async function publishBulkDraftSet(
+    selectedDrafts: BulkDraft[]
+  ): Promise<BulkPublishResult> {
+    const result: BulkPublishResult = { successes: [], failures: [] };
 
     for (const draft of selectedDrafts) {
       setBulkDrafts((drafts) =>
@@ -560,7 +593,8 @@ export default function SellPage() {
           throw new Error(payload?.message || t("sell.listError"));
         }
 
-        publishedCount += 1;
+        const product = (await res.json()) as Product;
+        result.successes.push({ draftId: draft.id, product });
         setBulkDrafts((drafts) =>
           drafts.map((item) =>
             item.id === draft.id ? { ...item, status: "published", selected: false } : item
@@ -569,6 +603,7 @@ export default function SellPage() {
       } catch (err) {
         const message =
           err instanceof Error ? err.message : t("sell.aiBulkPublishError");
+        result.failures.push({ draftId: draft.id, message });
         setBulkDrafts((drafts) =>
           drafts.map((item) =>
             item.id === draft.id ? { ...item, status: "error", error: message } : item
@@ -577,11 +612,126 @@ export default function SellPage() {
       }
     }
 
-    setBulkSuccessCount(publishedCount);
-    if (publishedCount < selectedDrafts.length) {
+    return result;
+  }
+
+  async function publishBulkDrafts() {
+    const selectedDrafts = bulkDrafts.filter(
+      (draft) => draft.selected && draft.status !== "published"
+    );
+
+    if (selectedDrafts.length === 0) {
+      setBulkError(t("sell.aiBulkNeedsSelection"));
+      return;
+    }
+
+    setBulkPublishing(true);
+    setBulkError(null);
+    setBulkSuccessCount(0);
+
+    const result = await publishBulkDraftSet(selectedDrafts);
+    setBulkSuccessCount(result.successes.length);
+    if (result.failures.length > 0) {
       setBulkError(t("sell.aiBulkPublishError"));
     }
     setBulkPublishing(false);
+  }
+
+  async function generateBulkCrossPostPreview() {
+    const selectedDrafts = bulkDrafts.filter(
+      (draft) => draft.selected && draft.status !== "published"
+    );
+    if (selectedDrafts.length === 0) {
+      setBulkError(t("sell.aiBulkNeedsSelection"));
+      return;
+    }
+
+    const requestId = bulkCrossPostRequestId.current + 1;
+    bulkCrossPostRequestId.current = requestId;
+    setBulkCrossPostStage("generating");
+    setBulkCrossPostError(null);
+    setBulkError(null);
+    setBulkSuccessCount(0);
+
+    try {
+      const items = buildBulkCrossPostPreviewItems(selectedDrafts);
+      const response = await fetch("/api/products/cross-post-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          payload?.message || t("sell.crossPostPreviewError")
+        );
+      }
+
+      const result = parseCrossPostPreviewResponse(await response.json());
+      if (!result) throw new Error(t("sell.crossPostPreviewError"));
+      if (bulkCrossPostRequestId.current !== requestId) return;
+
+      setBulkCrossPostDraftIds(selectedDrafts.map((draft) => draft.id));
+      setBulkCrossPostSource(result.source);
+      setBulkCrossPostCopies(result.copies);
+      setBulkPublishedProducts([]);
+      setBulkCrossPostStage("reviewing");
+    } catch (err) {
+      if (bulkCrossPostRequestId.current !== requestId) return;
+      setBulkError(
+        err instanceof Error ? err.message : t("sell.crossPostPreviewError")
+      );
+      setBulkCrossPostStage("idle");
+    }
+  }
+
+  function returnToBulkDrafts() {
+    if (bulkPublishedProducts.length > 0) return;
+    resetBulkCrossPost();
+  }
+
+  async function confirmBulkCrossPost() {
+    const pendingIds = getPendingCrossPostDraftIds(
+      bulkCrossPostDraftIds,
+      bulkPublishedProducts
+    );
+    const draftsById = new Map(bulkDrafts.map((draft) => [draft.id, draft]));
+    const pendingDrafts = pendingIds
+      .map((draftId) => draftsById.get(draftId))
+      .filter((draft): draft is BulkDraft => Boolean(draft));
+
+    if (pendingDrafts.length === 0) {
+      setBulkCrossPostStage("finalized");
+      return;
+    }
+
+    setBulkCrossPostStage("publishing");
+    setBulkCrossPostError(null);
+    setBulkPublishing(true);
+
+    const result = await publishBulkDraftSet(pendingDrafts);
+    const incomingProducts = result.successes.map(({ draftId, product }) =>
+      buildPublishedCrossPostProduct(
+        draftId,
+        product,
+        window.location.origin
+      )
+    );
+    const nextPublishedProducts = mergePublishedCrossPostProducts(
+      bulkPublishedProducts,
+      incomingProducts
+    );
+
+    setBulkPublishedProducts(nextPublishedProducts);
+    setBulkSuccessCount(nextPublishedProducts.length);
+    setBulkPublishing(false);
+
+    if (result.failures.length > 0) {
+      setBulkCrossPostError(t("sell.crossPostPublishPartial"));
+      setBulkCrossPostStage("reviewing");
+    } else {
+      setBulkCrossPostStage("finalized");
+    }
   }
 
   return (
@@ -1359,11 +1509,61 @@ export default function SellPage() {
                     </div>
                   )}
 
+                  {(bulkCrossPostStage === "reviewing" ||
+                    bulkCrossPostStage === "publishing" ||
+                    bulkCrossPostStage === "finalized") && (
+                    <CrossPostPreviewEditor
+                      copies={bulkCrossPostCopies}
+                      source={bulkCrossPostSource}
+                      publishedProducts={bulkPublishedProducts}
+                      busy={bulkCrossPostStage === "publishing"}
+                      error={bulkCrossPostError}
+                      confirmLabel={
+                        bulkPublishedProducts.length > 0
+                          ? t("sell.crossPostPreviewRetry")
+                          : t("sell.crossPostPreviewConfirm")
+                      }
+                      canGoBack={
+                        bulkCrossPostStage === "reviewing" &&
+                        bulkPublishedProducts.length === 0
+                      }
+                      canConfirm={
+                        bulkCrossPostStage === "reviewing" &&
+                        getPendingCrossPostDraftIds(
+                          bulkCrossPostDraftIds,
+                          bulkPublishedProducts
+                        ).length > 0
+                      }
+                      onCopiesChange={setBulkCrossPostCopies}
+                      onBack={returnToBulkDrafts}
+                      onConfirm={confirmBulkCrossPost}
+                    />
+                  )}
+
+                  {(bulkCrossPostStage === "idle" ||
+                    bulkCrossPostStage === "generating") && (
                   <div className="sticky bottom-4 rounded-lg border border-orange-100 bg-white/95 p-4 shadow-lg backdrop-blur">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <Text as="p" size="2" className="text-gray-600">
                         {t("sell.aiBulkDraftsHelp")}
                       </Text>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="3"
+                        disabled={
+                          bulkPublishing ||
+                          bulkCrossPostStage === "generating" ||
+                          bulkDrafts.length === 0
+                        }
+                        onClick={generateBulkCrossPostPreview}
+                      >
+                        <CheckIcon />
+                        {bulkCrossPostStage === "generating"
+                          ? t("sell.crossPostPreviewGenerating")
+                          : t("sell.crossPostPreviewAction")}
+                      </Button>
                       <Button
                         type="button"
                         highContrast
@@ -1376,8 +1576,10 @@ export default function SellPage() {
                           ? t("sell.aiBulkPublishing")
                           : t("sell.aiBulkPublishSelected")}
                       </Button>
+                      </div>
                     </div>
                   </div>
+                  )}
                 </section>
               </div>
             </Card>
