@@ -8,6 +8,7 @@ import {
 import type { PublishedCrossPostProduct } from "./crossPostFinalizer";
 import {
   parseCrossPostPreviewItems,
+  type CrossPostFlowStage,
   type CrossPostPreviewItem,
 } from "./crossPostPreview";
 import type { Product } from "./products";
@@ -20,6 +21,10 @@ type ManualListingFacts = {
   category: string;
   [key: string]: unknown;
 };
+
+export function isDirectManualPublishAllowed(stage: CrossPostFlowStage) {
+  return stage === "idle";
+}
 
 export function buildManualCrossPostPreviewItem(
   values: ManualListingFacts

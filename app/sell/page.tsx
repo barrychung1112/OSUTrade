@@ -24,6 +24,7 @@ import { buildBulkCrossPostPreviewItems } from "../lib/bulkCrossPost";
 import {
   buildManualCrossPostPreviewItem,
   buildPublishedCrossPostProduct,
+  isDirectManualPublishAllowed,
   parseCrossPostPreviewResponse,
 } from "../lib/manualCrossPost";
 import { useI18n } from "../i18n";
@@ -266,6 +267,7 @@ export default function SellPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isDirectManualPublishAllowed(manualCrossPostStage)) return;
     setLoading(true);
     setError(null);
     setSuccessProduct(null);

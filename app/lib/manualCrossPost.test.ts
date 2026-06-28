@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   buildManualCrossPostPreviewItem,
   buildPublishedCrossPostProduct,
+  isDirectManualPublishAllowed,
   parseCrossPostPreviewResponse,
 } from "./manualCrossPost";
 
@@ -74,5 +75,13 @@ describe("manual cross-post flow helpers", () => {
       name: "Desk Lamp",
       productUrl: "https://osutrade.example/product/product%20%2F%201",
     });
+  });
+
+  test("allows direct form submission only before cross-post preview starts", () => {
+    expect(isDirectManualPublishAllowed("idle")).toBe(true);
+    expect(isDirectManualPublishAllowed("generating")).toBe(false);
+    expect(isDirectManualPublishAllowed("reviewing")).toBe(false);
+    expect(isDirectManualPublishAllowed("publishing")).toBe(false);
+    expect(isDirectManualPublishAllowed("finalized")).toBe(false);
   });
 });
