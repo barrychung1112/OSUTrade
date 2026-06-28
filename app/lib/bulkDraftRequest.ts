@@ -1,3 +1,6 @@
+import type { PublishedCrossPostProduct } from "./crossPostFinalizer";
+import type { CrossPostFlowStage } from "./crossPostPreview";
+
 export function createBulkDraftRequestTracker() {
   let currentRequestId = 0;
 
@@ -41,5 +44,9 @@ export function getPendingCrossPostDraftIds(
     return true;
   });
 }
-import type { PublishedCrossPostProduct } from "./crossPostFinalizer";
-import type { CrossPostFlowStage } from "./crossPostPreview";
+
+export function isBulkPublishActionBarVisible(stage: CrossPostFlowStage) {
+  return (
+    stage === "idle" || stage === "generating" || stage === "finalized"
+  );
+}

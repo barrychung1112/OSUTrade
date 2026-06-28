@@ -12,6 +12,7 @@ import {
   createBulkDraftRequestTracker,
   getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
+  isBulkPublishActionBarVisible,
 } from "../lib/bulkDraftRequest";
 import type { Product } from "../lib/products";
 import type { CrossPostCopy } from "../lib/crossPostCopy";
@@ -1542,8 +1543,7 @@ export default function SellPage() {
                     />
                   )}
 
-                  {(bulkCrossPostStage === "idle" ||
-                    bulkCrossPostStage === "generating") && (
+                  {isBulkPublishActionBarVisible(bulkCrossPostStage) && (
                   <div className="sticky bottom-4 rounded-lg border border-orange-100 bg-white/95 p-4 shadow-lg backdrop-blur">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <Text as="p" size="2" className="text-gray-600">

@@ -3,6 +3,7 @@ import {
   createBulkDraftRequestTracker,
   getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
+  isBulkPublishActionBarVisible,
 } from "./bulkDraftRequest";
 
 describe("createBulkDraftRequestTracker", () => {
@@ -51,5 +52,15 @@ describe("getPendingCrossPostDraftIds", () => {
       "a",
       "b",
     ]);
+  });
+});
+
+describe("isBulkPublishActionBarVisible", () => {
+  test("keeps actions available after finishing a subset of drafts", () => {
+    expect(isBulkPublishActionBarVisible("idle")).toBe(true);
+    expect(isBulkPublishActionBarVisible("generating")).toBe(true);
+    expect(isBulkPublishActionBarVisible("reviewing")).toBe(false);
+    expect(isBulkPublishActionBarVisible("publishing")).toBe(false);
+    expect(isBulkPublishActionBarVisible("finalized")).toBe(true);
   });
 });

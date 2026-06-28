@@ -37,7 +37,7 @@ describe("cross-post finalizer", () => {
     expect(text).toContain("https://osutrade.example/product/p-2");
   });
 
-  test("deduplicates retried products while preserving first success order", () => {
+test("deduplicates retried products while preserving first success order", () => {
     const merged = mergePublishedCrossPostProducts(
       [product1],
       [product1, product2]
@@ -46,8 +46,20 @@ describe("cross-post finalizer", () => {
 
     expect(merged).toEqual([product1, product2]);
     expect(section.match(/product\/p-1/g)).toHaveLength(1);
-    expect(section.indexOf("p-1")).toBeLessThan(section.indexOf("p-2"));
-  });
+  expect(section.indexOf("p-1")).toBeLessThan(section.indexOf("p-2"));
+});
+
+test("keeps only the first successful product for a retried client item", () => {
+  const products = mergePublishedCrossPostProducts([product1], [
+    {
+      ...product1,
+      productId: "p-retry",
+      productUrl: "https://osutrade.example/product/p-retry",
+    },
+  ]);
+
+  expect(products).toEqual([product1]);
+});
 
   test("uses platform language for managed link headings", () => {
     expect(buildManagedLinkSection("facebook", [product1])).toContain(

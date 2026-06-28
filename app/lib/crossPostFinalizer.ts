@@ -27,15 +27,25 @@ export function mergePublishedCrossPostProducts(
   incoming: PublishedCrossPostProduct[]
 ) {
   const result: PublishedCrossPostProduct[] = [];
-  const seen = new Set<string>();
+  const seenProductIds = new Set<string>();
+  const seenClientIds = new Set<string>();
 
   for (const product of [...current, ...incoming]) {
+    const clientId = clean(product.clientId);
     const productId = clean(product.productId);
     const productUrl = clean(product.productUrl);
-    if (!productId || !productUrl || seen.has(productId)) continue;
-    seen.add(productId);
+    if (
+      !productId ||
+      !productUrl ||
+      seenProductIds.has(productId) ||
+      (clientId && seenClientIds.has(clientId))
+    ) {
+      continue;
+    }
+    seenProductIds.add(productId);
+    if (clientId) seenClientIds.add(clientId);
     result.push({
-      clientId: clean(product.clientId),
+      clientId,
       productId,
       name: clean(product.name) || productId,
       productUrl,
