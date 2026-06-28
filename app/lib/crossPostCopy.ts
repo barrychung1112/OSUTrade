@@ -30,8 +30,15 @@ export type CrossPostGenerationResult = {
 
 export type CrossPostListing = {
   product: Product;
-  productUrl: string;
+  productUrl?: string;
 };
+
+export type CrossPostHeading = {
+  title: string;
+  introduction: string;
+};
+
+export type CrossPostHeadings = Record<CrossPostPlatform, CrossPostHeading>;
 
 type AiPlatformDraft = {
   platform: CrossPostPlatform;
@@ -132,7 +139,7 @@ function appendOptionalLines(
 function fallbackHeading(
   listings: CrossPostListing[],
   platform: CrossPostPlatform
-): { title: string; introduction: string } {
+): CrossPostHeading {
   const count = listings.length;
 
   if (platform === "line") {
@@ -225,7 +232,7 @@ function buildItemBlock(
 function assembleCopy(
   listings: CrossPostListing[],
   platform: CrossPostPlatform,
-  heading: { title: string; introduction: string }
+  heading: CrossPostHeading
 ): CrossPostCopy {
   const introduction = clean(heading.introduction);
   const itemBlocks = listings.map((listing, index) =>
@@ -240,12 +247,26 @@ function assembleCopy(
   };
 }
 
+export function assembleCrossPostCopies(
+  listings: CrossPostListing[],
+  headings: CrossPostHeadings
+): CrossPostCopy[] {
+  return crossPostPlatforms.map((platform) =>
+    assembleCopy(listings, platform, headings[platform])
+  );
+}
+
 export function buildFallbackCrossPostCopies(
   listings: CrossPostListing[]
 ): CrossPostCopy[] {
-  return crossPostPlatforms.map((platform) =>
-    assembleCopy(listings, platform, fallbackHeading(listings, platform))
-  );
+  const headings = Object.fromEntries(
+    crossPostPlatforms.map((platform) => [
+      platform,
+      fallbackHeading(listings, platform),
+    ])
+  ) as CrossPostHeadings;
+
+  return assembleCrossPostCopies(listings, headings);
 }
 
 function extractResponseText(payload: any) {
@@ -404,8 +425,17 @@ export async function generateCrossPostCopies(
 
     return {
       source: "ai",
-      copies: crossPostPlatforms.map((platform) =>
-        assembleCopy(listings, platform, aiDrafts.get(platform)!)
+      copies: assembleCrossPostCopies(
+        listings,
+        Object.fromEntries(
+          crossPostPlatforms.map((platform) => {
+            const draft = aiDrafts.get(platform)!;
+            return [
+              platform,
+              { title: draft.title, introduction: draft.introduction },
+            ];
+          })
+        ) as CrossPostHeadings
       ),
     };
   } catch {
