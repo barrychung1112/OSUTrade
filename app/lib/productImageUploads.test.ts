@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import {
   readApiError,
+  requestSignedProductImageUploads,
   uploadProductImagesDirect,
   validateProductImageFiles,
 } from "./productImageUploads";
@@ -45,6 +46,53 @@ describe("validateProductImageFiles", () => {
 });
 
 describe("uploadProductImagesDirect", () => {
+  test("does not start the next upload until the previous upload finishes", async () => {
+    const files = [imageFile("first.jpg"), imageFile("second.jpg")];
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          uploads: [
+            {
+              path: "user-id/first.jpg",
+              token: "first-token",
+              publicUrl: "https://project.supabase.co/first.jpg",
+            },
+            {
+              path: "user-id/second.jpg",
+              token: "second-token",
+              publicUrl: "https://project.supabase.co/second.jpg",
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )
+    );
+    let finishFirstUpload!: () => void;
+    const firstUpload = new Promise<void>((resolve) => {
+      finishFirstUpload = resolve;
+    });
+    const uploadToSignedUrl = vi
+      .fn()
+      .mockReturnValueOnce(firstUpload)
+      .mockResolvedValueOnce(undefined);
+
+    const pending = uploadProductImagesDirect(files, {
+      maxFiles: 10,
+      fetcher,
+      uploadToSignedUrl,
+    });
+    await vi.waitFor(() => expect(uploadToSignedUrl).toHaveBeenCalledTimes(1));
+    expect(uploadToSignedUrl).not.toHaveBeenCalledWith(
+      "user-id/second.jpg",
+      "second-token",
+      files[1]
+    );
+
+    finishFirstUpload();
+    await pending;
+    expect(uploadToSignedUrl).toHaveBeenCalledTimes(2);
+  });
+
   test("requests signed metadata then uploads each file directly", async () => {
     const files = [imageFile("desk.jpg"), imageFile("chair.png", "image/png")];
     const fetcher = vi.fn().mockResolvedValue(
@@ -102,16 +150,21 @@ describe("uploadProductImagesDirect", () => {
     ]);
   });
 
-  test("identifies the image that failed to upload", async () => {
-    const file = imageFile("damaged.jpg");
+  test("identifies a later image that failed after an earlier upload succeeded", async () => {
+    const files = [imageFile("good.jpg"), imageFile("damaged.jpg")];
     const fetcher = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           uploads: [
             {
+              path: "user-id/good.jpg",
+              token: "good-token",
+              publicUrl: "https://project.supabase.co/good.jpg",
+            },
+            {
               path: "user-id/damaged.jpg",
-              token: "upload-token",
-              publicUrl: "https://project.supabase.co/image.jpg",
+              token: "damaged-token",
+              publicUrl: "https://project.supabase.co/damaged.jpg",
             },
           ],
         }),
@@ -120,12 +173,37 @@ describe("uploadProductImagesDirect", () => {
     );
 
     await expect(
-      uploadProductImagesDirect([file], {
+      uploadProductImagesDirect(files, {
         maxFiles: 10,
         fetcher,
-        uploadToSignedUrl: vi.fn().mockRejectedValue(new Error("network")),
+        uploadToSignedUrl: vi
+          .fn()
+          .mockResolvedValueOnce(undefined)
+          .mockRejectedValueOnce(new Error("network")),
       })
     ).rejects.toThrow('Failed to upload "damaged.jpg". Please try again.');
+  });
+});
+
+describe("requestSignedProductImageUploads", () => {
+  test("rejects malformed signed upload entries", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          uploads: [
+            {
+              path: "user-id/desk.jpg",
+              publicUrl: "https://project.supabase.co/desk.jpg",
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )
+    );
+
+    await expect(
+      requestSignedProductImageUploads([imageFile("desk.jpg")], fetcher)
+    ).rejects.toThrow("The image upload could not be prepared. Please try again.");
   });
 });
 

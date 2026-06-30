@@ -56,6 +56,56 @@ export async function readApiError(response: Response, fallback: string) {
   return `${fallback} (HTTP ${response.status})`;
 }
 
+function isSignedProductImageUpload(
+  value: unknown
+): value is UploadedProductImage {
+  if (!value || typeof value !== "object") return false;
+  const upload = value as Record<string, unknown>;
+  return (
+    typeof upload.path === "string" &&
+    upload.path.length > 0 &&
+    typeof upload.token === "string" &&
+    upload.token.length > 0 &&
+    typeof upload.publicUrl === "string" &&
+    upload.publicUrl.length > 0
+  );
+}
+
+export async function requestSignedProductImageUploads(
+  files: File[],
+  fetcher: Fetcher = fetch
+) {
+  const response = await fetcher("/api/products/images/sign", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      files: files.map((file) => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      })),
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Failed to prepare image upload."));
+  }
+
+  const payload = (await response.json().catch(() => null)) as {
+    uploads?: unknown[];
+  } | null;
+  const uploads = payload?.uploads ?? [];
+
+  if (
+    uploads.length !== files.length ||
+    !uploads.every(isSignedProductImageUpload)
+  ) {
+    throw new Error("The image upload could not be prepared. Please try again.");
+  }
+
+  return uploads;
+}
+
 async function defaultSignedUploader(path: string, token: string, file: File) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -88,30 +138,7 @@ export async function uploadProductImagesDirect(
   validateProductImageFiles(files, options.maxFiles);
 
   const fetcher = options.fetcher ?? fetch;
-  const response = await fetcher("/api/products/images/sign", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      files: files.map((file) => ({
-        name: file.name,
-        type: file.type,
-        size: file.size,
-      })),
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readApiError(response, "Failed to prepare image upload."));
-  }
-
-  const payload = (await response.json()) as {
-    uploads?: UploadedProductImage[];
-  };
-  const uploads = payload.uploads ?? [];
-
-  if (uploads.length !== files.length) {
-    throw new Error("The image upload could not be prepared. Please try again.");
-  }
+  const uploads = await requestSignedProductImageUploads(files, fetcher);
 
   const uploadToSignedUrl = options.uploadToSignedUrl ?? defaultSignedUploader;
   for (let index = 0; index < files.length; index += 1) {
