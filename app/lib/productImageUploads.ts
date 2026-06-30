@@ -10,6 +10,16 @@ export type UploadedProductImage = {
   publicUrl: string;
 };
 
+export class ProductImageUploadError extends Error {
+  constructor(
+    message: string,
+    readonly uploadedImages: UploadedProductImage[]
+  ) {
+    super(message);
+    this.name = "ProductImageUploadError";
+  }
+}
+
 type Fetcher = typeof fetch;
 type SignedUploader = (
   path: string,
@@ -106,7 +116,7 @@ export async function requestSignedProductImageUploads(
   return uploads;
 }
 
-async function defaultSignedUploader(path: string, token: string, file: File) {
+function createDefaultSignedUploader(): SignedUploader {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -120,15 +130,18 @@ async function defaultSignedUploader(path: string, token: string, file: File) {
       persistSession: false,
     },
   });
-  const { error } = await supabase.storage
-    .from(bucketName)
-    .uploadToSignedUrl(path, token, file, {
-      cacheControl: "3600",
-      contentType: file.type,
-      upsert: false,
-    });
 
-  if (error) throw error;
+  return async (path, token, file) => {
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .uploadToSignedUrl(path, token, file, {
+        cacheControl: "3600",
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) throw error;
+  };
 }
 
 export async function uploadProductImagesDirect(
@@ -140,7 +153,9 @@ export async function uploadProductImagesDirect(
   const fetcher = options.fetcher ?? fetch;
   const uploads = await requestSignedProductImageUploads(files, fetcher);
 
-  const uploadToSignedUrl = options.uploadToSignedUrl ?? defaultSignedUploader;
+  const uploadToSignedUrl =
+    options.uploadToSignedUrl ?? createDefaultSignedUploader();
+  const uploadedImages: UploadedProductImage[] = [];
   for (let index = 0; index < files.length; index += 1) {
     try {
       await uploadToSignedUrl(
@@ -148,8 +163,12 @@ export async function uploadProductImagesDirect(
         uploads[index].token,
         files[index]
       );
+      uploadedImages.push(uploads[index]);
     } catch {
-      throw new Error(`Failed to upload "${files[index].name}". Please try again.`);
+      throw new ProductImageUploadError(
+        `Failed to upload "${files[index].name}". Please try again.`,
+        uploadedImages
+      );
     }
   }
 

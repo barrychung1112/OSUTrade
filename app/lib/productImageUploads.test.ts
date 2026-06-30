@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import {
+  ProductImageUploadError,
   readApiError,
   requestSignedProductImageUploads,
   uploadProductImagesDirect,
@@ -172,16 +173,27 @@ describe("uploadProductImagesDirect", () => {
       )
     );
 
-    await expect(
-      uploadProductImagesDirect(files, {
+    let error: unknown;
+    try {
+      await uploadProductImagesDirect(files, {
         maxFiles: 10,
         fetcher,
         uploadToSignedUrl: vi
           .fn()
           .mockResolvedValueOnce(undefined)
           .mockRejectedValueOnce(new Error("network")),
-      })
-    ).rejects.toThrow('Failed to upload "damaged.jpg". Please try again.');
+      });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(ProductImageUploadError);
+    expect(error).toMatchObject({
+      message: 'Failed to upload "damaged.jpg". Please try again.',
+      uploadedImages: [
+        expect.objectContaining({ path: "user-id/good.jpg" }),
+      ],
+    });
   });
 });
 
