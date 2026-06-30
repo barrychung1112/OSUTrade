@@ -92,9 +92,9 @@ export async function requestSignedProductImageUploads(
   }
 
   const payload = (await response.json().catch(() => null)) as {
-    uploads?: unknown[];
+    uploads?: unknown;
   } | null;
-  const uploads = payload?.uploads ?? [];
+  const uploads = Array.isArray(payload?.uploads) ? payload.uploads : [];
 
   if (
     uploads.length !== files.length ||

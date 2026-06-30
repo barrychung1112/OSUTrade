@@ -186,6 +186,19 @@ describe("uploadProductImagesDirect", () => {
 });
 
 describe("requestSignedProductImageUploads", () => {
+  test("rejects a non-array uploads payload with the stable error", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ uploads: "x" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+
+    await expect(
+      requestSignedProductImageUploads([imageFile("desk.jpg")], fetcher)
+    ).rejects.toThrow("The image upload could not be prepared. Please try again.");
+  });
+
   test("rejects malformed signed upload entries", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(
