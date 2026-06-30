@@ -110,3 +110,60 @@ export async function POST(request: Request) {
     return NextResponse.json({ message }, { status: 500 });
   }
 }
+
+function isOwnedStoragePath(path: string, userId: string) {
+  return (
+    path.startsWith(`${userId}/`) &&
+    !path.startsWith("/") &&
+    !path.split("/").some((segment) => segment === ".." || segment === ".")
+  );
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { message: "You must be logged in to remove product images." },
+        { status: 401 }
+      );
+    }
+
+    const body = (await request.json().catch(() => null)) as {
+      paths?: unknown;
+    } | null;
+    const paths = body?.paths;
+
+    if (
+      !Array.isArray(paths) ||
+      paths.length === 0 ||
+      paths.length > 10 ||
+      !paths.every(
+        (path): path is string =>
+          typeof path === "string" && isOwnedStoragePath(path, session.user.id)
+      )
+    ) {
+      return NextResponse.json(
+        { message: "Invalid product image paths." },
+        { status: 400 }
+      );
+    }
+
+    const uniquePaths = [...new Set(paths)];
+    const supabase = createAdminClient();
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .remove(uniquePaths);
+
+    if (error) throw error;
+
+    return NextResponse.json({ removed: uniquePaths.length }, { status: 200 });
+  } catch (error) {
+    console.error("Failed to remove product images", error);
+    return NextResponse.json(
+      { message: "Failed to remove product images. Please try again." },
+      { status: 500 }
+    );
+  }
+}
