@@ -7,6 +7,26 @@ export function createBulkDraftPayload(images: Array<{ path: string }>) {
   };
 }
 
+export function sendBulkDraftRequest(
+  images: Array<{ path: string }>,
+  fetcher: typeof fetch = fetch
+) {
+  return fetcher("/api/products/bulk-drafts", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(createBulkDraftPayload(images)),
+  });
+}
+
+export function getUncommittedImagePaths(
+  images: Array<{ path: string }>,
+  committedPaths: ReadonlySet<string>
+) {
+  return images
+    .map((image) => image.path)
+    .filter((path) => !committedPaths.has(path));
+}
+
 export function createBulkDraftRequestTracker() {
   let currentRequestId = 0;
 

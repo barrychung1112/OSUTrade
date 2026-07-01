@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import {
+  deleteProductImages,
   ProductImageUploadError,
   readApiError,
   requestSignedProductImageUploads,
@@ -250,5 +251,33 @@ describe("readApiError", () => {
     await expect(readApiError(response, "Upload failed.")).resolves.toBe(
       "Upload failed. (HTTP 413)"
     );
+  });
+});
+
+describe("deleteProductImages", () => {
+  test("requests authenticated cleanup for uploaded storage paths", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ removed: 2 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+    const paths = ["seller-1/one.jpg", "seller-1/two.jpg"];
+
+    await deleteProductImages(paths, fetcher);
+
+    expect(fetcher).toHaveBeenCalledWith("/api/products/images", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ paths }),
+    });
+  });
+
+  test("does not call cleanup when there are no paths", async () => {
+    const fetcher = vi.fn();
+
+    await deleteProductImages([], fetcher);
+
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

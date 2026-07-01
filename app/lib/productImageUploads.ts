@@ -174,3 +174,20 @@ export async function uploadProductImagesDirect(
 
   return uploads;
 }
+
+export async function deleteProductImages(
+  paths: string[],
+  fetcher: Fetcher = fetch
+) {
+  if (paths.length === 0) return;
+
+  const response = await fetcher("/api/products/images", {
+    method: "DELETE",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ paths }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Failed to remove product images."));
+  }
+}

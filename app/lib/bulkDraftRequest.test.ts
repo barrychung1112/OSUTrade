@@ -1,10 +1,12 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
   createBulkDraftPayload,
   createBulkDraftRequestTracker,
+  getUncommittedImagePaths,
   getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
   isBulkPublishActionBarVisible,
+  sendBulkDraftRequest,
 } from "./bulkDraftRequest";
 
 describe("createBulkDraftPayload", () => {
@@ -17,6 +19,32 @@ describe("createBulkDraftPayload", () => {
     expect(createBulkDraftPayload(uploadedImages)).toEqual({
       imagePaths: ["seller-1/one.jpg", "seller-1/two.jpg"],
     });
+  });
+
+  test("posts the storage path payload as JSON", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const images = [{ path: "seller-1/one.jpg" }];
+
+    await sendBulkDraftRequest(images, fetcher);
+
+    expect(fetcher).toHaveBeenCalledWith("/api/products/bulk-drafts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ imagePaths: ["seller-1/one.jpg"] }),
+    });
+  });
+});
+
+describe("getUncommittedImagePaths", () => {
+  test("excludes paths already attached to published products", () => {
+    const images = [
+      { path: "seller-1/published.jpg" },
+      { path: "seller-1/draft.jpg" },
+    ];
+
+    expect(
+      getUncommittedImagePaths(images, new Set(["seller-1/published.jpg"]))
+    ).toEqual(["seller-1/draft.jpg"]);
   });
 });
 

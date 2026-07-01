@@ -10,10 +10,19 @@ import Header from "../components/Header";
 import type { AiProductDraft } from "../lib/aiProductDrafts";
 import {
   createBulkDraftRequestTracker,
+  getUncommittedImagePaths,
   getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
   isBulkPublishActionBarVisible,
+  sendBulkDraftRequest,
 } from "../lib/bulkDraftRequest";
+import {
+  deleteProductImages,
+  ProductImageUploadError,
+  readApiError,
+  uploadProductImagesDirect,
+  type UploadedProductImage,
+} from "../lib/productImageUploads";
 import type { Product } from "../lib/products";
 import type { CrossPostCopy } from "../lib/crossPostCopy";
 import {
@@ -124,6 +133,9 @@ export default function SellPage() {
     string | null
   >(null);
   const [bulkImageFiles, setBulkImageFiles] = useState<File[]>([]);
+  const [bulkUploadedImages, setBulkUploadedImages] = useState<
+    UploadedProductImage[]
+  >([]);
   const [bulkImagePreviewUrls, setBulkImagePreviewUrls] = useState<string[]>([]);
   const [bulkDrafts, setBulkDrafts] = useState<BulkDraft[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -151,6 +163,7 @@ export default function SellPage() {
   const manualCrossPostRequestId = useRef(0);
   const bulkCrossPostRequestId = useRef(0);
   const bulkDraftRequestTracker = useRef(createBulkDraftRequestTracker());
+  const committedImagePaths = useRef(new Set<string>());
   const bulkMutationLocked = isBulkDraftMutationLocked(
     bulkPublishing,
     bulkCrossPostStage
@@ -192,30 +205,34 @@ export default function SellPage() {
     return () => objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
   }, [bulkImageFiles]);
 
+  async function cleanupUploadedImages(images: UploadedProductImage[]) {
+    const paths = getUncommittedImagePaths(
+      images,
+      committedImagePaths.current
+    );
+    if (paths.length === 0) return;
+
+    try {
+      await deleteProductImages(paths);
+    } catch (cleanupError) {
+      console.error("Failed to clean up uncommitted product images", cleanupError);
+    }
+  }
+
   async function publishManualProduct() {
     let nextImageUrls = imageUrl.trim() ? [imageUrl.trim()] : [];
+    let uploadedImages: UploadedProductImage[] = [];
+
+    try {
     if (imageFiles.length > maxProductImages) {
       throw new Error(t("sell.imageLimitError"));
     }
 
     if (imageFiles.length > 0) {
-      const uploadForm = new FormData();
-      imageFiles.forEach((file) => uploadForm.append("images", file));
-
-      const uploadRes = await fetch("/api/products/images", {
-        method: "POST",
-        body: uploadForm,
+      uploadedImages = await uploadProductImagesDirect(imageFiles, {
+        maxFiles: maxProductImages,
       });
-
-      if (!uploadRes.ok) {
-        const payload = await uploadRes.json().catch(() => null);
-        throw new Error(payload?.message || t("sell.uploadError"));
-      }
-
-      const uploadPayload = await uploadRes.json();
-      nextImageUrls = Array.isArray(uploadPayload.imageUrls)
-        ? uploadPayload.imageUrls
-        : [uploadPayload.imageUrl].filter(Boolean);
+      nextImageUrls = uploadedImages.map((image) => image.publicUrl);
     }
 
     if (nextImageUrls.length === 0) {
@@ -248,7 +265,19 @@ export default function SellPage() {
       throw new Error(payload?.message || t("sell.listError"));
     }
 
-    return (await res.json()) as Product;
+      const product = (await res.json()) as Product;
+      uploadedImages.forEach((image) =>
+        committedImagePaths.current.add(image.path)
+      );
+      return product;
+    } catch (err) {
+      const uncommittedUploads =
+        err instanceof ProductImageUploadError
+          ? err.uploadedImages
+          : uploadedImages;
+      await cleanupUploadedImages(uncommittedUploads);
+      throw err;
+    }
   }
 
   function resetManualForm() {
@@ -440,8 +469,10 @@ export default function SellPage() {
   function selectBulkImageFiles(files: FileList | null) {
     const selectedFiles = Array.from(files ?? []);
     bulkDraftRequestTracker.current.invalidate();
+    void cleanupUploadedImages(bulkUploadedImages);
     setBulkLoading(false);
     setBulkImageFiles(selectedFiles.slice(0, maxAiBulkImages));
+    setBulkUploadedImages([]);
     setBulkDrafts([]);
     setBulkSuccessCount(0);
     resetBulkCrossPost();
@@ -466,17 +497,30 @@ export default function SellPage() {
     const requestId = bulkDraftRequestTracker.current.start();
 
     try {
-      const formData = new FormData();
-      bulkImageFiles.forEach((file) => formData.append("images", file));
+      let uploadedImages = bulkUploadedImages;
+      if (uploadedImages.length !== bulkImageFiles.length) {
+        try {
+          uploadedImages = await uploadProductImagesDirect(bulkImageFiles, {
+            maxFiles: maxAiBulkImages,
+          });
+        } catch (error) {
+          if (error instanceof ProductImageUploadError) {
+            await cleanupUploadedImages(error.uploadedImages);
+          }
+          throw error;
+        }
 
-      const res = await fetch("/api/products/bulk-drafts", {
-        method: "POST",
-        body: formData,
-      });
+        if (!bulkDraftRequestTracker.current.isCurrent(requestId)) {
+          await cleanupUploadedImages(uploadedImages);
+          return;
+        }
+        setBulkUploadedImages(uploadedImages);
+      }
+
+      const res = await sendBulkDraftRequest(uploadedImages);
 
       if (!res.ok) {
-        const payload = await res.json().catch(() => null);
-        throw new Error(payload?.message || t("sell.aiBulkError"));
+        throw new Error(await readApiError(res, t("sell.aiBulkError")));
       }
 
       const payload = (await res.json()) as { drafts?: AiProductDraft[] };
@@ -502,8 +546,10 @@ export default function SellPage() {
 
   function clearBulkImageFiles() {
     bulkDraftRequestTracker.current.invalidate();
+    void cleanupUploadedImages(bulkUploadedImages);
     setBulkLoading(false);
     setBulkImageFiles([]);
+    setBulkUploadedImages([]);
     setBulkDrafts([]);
     setBulkSuccessCount(0);
     setBulkError(null);
@@ -532,28 +578,11 @@ export default function SellPage() {
     setBulkDrafts((drafts) => drafts.filter((draft) => draft.id !== draftId));
   }
 
-  async function uploadDraftImages(draft: BulkDraft) {
-    const uploadForm = new FormData();
-    draft.imageIndexes
+  function getDraftImages(draft: BulkDraft) {
+    return draft.imageIndexes
       .slice(0, maxProductImages)
-      .map((index) => bulkImageFiles[index])
-      .filter((file): file is File => Boolean(file))
-      .forEach((file) => uploadForm.append("images", file));
-
-    const uploadRes = await fetch("/api/products/images", {
-      method: "POST",
-      body: uploadForm,
-    });
-
-    if (!uploadRes.ok) {
-      const payload = await uploadRes.json().catch(() => null);
-      throw new Error(payload?.message || t("sell.uploadError"));
-    }
-
-    const uploadPayload = await uploadRes.json();
-    return Array.isArray(uploadPayload.imageUrls)
-      ? uploadPayload.imageUrls
-      : [uploadPayload.imageUrl].filter(Boolean);
+      .map((index) => bulkUploadedImages[index])
+      .filter((image): image is UploadedProductImage => Boolean(image));
   }
 
   async function publishBulkDraftSet(
@@ -569,7 +598,8 @@ export default function SellPage() {
       );
 
       try {
-        const imageUrls = await uploadDraftImages(draft);
+        const draftImages = getDraftImages(draft);
+        const imageUrls = draftImages.map((image) => image.publicUrl);
         if (imageUrls.length === 0) {
           throw new Error(t("sell.imageRequired"));
         }
@@ -597,6 +627,9 @@ export default function SellPage() {
         }
 
         const product = (await res.json()) as Product;
+        draftImages.forEach((image) =>
+          committedImagePaths.current.add(image.path)
+        );
         result.successes.push({ draftId: draft.id, product });
         setBulkDrafts((drafts) =>
           drafts.map((item) =>
