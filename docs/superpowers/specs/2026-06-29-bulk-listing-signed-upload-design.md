@@ -49,7 +49,7 @@ Uploaded files become final listing images when a product is successfully create
 
 ## Compatibility
 
-- No database schema migration is required.
+- The `product-images` Storage bucket must be updated to enforce a 5 MB file limit and allow only JPG, PNG, and WebP MIME types. The idempotent bucket statement in `supabase/mvp-schema.sql` applies these settings to new and existing buckets.
 - The existing `product-images` bucket must remain public and configured.
 - Existing product records keep the same `imageUrl` and `imageUrls` shape.
 - The existing `/api/products/images` multipart route remains available for compatibility, but the sell page no longer depends on it.

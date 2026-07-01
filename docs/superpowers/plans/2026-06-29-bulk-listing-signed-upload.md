@@ -17,6 +17,7 @@
 - Create `app/api/products/images/sign/route.ts`: authenticated signed-upload token issuance.
 - Create `app/api/products/images/sign/route.test.ts`: route-level validation and owner-path coverage.
 - Modify `app/api/products/images/route.ts`: authenticated owner-scoped cleanup endpoint.
+- Modify `supabase/mvp-schema.sql`: enforce Storage-level MIME and 5 MB limits for signed uploads.
 - Modify `app/api/products/bulk-drafts/route.ts`: accept JSON paths, derive trusted public URLs, and expose actionable provider failures.
 - Create `app/api/products/bulk-drafts/route.test.ts`: JSON contract, path ownership, and OpenAI URL input coverage.
 - Modify `app/lib/bulkDraftRequest.ts`: build stable JSON payloads and filter uncommitted cleanup paths.
@@ -41,11 +42,13 @@
 - Create: `app/api/products/images/sign/route.ts`
 - Create: `app/api/products/images/sign/route.test.ts`
 - Modify: `app/api/products/images/route.ts`
+- Modify: `supabase/mvp-schema.sql`
 
 - [ ] Write failing route tests for authentication, invalid metadata, server-generated `<user-id>/<uuid>.<ext>` paths, and rejection of cleanup paths outside the current user prefix.
 - [ ] Run the targeted route tests and confirm they fail.
 - [ ] Implement signed token issuance through `createAdminClient().storage.from("product-images").createSignedUploadUrl(path)`.
 - [ ] Add `DELETE /api/products/images` accepting `{ paths }`, validating ownership, and calling Storage `remove`.
+- [ ] Configure the `product-images` bucket with `file_size_limit = 5242880` and JPG/PNG/WebP MIME restrictions so signed uploads cannot bypass client metadata checks.
 - [ ] Re-run targeted tests and confirm they pass.
 - [ ] Commit `feat: issue signed product image uploads`.
 

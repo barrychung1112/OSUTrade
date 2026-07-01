@@ -54,9 +54,11 @@ describe("product image cleanup route", () => {
     const paths = ["seller-1/one.jpg", "seller-1/two.webp"];
 
     const response = await DELETE(request(paths));
+    const payload = await response.json();
 
     expect(response.status).toBe(200);
     expect(from).toHaveBeenCalledWith("product-images");
     expect(bucket.remove).toHaveBeenCalledWith(paths);
+    expect(payload.removed).toBe(0);
   });
 });

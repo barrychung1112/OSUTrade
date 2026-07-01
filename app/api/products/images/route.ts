@@ -152,13 +152,13 @@ export async function DELETE(request: Request) {
 
     const uniquePaths = [...new Set(paths)];
     const supabase = createAdminClient();
-    const { error } = await supabase.storage
+    const { data, error } = await supabase.storage
       .from(bucketName)
       .remove(uniquePaths);
 
     if (error) throw error;
 
-    return NextResponse.json({ removed: uniquePaths.length }, { status: 200 });
+    return NextResponse.json({ removed: data?.length ?? 0 }, { status: 200 });
   } catch (error) {
     console.error("Failed to remove product images", error);
     return NextResponse.json(
