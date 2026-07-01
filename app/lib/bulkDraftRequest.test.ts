@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import {
   createBulkDraftPayload,
   createBulkDraftRequestTracker,
+  getOrCreateProductRequestKey,
   getUncommittedImagePaths,
   getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
@@ -48,6 +49,28 @@ describe("getUncommittedImagePaths", () => {
   });
 });
 
+describe("getOrCreateProductRequestKey", () => {
+  test("reuses a key for retries and creates a new key after reset", () => {
+    const keys = new Map<string, string>();
+    const createKey = vi
+      .fn()
+      .mockReturnValueOnce("request-1")
+      .mockReturnValueOnce("request-2");
+
+    expect(getOrCreateProductRequestKey(keys, "draft-1", createKey)).toBe(
+      "request-1"
+    );
+    expect(getOrCreateProductRequestKey(keys, "draft-1", createKey)).toBe(
+      "request-1"
+    );
+    keys.delete("draft-1");
+    expect(getOrCreateProductRequestKey(keys, "draft-1", createKey)).toBe(
+      "request-2"
+    );
+    expect(createKey).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("createBulkDraftRequestTracker", () => {
   test("invalidates responses from an earlier photo selection", () => {
     const tracker = createBulkDraftRequestTracker();
@@ -62,8 +85,9 @@ describe("createBulkDraftRequestTracker", () => {
 });
 
 describe("isBulkDraftMutationLocked", () => {
-  test("locks draft changes while a preview snapshot is active", () => {
+  test("locks draft changes while generating or publishing", () => {
     expect(isBulkDraftMutationLocked(false, "idle")).toBe(false);
+    expect(isBulkDraftMutationLocked(false, "idle", true)).toBe(true);
     expect(isBulkDraftMutationLocked(false, "generating")).toBe(true);
     expect(isBulkDraftMutationLocked(false, "reviewing")).toBe(true);
     expect(isBulkDraftMutationLocked(false, "publishing")).toBe(true);

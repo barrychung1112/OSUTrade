@@ -10,6 +10,7 @@ import Header from "../components/Header";
 import type { AiProductDraft } from "../lib/aiProductDrafts";
 import {
   createBulkDraftRequestTracker,
+  getOrCreateProductRequestKey,
   getUncommittedImagePaths,
   getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
@@ -20,6 +21,7 @@ import {
   deleteProductImages,
   ProductImageUploadError,
   readApiError,
+  shouldPreserveUploadsAfterProductError,
   uploadProductImagesDirect,
   type UploadedProductImage,
 } from "../lib/productImageUploads";
@@ -108,6 +110,9 @@ export default function SellPage() {
   const [category, setCategory] = useState("general");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [manualUploadedImages, setManualUploadedImages] = useState<
+    UploadedProductImage[]
+  >([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [contactPhone, setContactPhone] = useState("");
   const [contactLineId, setContactLineId] = useState("");
@@ -164,9 +169,11 @@ export default function SellPage() {
   const bulkCrossPostRequestId = useRef(0);
   const bulkDraftRequestTracker = useRef(createBulkDraftRequestTracker());
   const committedImagePaths = useRef(new Set<string>());
+  const productRequestKeys = useRef(new Map<string, string>());
   const bulkMutationLocked = isBulkDraftMutationLocked(
     bulkPublishing,
-    bulkCrossPostStage
+    bulkCrossPostStage,
+    bulkLoading
   );
   const manualFormLocked = manualCrossPostStage !== "idle";
 
@@ -219,63 +226,91 @@ export default function SellPage() {
     }
   }
 
+  function clearBulkProductRequestKeys() {
+    for (const key of productRequestKeys.current.keys()) {
+      if (key.startsWith("bulk:")) productRequestKeys.current.delete(key);
+    }
+  }
+
   async function publishManualProduct() {
     let nextImageUrls = imageUrl.trim() ? [imageUrl.trim()] : [];
-    let uploadedImages: UploadedProductImage[] = [];
+    let uploadedImages = manualUploadedImages;
+    let productRequestStarted = false;
+    let productResponseStatus: number | null = null;
 
     try {
-    if (imageFiles.length > maxProductImages) {
-      throw new Error(t("sell.imageLimitError"));
-    }
+      if (imageFiles.length > maxProductImages) {
+        throw new Error(t("sell.imageLimitError"));
+      }
 
-    if (imageFiles.length > 0) {
-      uploadedImages = await uploadProductImagesDirect(imageFiles, {
-        maxFiles: maxProductImages,
+      if (imageFiles.length > 0) {
+        if (uploadedImages.length !== imageFiles.length) {
+          uploadedImages = await uploadProductImagesDirect(imageFiles, {
+            maxFiles: maxProductImages,
+          });
+          setManualUploadedImages(uploadedImages);
+        }
+        nextImageUrls = uploadedImages.map((image) => image.publicUrl);
+      }
+
+      if (nextImageUrls.length === 0) {
+        throw new Error(t("sell.imageRequired"));
+      }
+
+      if (nextImageUrls.length > maxProductImages) {
+        throw new Error(t("sell.imageLimitError"));
+      }
+
+      const requestKey = getOrCreateProductRequestKey(
+        productRequestKeys.current,
+        "manual"
+      );
+      productRequestStarted = true;
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": requestKey,
+        },
+        body: JSON.stringify({
+          name,
+          description,
+          price: Number(price),
+          quantity: Number(quantity),
+          category,
+          imageUrl: nextImageUrls[0] ?? "",
+          imageUrls: nextImageUrls,
+          contactPhone,
+          contactLineId,
+          contactWechatId,
+        }),
       });
-      nextImageUrls = uploadedImages.map((image) => image.publicUrl);
-    }
+      productResponseStatus = res.status;
 
-    if (nextImageUrls.length === 0) {
-      throw new Error(t("sell.imageRequired"));
-    }
-
-    if (nextImageUrls.length > maxProductImages) {
-      throw new Error(t("sell.imageLimitError"));
-    }
-
-    const res = await fetch("/api/products", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        price: Number(price),
-        quantity: Number(quantity),
-        category,
-        imageUrl: nextImageUrls[0] ?? "",
-        imageUrls: nextImageUrls,
-        contactPhone,
-        contactLineId,
-        contactWechatId,
-      }),
-    });
-
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null);
-      throw new Error(payload?.message || t("sell.listError"));
-    }
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.message || t("sell.listError"));
+      }
 
       const product = (await res.json()) as Product;
       uploadedImages.forEach((image) =>
         committedImagePaths.current.add(image.path)
       );
+      productRequestKeys.current.delete("manual");
+      setManualUploadedImages([]);
       return product;
     } catch (err) {
       const uncommittedUploads =
         err instanceof ProductImageUploadError
           ? err.uploadedImages
           : uploadedImages;
-      await cleanupUploadedImages(uncommittedUploads);
+      const preserveForRetry =
+        productRequestStarted &&
+        shouldPreserveUploadsAfterProductError(productResponseStatus);
+      if (!preserveForRetry) {
+        await cleanupUploadedImages(uncommittedUploads);
+        setManualUploadedImages([]);
+      }
       throw err;
     }
   }
@@ -400,12 +435,22 @@ export default function SellPage() {
 
   function selectImageFiles(files: FileList | null) {
     const selectedFiles = Array.from(files ?? []);
+    void cleanupUploadedImages(manualUploadedImages);
+    setManualUploadedImages([]);
+    productRequestKeys.current.delete("manual");
     setImageFiles(selectedFiles.slice(0, maxProductImages));
     if (selectedFiles.length > maxProductImages) {
       setError(t("sell.imageLimitError"));
     } else {
       setError(null);
     }
+  }
+
+  function clearManualImageFiles() {
+    void cleanupUploadedImages(manualUploadedImages);
+    setManualUploadedImages([]);
+    setImageFiles([]);
+    productRequestKeys.current.delete("manual");
   }
 
   function goToProductNow() {
@@ -474,6 +519,7 @@ export default function SellPage() {
     setBulkImageFiles(selectedFiles.slice(0, maxAiBulkImages));
     setBulkUploadedImages([]);
     setBulkDrafts([]);
+    clearBulkProductRequestKeys();
     setBulkSuccessCount(0);
     resetBulkCrossPost();
 
@@ -533,6 +579,7 @@ export default function SellPage() {
         error: null,
       }));
 
+      clearBulkProductRequestKeys();
       setBulkDrafts(nextDrafts);
     } catch (err) {
       if (!bulkDraftRequestTracker.current.isCurrent(requestId)) return;
@@ -551,6 +598,7 @@ export default function SellPage() {
     setBulkImageFiles([]);
     setBulkUploadedImages([]);
     setBulkDrafts([]);
+    clearBulkProductRequestKeys();
     setBulkSuccessCount(0);
     setBulkError(null);
     resetBulkCrossPost();
@@ -575,6 +623,7 @@ export default function SellPage() {
   }
 
   function deleteBulkDraft(draftId: string) {
+    productRequestKeys.current.delete(`bulk:${draftId}`);
     setBulkDrafts((drafts) => drafts.filter((draft) => draft.id !== draftId));
   }
 
@@ -604,9 +653,16 @@ export default function SellPage() {
           throw new Error(t("sell.imageRequired"));
         }
 
+        const requestKey = getOrCreateProductRequestKey(
+          productRequestKeys.current,
+          `bulk:${draft.id}`
+        );
         const res = await fetch("/api/products", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": requestKey,
+          },
           body: JSON.stringify({
             name: draft.name,
             description: draft.description,
@@ -630,6 +686,7 @@ export default function SellPage() {
         draftImages.forEach((image) =>
           committedImagePaths.current.add(image.path)
         );
+        productRequestKeys.current.delete(`bulk:${draft.id}`);
         result.successes.push({ draftId: draft.id, product });
         setBulkDrafts((drafts) =>
           drafts.map((item) =>
@@ -652,6 +709,8 @@ export default function SellPage() {
   }
 
   async function publishBulkDrafts() {
+    if (bulkMutationLocked) return;
+
     const selectedDrafts = bulkDrafts.filter(
       (draft) => draft.selected && draft.status !== "published"
     );
@@ -1038,7 +1097,7 @@ export default function SellPage() {
                           <button
                             type="button"
                             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-orange-200 bg-white px-3 text-sm font-semibold text-[#d73f09] shadow-sm transition hover:bg-orange-50"
-                            onClick={() => setImageFiles([])}
+                            onClick={clearManualImageFiles}
                           >
                             <Cross2Icon /> {t("common.clear")}
                           </button>

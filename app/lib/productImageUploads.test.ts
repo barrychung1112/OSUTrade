@@ -4,6 +4,7 @@ import {
   ProductImageUploadError,
   readApiError,
   requestSignedProductImageUploads,
+  shouldPreserveUploadsAfterProductError,
   uploadProductImagesDirect,
   validateProductImageFiles,
 } from "./productImageUploads";
@@ -193,6 +194,7 @@ describe("uploadProductImagesDirect", () => {
       message: 'Failed to upload "damaged.jpg". Please try again.',
       uploadedImages: [
         expect.objectContaining({ path: "user-id/good.jpg" }),
+        expect.objectContaining({ path: "user-id/damaged.jpg" }),
       ],
     });
   });
@@ -279,5 +281,15 @@ describe("deleteProductImages", () => {
     await deleteProductImages([], fetcher);
 
     expect(fetcher).not.toHaveBeenCalled();
+  });
+});
+
+describe("shouldPreserveUploadsAfterProductError", () => {
+  test("preserves uploads for network and server errors only", () => {
+    expect(shouldPreserveUploadsAfterProductError(null)).toBe(true);
+    expect(shouldPreserveUploadsAfterProductError(500)).toBe(true);
+    expect(shouldPreserveUploadsAfterProductError(502)).toBe(true);
+    expect(shouldPreserveUploadsAfterProductError(400)).toBe(false);
+    expect(shouldPreserveUploadsAfterProductError(401)).toBe(false);
   });
 });

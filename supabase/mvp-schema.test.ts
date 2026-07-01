@@ -13,3 +13,12 @@ describe("product-images bucket schema", () => {
     expect(schema).toContain("image/webp");
   });
 });
+
+describe("product listing idempotency schema", () => {
+  test("stores one client request ID per seller", () => {
+    const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
+
+    expect(schema).toContain("client_request_id");
+    expect(schema).toMatch(/unique index[\s\S]*seller_id[\s\S]*client_request_id/i);
+  });
+});

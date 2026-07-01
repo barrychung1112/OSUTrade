@@ -71,10 +71,15 @@ alter table public.products
   add column if not exists contact_phone text,
   add column if not exists contact_line_id text,
   add column if not exists contact_wechat_id text,
+  add column if not exists client_request_id text,
   add column if not exists quantity integer not null default 1 check (quantity >= 0),
   add column if not exists status text not null default 'available' check (status in ('available', 'pending', 'sold', 'removed')),
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
+
+create unique index if not exists products_seller_client_request_unique_idx
+  on public.products (seller_id, client_request_id)
+  where client_request_id is not null;
 
 alter table public.products enable row level security;
 

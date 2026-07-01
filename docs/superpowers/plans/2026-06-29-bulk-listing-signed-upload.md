@@ -18,6 +18,7 @@
 - Create `app/api/products/images/sign/route.test.ts`: route-level validation and owner-path coverage.
 - Modify `app/api/products/images/route.ts`: authenticated owner-scoped cleanup endpoint.
 - Modify `supabase/mvp-schema.sql`: enforce Storage-level MIME and 5 MB limits for signed uploads.
+- Modify `app/api/products/route.ts`: make product creation idempotent for retry-safe image ownership.
 - Modify `app/api/products/bulk-drafts/route.ts`: accept JSON paths, derive trusted public URLs, and expose actionable provider failures.
 - Create `app/api/products/bulk-drafts/route.test.ts`: JSON contract, path ownership, and OpenAI URL input coverage.
 - Modify `app/lib/bulkDraftRequest.ts`: build stable JSON payloads and filter uncommitted cleanup paths.
@@ -77,6 +78,8 @@
 - [ ] Upload manual images directly before creating a product.
 - [ ] Upload AI images once before draft generation, send only paths to `/api/products/bulk-drafts`, and reuse public URLs during publishing.
 - [ ] Track committed paths after successful product creation and clean only uncommitted paths on explicit clear or photo replacement.
+- [ ] Send a stable idempotency key per manual listing or AI draft; preserve uploaded images after ambiguous network/5xx failures and reuse the key on retry.
+- [ ] Add `products.client_request_id` plus a unique seller/request index and return the existing product on repeated or concurrent requests.
 - [ ] Use `readApiError` so non-JSON 413/5xx responses include HTTP status instead of only `Could not generate AI drafts.`
 - [ ] Re-run targeted tests and commit `fix: integrate signed uploads into sell flow`.
 

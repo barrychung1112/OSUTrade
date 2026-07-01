@@ -27,6 +27,19 @@ export function getUncommittedImagePaths(
     .filter((path) => !committedPaths.has(path));
 }
 
+export function getOrCreateProductRequestKey(
+  keys: Map<string, string>,
+  itemId: string,
+  createKey: () => string = () => crypto.randomUUID()
+) {
+  const existingKey = keys.get(itemId);
+  if (existingKey) return existingKey;
+
+  const key = createKey();
+  keys.set(itemId, key);
+  return key;
+}
+
 export function createBulkDraftRequestTracker() {
   let currentRequestId = 0;
 
@@ -46,10 +59,12 @@ export function createBulkDraftRequestTracker() {
 
 export function isBulkDraftMutationLocked(
   bulkPublishing: boolean,
-  crossPostStage: CrossPostFlowStage = "idle"
+  crossPostStage: CrossPostFlowStage = "idle",
+  bulkLoading = false
 ) {
   return (
     bulkPublishing ||
+    bulkLoading ||
     crossPostStage === "generating" ||
     crossPostStage === "reviewing" ||
     crossPostStage === "publishing"

@@ -157,13 +157,13 @@ export async function uploadProductImagesDirect(
     options.uploadToSignedUrl ?? createDefaultSignedUploader();
   const uploadedImages: UploadedProductImage[] = [];
   for (let index = 0; index < files.length; index += 1) {
+    uploadedImages.push(uploads[index]);
     try {
       await uploadToSignedUrl(
         uploads[index].path,
         uploads[index].token,
         files[index]
       );
-      uploadedImages.push(uploads[index]);
     } catch {
       throw new ProductImageUploadError(
         `Failed to upload "${files[index].name}". Please try again.`,
@@ -190,4 +190,10 @@ export async function deleteProductImages(
   if (!response.ok) {
     throw new Error(await readApiError(response, "Failed to remove product images."));
   }
+}
+
+export function shouldPreserveUploadsAfterProductError(
+  responseStatus: number | null
+) {
+  return responseStatus === null || responseStatus >= 500;
 }

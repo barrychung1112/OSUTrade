@@ -146,9 +146,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error, count } = await query;
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     return NextResponse.json(
       {
@@ -200,6 +198,30 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    const idempotencyKey = request.headers.get("idempotency-key")?.trim() ?? "";
+    if (idempotencyKey.length > 128) {
+      return NextResponse.json(
+        { message: "Invalid idempotency key." },
+        { status: 400 }
+      );
+    }
+
+    if (idempotencyKey) {
+      const { data: existingProduct, error: existingError } = await supabase
+        .from("products")
+        .select("*")
+        .eq("seller_id", session.user.id)
+        .eq("client_request_id", idempotencyKey)
+        .maybeSingle();
+
+      if (existingError) throw existingError;
+      if (existingProduct) {
+        return NextResponse.json(toProduct(existingProduct as ProductRow), {
+          status: 200,
+        });
+      }
+    }
+
     const body = await request.json();
     const name = String(body.name ?? "").trim();
     const description = String(body.description ?? "").trim();
@@ -269,6 +291,7 @@ export async function POST(request: NextRequest) {
       contact_phone: contactPhone || null,
       contact_line_id: contactLineId || null,
       contact_wechat_id: contactWechatId || null,
+      client_request_id: idempotencyKey || null,
       seller_id: session.user.id,
       quantity,
       status: "available",
@@ -312,9 +335,23 @@ export async function POST(request: NextRequest) {
       currentInsertValues = fallback.values;
     }
 
-    if (error) {
-      throw error;
+    if (error?.code === "23505" && idempotencyKey) {
+      const { data: existingProduct, error: recoveryError } = await supabase
+        .from("products")
+        .select("*")
+        .eq("seller_id", session.user.id)
+        .eq("client_request_id", idempotencyKey)
+        .maybeSingle();
+
+      if (recoveryError) throw recoveryError;
+      if (existingProduct) {
+        return NextResponse.json(toProduct(existingProduct as ProductRow), {
+          status: 200,
+        });
+      }
     }
+
+    if (error) throw error;
 
     return NextResponse.json(toProduct(data), { status: 201 });
   } catch (error) {

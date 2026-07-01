@@ -47,9 +47,12 @@ The same direct-upload helper will be used by the manual listing form so its thr
 
 Uploaded files become final listing images when a product is successfully created. The client tracks committed paths and never deletes them. Explicit clear, file replacement, and failed pre-publish flows remove only uncommitted owner-scoped paths. Closing a tab can still leave an orphaned object; automatic age-based cleanup is intentionally deferred because it requires a scheduled server job and separate retention policy.
 
+Product creation uses a stable client idempotency key. Network and server errors retain uploaded images for retry; the API returns an existing product when the same seller retries the same key. A unique `(seller_id, client_request_id)` index closes concurrent-insert races.
+
 ## Compatibility
 
 - The `product-images` Storage bucket must be updated to enforce a 5 MB file limit and allow only JPG, PNG, and WebP MIME types. The idempotent bucket statement in `supabase/mvp-schema.sql` applies these settings to new and existing buckets.
+- The `products` table must include nullable `client_request_id` and the partial unique index defined in `supabase/mvp-schema.sql`.
 - The existing `product-images` bucket must remain public and configured.
 - Existing product records keep the same `imageUrl` and `imageUrls` shape.
 - The existing `/api/products/images` multipart route remains available for compatibility, but the sell page no longer depends on it.
