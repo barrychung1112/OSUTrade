@@ -9,12 +9,12 @@ import {
 
 describe("createBulkDraftPayload", () => {
   test("sends only storage paths to the bulk draft API", () => {
-    expect(
-      createBulkDraftPayload([
-        { path: "seller-1/one.jpg", publicUrl: "https://example.com/one.jpg" },
-        { path: "seller-1/two.jpg", publicUrl: "https://example.com/two.jpg" },
-      ])
-    ).toEqual({
+    const uploadedImages = [
+      { path: "seller-1/one.jpg", publicUrl: "https://example.com/one.jpg" },
+      { path: "seller-1/two.jpg", publicUrl: "https://example.com/two.jpg" },
+    ];
+
+    expect(createBulkDraftPayload(uploadedImages)).toEqual({
       imagePaths: ["seller-1/one.jpg", "seller-1/two.jpg"],
     });
   });
