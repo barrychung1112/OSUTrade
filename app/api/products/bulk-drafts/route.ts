@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
   createBulkDraftResponseFormat,
-  createFallbackDrafts,
   extractAiDraftResponseText,
   parseAiDraftResponse,
 } from "@/app/lib/aiProductDrafts";
@@ -10,6 +9,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 
 const bucketName = "product-images";
 const maxImages = 10;
+const openAiTimeoutMs = 20_000;
 
 class AiProviderError extends Error {}
 class AiConfigurationError extends Error {}
@@ -35,9 +35,12 @@ async function generateAiDrafts(imageUrls: string[]) {
   }));
 
   let response: Response;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), openAiTimeoutMs);
   try {
     response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${apiKey}`,
@@ -74,6 +77,8 @@ async function generateAiDrafts(imageUrls: string[]) {
       error: error instanceof Error ? error.message : "Network error",
     });
     throw new AiProviderError("OpenAI request failed.");
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!response.ok) {
@@ -94,8 +99,39 @@ async function generateAiDrafts(imageUrls: string[]) {
     throw new AiProviderError("OpenAI returned invalid JSON.");
   }
 
+  const output = Array.isArray(payload.output) ? payload.output : [];
+  const hasRefusal = output.some((item: any) =>
+    Array.isArray(item?.content)
+      ? item.content.some((part: any) => part?.type === "refusal")
+      : false
+  );
+
+  if (payload.status === "incomplete" || hasRefusal) {
+    console.error("OpenAI bulk draft request failed", {
+      status: response.status,
+      requestId: response.headers.get("x-request-id"),
+      responseStatus: payload.status ?? null,
+      refused: hasRefusal,
+    });
+    throw new AiProviderError("OpenAI did not complete the draft response.");
+  }
+
   const responseText = extractAiDraftResponseText(payload);
-  return responseText ? parseAiDraftResponse(responseText, imageUrls.length) : [];
+  const drafts = responseText
+    ? parseAiDraftResponse(responseText, imageUrls.length)
+    : [];
+
+  if (drafts.length === 0) {
+    console.error("OpenAI bulk draft request failed", {
+      status: response.status,
+      requestId: response.headers.get("x-request-id"),
+      responseStatus: payload.status ?? null,
+      error: "Missing or invalid structured output",
+    });
+    throw new AiProviderError("OpenAI returned invalid structured output.");
+  }
+
+  return drafts;
 }
 
 export async function POST(request: Request) {
@@ -154,10 +190,8 @@ export async function POST(request: Request) {
       (path) => bucket.getPublicUrl(path).data.publicUrl
     );
     const aiDrafts = await generateAiDrafts(imageUrls);
-    const drafts =
-      aiDrafts.length > 0 ? aiDrafts : createFallbackDrafts(imageUrls.length);
 
-    return NextResponse.json({ drafts }, { status: 200 });
+    return NextResponse.json({ drafts: aiDrafts }, { status: 200 });
   } catch (error) {
     if (error instanceof AiConfigurationError) {
       console.error("OpenAI bulk draft configuration error", error.message);

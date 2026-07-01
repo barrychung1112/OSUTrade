@@ -62,6 +62,7 @@ describe("bulk draft route", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = originalApiKey;
@@ -144,5 +145,80 @@ describe("bulk draft route", () => {
       expect.objectContaining({ status: 429, requestId: "req_123" })
     );
     consoleError.mockRestore();
+  });
+
+  test.each([
+    {
+      label: "incomplete response",
+      payload: {
+        status: "incomplete",
+        incomplete_details: { reason: "max_output_tokens" },
+        output: [],
+      },
+    },
+    {
+      label: "refusal response",
+      payload: {
+        status: "completed",
+        output: [
+          {
+            type: "message",
+            content: [{ type: "refusal", refusal: "Cannot process image." }],
+          },
+        ],
+      },
+    },
+    {
+      label: "malformed structured output",
+      payload: { status: "completed", output_text: "not-json" },
+    },
+  ])("returns 502 for $label", async ({ payload }) => {
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mockStorage();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { "x-request-id": "req_invalid" },
+        })
+      )
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await POST(request(["seller-1/one.jpg"]));
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      code: "AI_PROVIDER_ERROR",
+      message: "AI could not analyze these photos. Please try again.",
+    });
+    vi.mocked(console.error).mockRestore();
+  });
+
+  test("aborts a stalled OpenAI request and returns 502", async () => {
+    vi.useFakeTimers();
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mockStorage();
+    const openAiFetch = vi.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        })
+    );
+    vi.stubGlobal("fetch", openAiFetch);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const pendingResponse = POST(request(["seller-1/one.jpg"]));
+    await vi.advanceTimersByTimeAsync(20_000);
+    const response = await pendingResponse;
+
+    expect(response.status).toBe(502);
+    expect(openAiFetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    expect(openAiFetch.mock.calls[0][1].signal.aborted).toBe(true);
+    vi.mocked(console.error).mockRestore();
+    vi.useRealTimers();
   });
 });
