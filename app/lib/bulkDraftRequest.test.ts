@@ -1,10 +1,24 @@
 import { describe, expect, test } from "vitest";
 import {
+  createBulkDraftPayload,
   createBulkDraftRequestTracker,
   getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
   isBulkPublishActionBarVisible,
 } from "./bulkDraftRequest";
+
+describe("createBulkDraftPayload", () => {
+  test("sends only storage paths to the bulk draft API", () => {
+    expect(
+      createBulkDraftPayload([
+        { path: "seller-1/one.jpg", publicUrl: "https://example.com/one.jpg" },
+        { path: "seller-1/two.jpg", publicUrl: "https://example.com/two.jpg" },
+      ])
+    ).toEqual({
+      imagePaths: ["seller-1/one.jpg", "seller-1/two.jpg"],
+    });
+  });
+});
 
 describe("createBulkDraftRequestTracker", () => {
   test("invalidates responses from an earlier photo selection", () => {

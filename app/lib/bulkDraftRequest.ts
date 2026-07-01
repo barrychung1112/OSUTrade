@@ -1,6 +1,12 @@
 import type { PublishedCrossPostProduct } from "./crossPostFinalizer";
 import type { CrossPostFlowStage } from "./crossPostPreview";
 
+export function createBulkDraftPayload(images: Array<{ path: string }>) {
+  return {
+    imagePaths: images.map((image) => image.path),
+  };
+}
+
 export function createBulkDraftRequestTracker() {
   let currentRequestId = 0;
 
