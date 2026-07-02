@@ -195,5 +195,9 @@ export async function deleteProductImages(
 export function shouldPreserveUploadsAfterProductError(
   responseStatus: number | null
 ) {
-  return responseStatus === null || responseStatus >= 500;
+  return (
+    responseStatus === null ||
+    responseStatus >= 500 ||
+    (responseStatus >= 200 && responseStatus < 300)
+  );
 }

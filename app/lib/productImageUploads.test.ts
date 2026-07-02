@@ -285,8 +285,10 @@ describe("deleteProductImages", () => {
 });
 
 describe("shouldPreserveUploadsAfterProductError", () => {
-  test("preserves uploads for network and server errors only", () => {
+  test("preserves uploads when product creation may have committed", () => {
     expect(shouldPreserveUploadsAfterProductError(null)).toBe(true);
+    expect(shouldPreserveUploadsAfterProductError(200)).toBe(true);
+    expect(shouldPreserveUploadsAfterProductError(201)).toBe(true);
     expect(shouldPreserveUploadsAfterProductError(500)).toBe(true);
     expect(shouldPreserveUploadsAfterProductError(502)).toBe(true);
     expect(shouldPreserveUploadsAfterProductError(400)).toBe(false);

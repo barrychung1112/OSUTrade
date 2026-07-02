@@ -144,6 +144,7 @@ describe("product create idempotency", () => {
     };
     lookup.select.mockReturnValue(lookup);
     lookup.eq.mockReturnValue(lookup);
+    const fallbackLookup = lookupQuery(null);
     const insertQuery = {
       insert: vi.fn(),
       select: vi.fn(),
@@ -154,6 +155,7 @@ describe("product create idempotency", () => {
     const from = vi
       .fn()
       .mockReturnValueOnce(lookup)
+      .mockReturnValueOnce(fallbackLookup)
       .mockReturnValueOnce(insertQuery);
     mocks.createAdminClient.mockReturnValue({ from });
 
@@ -161,8 +163,47 @@ describe("product create idempotency", () => {
 
     expect(response.status).toBe(201);
     expect(insertQuery.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        product_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      })
+    );
+    expect(insertQuery.insert).toHaveBeenCalledWith(
       expect.not.objectContaining({ client_request_id: expect.anything() })
     );
+  });
+
+  test("finds an earlier retry by deterministic product id without the new column", async () => {
+    const clientKeyLookup = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: "42703",
+          message: "column products.client_request_id does not exist",
+        },
+      }),
+    };
+    clientKeyLookup.select.mockReturnValue(clientKeyLookup);
+    clientKeyLookup.eq.mockReturnValue(clientKeyLookup);
+    const fallbackLookup = lookupQuery(productRow());
+    const from = vi
+      .fn()
+      .mockReturnValueOnce(clientKeyLookup)
+      .mockReturnValueOnce(fallbackLookup);
+    mocks.createAdminClient.mockReturnValue({ from });
+
+    const response = await POST(request());
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.id).toBe("product-1");
+    expect(fallbackLookup.eq).toHaveBeenNthCalledWith(
+      2,
+      "product_id",
+      expect.stringMatching(/^[0-9a-f-]{36}$/)
+    );
+    expect(mocks.translateProductName).not.toHaveBeenCalled();
   });
 
   test("returns the winning product after a concurrent unique conflict", async () => {
