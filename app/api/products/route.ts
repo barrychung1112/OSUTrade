@@ -206,6 +206,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let idempotencyAvailable = Boolean(idempotencyKey);
     if (idempotencyKey) {
       const { data: existingProduct, error: existingError } = await supabase
         .from("products")
@@ -214,7 +215,16 @@ export async function POST(request: NextRequest) {
         .eq("client_request_id", idempotencyKey)
         .maybeSingle();
 
-      if (existingError) throw existingError;
+      if (existingError) {
+        const message = existingError.message ?? "";
+        const missingIdempotencyColumn =
+          /client_request_id/i.test(message) &&
+          (existingError.code === "42703" ||
+            existingError.code === "PGRST204" ||
+            /schema cache|could not find|does not exist/i.test(message));
+        if (!missingIdempotencyColumn) throw existingError;
+        idempotencyAvailable = false;
+      }
       if (existingProduct) {
         return NextResponse.json(toProduct(existingProduct as ProductRow), {
           status: 200,
@@ -291,7 +301,9 @@ export async function POST(request: NextRequest) {
       contact_phone: contactPhone || null,
       contact_line_id: contactLineId || null,
       contact_wechat_id: contactWechatId || null,
-      client_request_id: idempotencyKey || null,
+      ...(idempotencyAvailable
+        ? { client_request_id: idempotencyKey }
+        : {}),
       seller_id: session.user.id,
       quantity,
       status: "available",
@@ -335,7 +347,7 @@ export async function POST(request: NextRequest) {
       currentInsertValues = fallback.values;
     }
 
-    if (error?.code === "23505" && idempotencyKey) {
+    if (error?.code === "23505" && idempotencyAvailable) {
       const { data: existingProduct, error: recoveryError } = await supabase
         .from("products")
         .select("*")

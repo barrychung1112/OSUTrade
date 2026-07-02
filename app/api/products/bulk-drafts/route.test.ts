@@ -77,6 +77,17 @@ describe("bulk draft route", () => {
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 
+  test("rejects encoded traversal in an apparently owned image path", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+
+    const response = await POST(
+      request(["seller-1/%2e%2e/seller-2/private.jpg"])
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.createAdminClient).not.toHaveBeenCalled();
+  });
+
   test("sends trusted Supabase URLs to OpenAI without image bytes", async () => {
     mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
     const { from } = mockStorage();

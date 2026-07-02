@@ -130,6 +130,41 @@ describe("product create idempotency", () => {
     );
   });
 
+  test("creates a product when the idempotency column is not deployed yet", async () => {
+    const lookup = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: "42703",
+          message: "column products.client_request_id does not exist",
+        },
+      }),
+    };
+    lookup.select.mockReturnValue(lookup);
+    lookup.eq.mockReturnValue(lookup);
+    const insertQuery = {
+      insert: vi.fn(),
+      select: vi.fn(),
+      single: vi.fn().mockResolvedValue({ data: productRow(), error: null }),
+    };
+    insertQuery.insert.mockReturnValue(insertQuery);
+    insertQuery.select.mockReturnValue(insertQuery);
+    const from = vi
+      .fn()
+      .mockReturnValueOnce(lookup)
+      .mockReturnValueOnce(insertQuery);
+    mocks.createAdminClient.mockReturnValue({ from });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(201);
+    expect(insertQuery.insert).toHaveBeenCalledWith(
+      expect.not.objectContaining({ client_request_id: expect.anything() })
+    );
+  });
+
   test("returns the winning product after a concurrent unique conflict", async () => {
     const firstLookup = lookupQuery(null);
     const insertQuery = {

@@ -5,6 +5,7 @@ import {
   extractAiDraftResponseText,
   parseAiDraftResponse,
 } from "@/app/lib/aiProductDrafts";
+import { isOwnedProductImagePath } from "@/app/lib/productImagePath";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 const bucketName = "product-images";
@@ -13,14 +14,6 @@ const openAiTimeoutMs = 20_000;
 
 class AiProviderError extends Error {}
 class AiConfigurationError extends Error {}
-
-function isOwnedStoragePath(path: string, userId: string) {
-  return (
-    path.startsWith(`${userId}/`) &&
-    !path.startsWith("/") &&
-    !path.split("/").some((segment) => segment === ".." || segment === ".")
-  );
-}
 
 async function generateAiDrafts(imageUrls: string[]) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -167,7 +160,8 @@ export async function POST(request: Request) {
     if (
       !imagePaths.every(
         (path): path is string =>
-          typeof path === "string" && isOwnedStoragePath(path, session.user.id)
+          typeof path === "string" &&
+          isOwnedProductImagePath(path, session.user.id)
       )
     ) {
       return NextResponse.json(

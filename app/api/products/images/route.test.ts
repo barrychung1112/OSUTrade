@@ -47,10 +47,21 @@ describe("product image cleanup route", () => {
   test("removes only validated owner paths", async () => {
     mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
     const bucket = {
+      getPublicUrl: vi.fn((path: string) => ({
+        data: { publicUrl: `https://project.supabase.co/${path}` },
+      })),
       remove: vi.fn().mockResolvedValue({ data: [], error: null }),
     };
     const from = vi.fn().mockReturnValue(bucket);
-    mocks.createAdminClient.mockReturnValue({ storage: { from } });
+    const productQuery = {
+      select: vi.fn(),
+      eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    productQuery.select.mockReturnValue(productQuery);
+    mocks.createAdminClient.mockReturnValue({
+      from: vi.fn().mockReturnValue(productQuery),
+      storage: { from },
+    });
     const paths = ["seller-1/one.jpg", "seller-1/two.webp"];
 
     const response = await DELETE(request(paths));
@@ -59,6 +70,50 @@ describe("product image cleanup route", () => {
     expect(response.status).toBe(200);
     expect(from).toHaveBeenCalledWith("product-images");
     expect(bucket.remove).toHaveBeenCalledWith(paths);
-    expect(payload.removed).toBe(0);
+    expect(payload).toEqual({ removed: 0, preserved: 0 });
+  });
+
+  test("does not remove an image already referenced by a product", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    const bucket = {
+      getPublicUrl: vi.fn((path: string) => ({
+        data: {
+          publicUrl: `https://project.supabase.co/storage/v1/object/public/product-images/${path}`,
+        },
+      })),
+      remove: vi.fn().mockResolvedValue({
+        data: [{ name: "unused.webp" }],
+        error: null,
+      }),
+    };
+    const productQuery = {
+      select: vi.fn(),
+      eq: vi.fn().mockResolvedValue({
+        data: [
+          {
+            image_url:
+              "https://project.supabase.co/storage/v1/object/public/product-images/seller-1/used.jpg",
+            image_urls: [
+              "https://project.supabase.co/storage/v1/object/public/product-images/seller-1/used.jpg",
+            ],
+          },
+        ],
+        error: null,
+      }),
+    };
+    productQuery.select.mockReturnValue(productQuery);
+    mocks.createAdminClient.mockReturnValue({
+      from: vi.fn().mockReturnValue(productQuery),
+      storage: { from: vi.fn().mockReturnValue(bucket) },
+    });
+
+    const response = await DELETE(
+      request(["seller-1/used.jpg", "seller-1/unused.webp"])
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(bucket.remove).toHaveBeenCalledWith(["seller-1/unused.webp"]);
+    expect(payload).toEqual({ removed: 1, preserved: 1 });
   });
 });
