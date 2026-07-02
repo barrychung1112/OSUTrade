@@ -39,9 +39,24 @@ create policy "Users can update their profile"
   using (id = auth.uid())
   with check (id = auth.uid());
 
-insert into storage.buckets (id, name, public)
-values ('product-images', 'product-images', true)
-on conflict (id) do update set public = excluded.public;
+insert into storage.buckets (
+  id,
+  name,
+  public,
+  file_size_limit,
+  allowed_mime_types
+)
+values (
+  'product-images',
+  'product-images',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']::text[]
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 alter table public.products
   add column if not exists seller_id uuid references auth.users(id) on delete set null,
@@ -56,10 +71,15 @@ alter table public.products
   add column if not exists contact_phone text,
   add column if not exists contact_line_id text,
   add column if not exists contact_wechat_id text,
+  add column if not exists client_request_id text,
   add column if not exists quantity integer not null default 1 check (quantity >= 0),
   add column if not exists status text not null default 'available' check (status in ('available', 'pending', 'sold', 'removed')),
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
+
+create unique index if not exists products_seller_client_request_unique_idx
+  on public.products (seller_id, client_request_id)
+  where client_request_id is not null;
 
 alter table public.products enable row level security;
 

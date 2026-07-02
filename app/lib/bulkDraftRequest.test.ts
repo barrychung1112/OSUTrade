@@ -1,10 +1,75 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
+  createBulkDraftPayload,
   createBulkDraftRequestTracker,
+  getOrCreateProductRequestKey,
+  getUncommittedImagePaths,
   getPendingCrossPostDraftIds,
   isBulkDraftMutationLocked,
   isBulkPublishActionBarVisible,
+  sendBulkDraftRequest,
 } from "./bulkDraftRequest";
+
+describe("createBulkDraftPayload", () => {
+  test("sends only storage paths to the bulk draft API", () => {
+    const uploadedImages = [
+      { path: "seller-1/one.jpg", publicUrl: "https://example.com/one.jpg" },
+      { path: "seller-1/two.jpg", publicUrl: "https://example.com/two.jpg" },
+    ];
+
+    expect(createBulkDraftPayload(uploadedImages)).toEqual({
+      imagePaths: ["seller-1/one.jpg", "seller-1/two.jpg"],
+    });
+  });
+
+  test("posts the storage path payload as JSON", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const images = [{ path: "seller-1/one.jpg" }];
+
+    await sendBulkDraftRequest(images, fetcher);
+
+    expect(fetcher).toHaveBeenCalledWith("/api/products/bulk-drafts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ imagePaths: ["seller-1/one.jpg"] }),
+    });
+  });
+});
+
+describe("getUncommittedImagePaths", () => {
+  test("excludes paths already attached to published products", () => {
+    const images = [
+      { path: "seller-1/published.jpg" },
+      { path: "seller-1/draft.jpg" },
+    ];
+
+    expect(
+      getUncommittedImagePaths(images, new Set(["seller-1/published.jpg"]))
+    ).toEqual(["seller-1/draft.jpg"]);
+  });
+});
+
+describe("getOrCreateProductRequestKey", () => {
+  test("reuses a key for retries and creates a new key after reset", () => {
+    const keys = new Map<string, string>();
+    const createKey = vi
+      .fn()
+      .mockReturnValueOnce("request-1")
+      .mockReturnValueOnce("request-2");
+
+    expect(getOrCreateProductRequestKey(keys, "draft-1", createKey)).toBe(
+      "request-1"
+    );
+    expect(getOrCreateProductRequestKey(keys, "draft-1", createKey)).toBe(
+      "request-1"
+    );
+    keys.delete("draft-1");
+    expect(getOrCreateProductRequestKey(keys, "draft-1", createKey)).toBe(
+      "request-2"
+    );
+    expect(createKey).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe("createBulkDraftRequestTracker", () => {
   test("invalidates responses from an earlier photo selection", () => {
@@ -20,8 +85,9 @@ describe("createBulkDraftRequestTracker", () => {
 });
 
 describe("isBulkDraftMutationLocked", () => {
-  test("locks draft changes while a preview snapshot is active", () => {
+  test("locks draft changes while generating or publishing", () => {
     expect(isBulkDraftMutationLocked(false, "idle")).toBe(false);
+    expect(isBulkDraftMutationLocked(false, "idle", true)).toBe(true);
     expect(isBulkDraftMutationLocked(false, "generating")).toBe(true);
     expect(isBulkDraftMutationLocked(false, "reviewing")).toBe(true);
     expect(isBulkDraftMutationLocked(false, "publishing")).toBe(true);

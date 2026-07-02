@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createHash } from "node:crypto";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -29,6 +30,20 @@ type ProductRow = {
   quantity: number | null;
   created_at?: string | null;
 };
+
+function productIdForIdempotencyKey(userId: string, key: string) {
+  const hex = createHash("sha256")
+    .update(`${userId}\0${key}`)
+    .digest("hex")
+    .slice(0, 32);
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20),
+  ].join("-");
+}
 
 function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | null) {
   const urls = Array.isArray(imageUrls)
@@ -146,9 +161,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error, count } = await query;
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     return NextResponse.json(
       {
@@ -200,6 +213,61 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    const idempotencyKey = request.headers.get("idempotency-key")?.trim() ?? "";
+    if (idempotencyKey.length > 128) {
+      return NextResponse.json(
+        { message: "Invalid idempotency key." },
+        { status: 400 }
+      );
+    }
+
+    let idempotencyAvailable = Boolean(idempotencyKey);
+    let fallbackProductId = "";
+    if (idempotencyKey) {
+      const { data: existingProduct, error: existingError } = await supabase
+        .from("products")
+        .select("*")
+        .eq("seller_id", session.user.id)
+        .eq("client_request_id", idempotencyKey)
+        .maybeSingle();
+
+      if (existingError) {
+        const message = existingError.message ?? "";
+        const missingIdempotencyColumn =
+          /client_request_id/i.test(message) &&
+          (existingError.code === "42703" ||
+            existingError.code === "PGRST204" ||
+            /schema cache|could not find|does not exist/i.test(message));
+        if (!missingIdempotencyColumn) throw existingError;
+        idempotencyAvailable = false;
+        fallbackProductId = productIdForIdempotencyKey(
+          session.user.id,
+          idempotencyKey
+        );
+      }
+      if (existingProduct) {
+        return NextResponse.json(toProduct(existingProduct as ProductRow), {
+          status: 200,
+        });
+      }
+    }
+
+    if (fallbackProductId) {
+      const { data: existingProduct, error: existingError } = await supabase
+        .from("products")
+        .select("*")
+        .eq("seller_id", session.user.id)
+        .eq("product_id", fallbackProductId)
+        .maybeSingle();
+
+      if (existingError) throw existingError;
+      if (existingProduct) {
+        return NextResponse.json(toProduct(existingProduct as ProductRow), {
+          status: 200,
+        });
+      }
+    }
+
     const body = await request.json();
     const name = String(body.name ?? "").trim();
     const description = String(body.description ?? "").trim();
@@ -269,6 +337,10 @@ export async function POST(request: NextRequest) {
       contact_phone: contactPhone || null,
       contact_line_id: contactLineId || null,
       contact_wechat_id: contactWechatId || null,
+      ...(idempotencyAvailable
+        ? { client_request_id: idempotencyKey }
+        : {}),
+      ...(fallbackProductId ? { product_id: fallbackProductId } : {}),
       seller_id: session.user.id,
       quantity,
       status: "available",
@@ -312,9 +384,29 @@ export async function POST(request: NextRequest) {
       currentInsertValues = fallback.values;
     }
 
-    if (error) {
-      throw error;
+    if (
+      error?.code === "23505" &&
+      (idempotencyAvailable || Boolean(fallbackProductId))
+    ) {
+      let recoveryQuery = supabase
+        .from("products")
+        .select("*")
+        .eq("seller_id", session.user.id);
+      recoveryQuery = idempotencyAvailable
+        ? recoveryQuery.eq("client_request_id", idempotencyKey)
+        : recoveryQuery.eq("product_id", fallbackProductId);
+      const { data: existingProduct, error: recoveryError } =
+        await recoveryQuery.maybeSingle();
+
+      if (recoveryError) throw recoveryError;
+      if (existingProduct) {
+        return NextResponse.json(toProduct(existingProduct as ProductRow), {
+          status: 200,
+        });
+      }
     }
+
+    if (error) throw error;
 
     return NextResponse.json(toProduct(data), { status: 201 });
   } catch (error) {

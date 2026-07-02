@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { isOwnedProductImagePath } from "@/app/lib/productImagePath";
 
 const bucketName = "product-images";
 const maxImageBytes = 5 * 1024 * 1024;
@@ -108,5 +109,93 @@ export async function POST(request: Request) {
     const message =
       error instanceof Error ? error.message : "Failed to upload product image.";
     return NextResponse.json({ message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { message: "You must be logged in to remove product images." },
+        { status: 401 }
+      );
+    }
+
+    const body = (await request.json().catch(() => null)) as {
+      paths?: unknown;
+    } | null;
+    const paths = body?.paths;
+
+    if (
+      !Array.isArray(paths) ||
+      paths.length === 0 ||
+      paths.length > 10 ||
+      !paths.every(
+        (path): path is string =>
+          typeof path === "string" &&
+          isOwnedProductImagePath(path, session.user.id)
+      )
+    ) {
+      return NextResponse.json(
+        { message: "Invalid product image paths." },
+        { status: 400 }
+      );
+    }
+
+    const uniquePaths = [...new Set(paths)];
+    const supabase = createAdminClient();
+    const bucket = supabase.storage.from(bucketName);
+    const images = uniquePaths.map((path) => ({
+      path,
+      publicUrl: bucket.getPublicUrl(path).data.publicUrl,
+    }));
+    const { data: products, error: productsError } = await supabase
+      .from("products")
+      .select("image_url,image_urls")
+      .eq("seller_id", session.user.id);
+
+    if (productsError) throw productsError;
+
+    const referencedUrls = new Set<string>();
+    for (const product of products ?? []) {
+      if (typeof product.image_url === "string") {
+        referencedUrls.add(product.image_url);
+      }
+      if (Array.isArray(product.image_urls)) {
+        product.image_urls.forEach((url: unknown) => {
+          if (typeof url === "string") referencedUrls.add(url);
+        });
+      }
+    }
+
+    const removablePaths = images
+      .filter((image) => !referencedUrls.has(image.publicUrl))
+      .map((image) => image.path);
+    if (removablePaths.length === 0) {
+      return NextResponse.json(
+        { removed: 0, preserved: uniquePaths.length },
+        { status: 200 }
+      );
+    }
+
+    const { data, error } = await bucket.remove(removablePaths);
+
+    if (error) throw error;
+
+    return NextResponse.json(
+      {
+        removed: data?.length ?? 0,
+        preserved: uniquePaths.length - removablePaths.length,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Failed to remove product images", error);
+    return NextResponse.json(
+      { message: "Failed to remove product images. Please try again." },
+      { status: 500 }
+    );
   }
 }
