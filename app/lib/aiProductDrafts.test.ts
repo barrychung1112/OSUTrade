@@ -10,11 +10,16 @@ import {
 describe("createBulkDraftResponseFormat", () => {
   test("uses an OpenAI-compatible strict object schema", () => {
     const format = createBulkDraftResponseFormat();
-    const draftItem = format.schema.properties.drafts.items;
+    const drafts = format.schema.properties.drafts;
+    const draftItem = drafts.items;
 
     expect(format.strict).toBe(true);
     expect(format.schema.additionalProperties).toBe(false);
+    expect(drafts.minItems).toBe(1);
+    expect(drafts.maxItems).toBe(10);
     expect(draftItem.additionalProperties).toBe(false);
+    expect(draftItem.properties.imageIndexes.minItems).toBe(1);
+    expect(draftItem.properties.imageIndexes.maxItems).toBe(3);
   });
 });
 

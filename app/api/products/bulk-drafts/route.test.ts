@@ -11,7 +11,7 @@ vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
 }));
 
-import { POST } from "./route";
+import { maxDuration, POST } from "./route";
 
 const originalApiKey = process.env.OPENAI_API_KEY;
 
@@ -75,6 +75,10 @@ describe("bulk draft route", () => {
 
     expect(response.status).toBe(400);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
+  });
+
+  test("allows enough Vercel runtime for the guarded OpenAI request", () => {
+    expect(maxDuration).toBe(60);
   });
 
   test("rejects encoded traversal in an apparently owned image path", async () => {

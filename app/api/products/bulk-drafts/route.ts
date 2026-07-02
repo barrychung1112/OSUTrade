@@ -12,6 +12,8 @@ const bucketName = "product-images";
 const maxImages = 10;
 const openAiTimeoutMs = 20_000;
 
+export const maxDuration = 60;
+
 class AiProviderError extends Error {}
 class AiConfigurationError extends Error {}
 

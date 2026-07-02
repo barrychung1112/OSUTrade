@@ -48,6 +48,8 @@ export function createBulkDraftResponseFormat() {
       properties: {
         drafts: {
           type: "array",
+          minItems: 1,
+          maxItems: 10,
           items: {
             type: "object",
             properties: {
@@ -58,7 +60,12 @@ export function createBulkDraftResponseFormat() {
               quantity: { type: "integer" },
               confidence: { type: "number" },
               warnings: { type: "array", items: { type: "string" } },
-              imageIndexes: { type: "array", items: { type: "integer" } },
+              imageIndexes: {
+                type: "array",
+                minItems: 1,
+                maxItems: 3,
+                items: { type: "integer" },
+              },
             },
             required: [
               "name",
