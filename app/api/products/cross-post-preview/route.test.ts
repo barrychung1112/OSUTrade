@@ -18,7 +18,7 @@ vi.mock("@/app/lib/crossPostPreview", async () => {
   };
 });
 
-import { POST } from "./route";
+import { maxDuration, POST } from "./route";
 
 const validItem = {
   clientId: "manual-1",
@@ -51,6 +51,10 @@ describe("cross-post preview route", () => {
       source: "fallback",
       copies: fiveCopies,
     });
+  });
+
+  test("allows the AI request to reach its guarded fallback", () => {
+    expect(maxDuration).toBe(60);
   });
 
   test("requires authentication before generating a preview", async () => {
