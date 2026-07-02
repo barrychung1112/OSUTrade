@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { CheckIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
+import BulkDraftFields from "../components/BulkDraftFields";
 import CrossPostPreviewEditor from "../components/CrossPostPreviewEditor";
 import Header from "../components/Header";
 import type { AiProductDraft } from "../lib/aiProductDrafts";
@@ -1434,7 +1435,7 @@ export default function SellPage() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {bulkDrafts.map((draft, index) => {
+                      {bulkDrafts.map((draft) => {
                         const draftImages = draft.imageIndexes
                           .slice(0, maxProductImages)
                           .map((imageIndex) => bulkImagePreviewUrls[imageIndex])
@@ -1491,77 +1492,14 @@ export default function SellPage() {
                                   </button>
                                 </div>
 
-                                <input
-                                  className="app-input"
-                                  value={draft.name}
+                                <BulkDraftFields
+                                  draft={draft}
+                                  categories={categories}
                                   disabled={draftMutationDisabled}
-                                  onChange={(event) =>
-                                    updateBulkDraft(draft.id, {
-                                      name: event.target.value,
-                                    })
+                                  onChange={(patch) =>
+                                    updateBulkDraft(draft.id, patch)
                                   }
-                                  placeholder={`${t("sell.itemName")} ${index + 1}`}
                                 />
-
-                                <textarea
-                                  className="app-input min-h-24"
-                                  value={draft.description}
-                                  disabled={draftMutationDisabled}
-                                  onChange={(event) =>
-                                    updateBulkDraft(draft.id, {
-                                      description: event.target.value,
-                                    })
-                                  }
-                                  placeholder={t("sell.descriptionPlaceholder")}
-                                />
-
-                                <div className="grid gap-3 sm:grid-cols-3">
-                                  <input
-                                    className="app-input"
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    value={draft.price}
-                                    disabled={draftMutationDisabled}
-                                    onChange={(event) =>
-                                      updateBulkDraft(draft.id, {
-                                        price: Number(event.target.value),
-                                      })
-                                    }
-                                    aria-label={t("sell.price")}
-                                  />
-                                  <input
-                                    className="app-input"
-                                    type="number"
-                                    min="1"
-                                    step="1"
-                                    value={draft.quantity}
-                                    disabled={draftMutationDisabled}
-                                    onChange={(event) =>
-                                      updateBulkDraft(draft.id, {
-                                        quantity: Number(event.target.value),
-                                      })
-                                    }
-                                    aria-label={t("sell.quantity")}
-                                  />
-                                  <select
-                                    className="app-input"
-                                    value={draft.category}
-                                    disabled={draftMutationDisabled}
-                                    onChange={(event) =>
-                                      updateBulkDraft(draft.id, {
-                                        category: event.target.value,
-                                      })
-                                    }
-                                    aria-label={t("marketplace.category")}
-                                  >
-                                    {categories.map((item) => (
-                                      <option key={item} value={item}>
-                                        {t(`common.category.${item}` as any)}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
 
                                 <div className="flex flex-wrap items-center gap-2 text-xs">
                                   <span className="rounded-full bg-orange-50 px-3 py-1 font-semibold text-[#d73f09]">
