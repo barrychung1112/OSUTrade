@@ -38,7 +38,18 @@ const categoryAliases: Record<string, string> = {
   books: "books",
 };
 
-export function createBulkDraftResponseFormat() {
+export function createBulkDraftResponseFormat(options?: {
+  includeArrayLimits?: boolean;
+}) {
+  const arrayLimits =
+    options?.includeArrayLimits === false
+      ? {}
+      : { minItems: 1, maxItems: 10 };
+  const imageArrayLimits =
+    options?.includeArrayLimits === false
+      ? {}
+      : { minItems: 1, maxItems: 3 };
+
   return {
     type: "json_schema",
     name: "bulk_product_drafts",
@@ -48,6 +59,7 @@ export function createBulkDraftResponseFormat() {
       properties: {
         drafts: {
           type: "array",
+          ...arrayLimits,
           items: {
             type: "object",
             properties: {
@@ -58,7 +70,11 @@ export function createBulkDraftResponseFormat() {
               quantity: { type: "integer" },
               confidence: { type: "number" },
               warnings: { type: "array", items: { type: "string" } },
-              imageIndexes: { type: "array", items: { type: "integer" } },
+              imageIndexes: {
+                type: "array",
+                ...imageArrayLimits,
+                items: { type: "integer" },
+              },
             },
             required: [
               "name",
