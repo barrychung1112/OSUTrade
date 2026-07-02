@@ -206,6 +206,52 @@ describe("product create idempotency", () => {
     expect(mocks.translateProductName).not.toHaveBeenCalled();
   });
 
+  test("returns the winning legacy-schema product after a concurrent insert", async () => {
+    const clientKeyLookup = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: "42703",
+          message: "column products.client_request_id does not exist",
+        },
+      }),
+    };
+    clientKeyLookup.select.mockReturnValue(clientKeyLookup);
+    clientKeyLookup.eq.mockReturnValue(clientKeyLookup);
+    const firstFallbackLookup = lookupQuery(null);
+    const insertQuery = {
+      insert: vi.fn(),
+      select: vi.fn(),
+      single: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "23505", message: "duplicate key value" },
+      }),
+    };
+    insertQuery.insert.mockReturnValue(insertQuery);
+    insertQuery.select.mockReturnValue(insertQuery);
+    const recoveryLookup = lookupQuery(productRow());
+    const from = vi
+      .fn()
+      .mockReturnValueOnce(clientKeyLookup)
+      .mockReturnValueOnce(firstFallbackLookup)
+      .mockReturnValueOnce(insertQuery)
+      .mockReturnValueOnce(recoveryLookup);
+    mocks.createAdminClient.mockReturnValue({ from });
+
+    const response = await POST(request());
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.id).toBe("product-1");
+    expect(recoveryLookup.eq).toHaveBeenNthCalledWith(
+      2,
+      "product_id",
+      expect.stringMatching(/^[0-9a-f-]{36}$/)
+    );
+  });
+
   test("returns the winning product after a concurrent unique conflict", async () => {
     const firstLookup = lookupQuery(null);
     const insertQuery = {

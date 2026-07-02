@@ -384,13 +384,19 @@ export async function POST(request: NextRequest) {
       currentInsertValues = fallback.values;
     }
 
-    if (error?.code === "23505" && idempotencyAvailable) {
-      const { data: existingProduct, error: recoveryError } = await supabase
+    if (
+      error?.code === "23505" &&
+      (idempotencyAvailable || Boolean(fallbackProductId))
+    ) {
+      let recoveryQuery = supabase
         .from("products")
         .select("*")
-        .eq("seller_id", session.user.id)
-        .eq("client_request_id", idempotencyKey)
-        .maybeSingle();
+        .eq("seller_id", session.user.id);
+      recoveryQuery = idempotencyAvailable
+        ? recoveryQuery.eq("client_request_id", idempotencyKey)
+        : recoveryQuery.eq("product_id", fallbackProductId);
+      const { data: existingProduct, error: recoveryError } =
+        await recoveryQuery.maybeSingle();
 
       if (recoveryError) throw recoveryError;
       if (existingProduct) {
