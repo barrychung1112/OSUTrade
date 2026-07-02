@@ -5,6 +5,8 @@ import {
   parseCrossPostPreviewItems,
 } from "@/app/lib/crossPostPreview";
 
+export const maxDuration = 60;
+
 const forbiddenItemFields = [
   "contactPhone",
   "contactLineId",
