@@ -28,6 +28,8 @@ async function generateAiDrafts(imageUrls: string[]) {
     image_url: imageUrl,
     detail: "low",
   }));
+  const model = process.env.OPENAI_BULK_LISTING_MODEL || "gpt-4.1-mini";
+  const isFineTunedModel = model.startsWith("ft:");
 
   let response: Response;
   const controller = new AbortController();
@@ -41,7 +43,7 @@ async function generateAiDrafts(imageUrls: string[]) {
         authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_BULK_LISTING_MODEL || "gpt-4.1-mini",
+        model,
         input: [
           {
             role: "system",
@@ -54,14 +56,16 @@ async function generateAiDrafts(imageUrls: string[]) {
               {
                 type: "input_text",
                 text:
-                  "Analyze each image as a potential sale item. Extract visible handwritten prices if present. Return JSON with key drafts. Each draft must include name, description, category, price, quantity, confidence, warnings, and imageIndexes. Categories must be one of general, electronics, clothing, books, home. Use USD prices. Keep imageIndexes zero-based.",
+                  "Analyze each image as a potential sale item. Extract visible handwritten prices if present. Return JSON with key drafts containing 1 to 10 drafts. Each draft must include name, description, category, price, quantity, confidence, warnings, and 1 to 3 imageIndexes. Categories must be one of general, electronics, clothing, books, home. Use USD prices. Keep imageIndexes zero-based.",
               },
               ...imageContents,
             ],
           },
         ],
         text: {
-          format: createBulkDraftResponseFormat(),
+          format: createBulkDraftResponseFormat({
+            includeArrayLimits: !isFineTunedModel,
+          }),
         },
       }),
     });

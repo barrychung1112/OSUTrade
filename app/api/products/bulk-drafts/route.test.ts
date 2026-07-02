@@ -14,6 +14,7 @@ vi.mock("@/utils/supabase/admin", () => ({
 import { maxDuration, POST } from "./route";
 
 const originalApiKey = process.env.OPENAI_API_KEY;
+const originalBulkListingModel = process.env.OPENAI_BULK_LISTING_MODEL;
 
 function request(imagePaths: unknown) {
   return new NextRequest("https://osutrade.example/api/products/bulk-drafts", {
@@ -66,6 +67,11 @@ describe("bulk draft route", () => {
     vi.unstubAllGlobals();
     if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = originalApiKey;
+    if (originalBulkListingModel === undefined) {
+      delete process.env.OPENAI_BULK_LISTING_MODEL;
+    } else {
+      process.env.OPENAI_BULK_LISTING_MODEL = originalBulkListingModel;
+    }
   });
 
   test("rejects image paths owned by another user", async () => {
@@ -131,6 +137,33 @@ describe("bulk draft route", () => {
       },
     ]);
     expect(openAiFetch.mock.calls[0][1].body).not.toContain("base64");
+  });
+
+  test("omits unsupported array limits for a fine-tuned model", async () => {
+    process.env.OPENAI_BULK_LISTING_MODEL = "ft:gpt-4.1-mini:osutrade:bulk";
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mockStorage();
+    const openAiFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(aiResponse()), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", openAiFetch);
+
+    const response = await POST(request(["seller-1/one.jpg"]));
+    const openAiRequest = JSON.parse(openAiFetch.mock.calls[0][1].body);
+    const draftsSchema = openAiRequest.text.format.schema.properties.drafts;
+
+    expect(response.status).toBe(200);
+    expect(draftsSchema).not.toHaveProperty("minItems");
+    expect(draftsSchema).not.toHaveProperty("maxItems");
+    expect(draftsSchema.items.properties.imageIndexes).not.toHaveProperty(
+      "minItems"
+    );
+    expect(draftsSchema.items.properties.imageIndexes).not.toHaveProperty(
+      "maxItems"
+    );
   });
 
   test("returns a safe 502 and logs provider diagnostics", async () => {

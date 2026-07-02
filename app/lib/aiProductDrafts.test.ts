@@ -21,6 +21,16 @@ describe("createBulkDraftResponseFormat", () => {
     expect(draftItem.properties.imageIndexes.minItems).toBe(1);
     expect(draftItem.properties.imageIndexes.maxItems).toBe(3);
   });
+
+  test("omits unsupported array limits for fine-tuned models", () => {
+    const format = createBulkDraftResponseFormat({ includeArrayLimits: false });
+    const drafts = format.schema.properties.drafts;
+
+    expect(drafts).not.toHaveProperty("minItems");
+    expect(drafts).not.toHaveProperty("maxItems");
+    expect(drafts.items.properties.imageIndexes).not.toHaveProperty("minItems");
+    expect(drafts.items.properties.imageIndexes).not.toHaveProperty("maxItems");
+  });
 });
 
 describe("parseAiDraftResponse", () => {
