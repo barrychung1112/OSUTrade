@@ -17,8 +17,9 @@ describe("createBulkDraftPayload", () => {
       { path: "seller-1/two.jpg", publicUrl: "https://example.com/two.jpg" },
     ];
 
-    expect(createBulkDraftPayload(uploadedImages)).toEqual({
+    expect(createBulkDraftPayload(uploadedImages, "zh")).toEqual({
       imagePaths: ["seller-1/one.jpg", "seller-1/two.jpg"],
+      locale: "zh",
     });
   });
 
@@ -26,12 +27,15 @@ describe("createBulkDraftPayload", () => {
     const fetcher = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
     const images = [{ path: "seller-1/one.jpg" }];
 
-    await sendBulkDraftRequest(images, fetcher);
+    await sendBulkDraftRequest(images, "zhCn", fetcher);
 
     expect(fetcher).toHaveBeenCalledWith("/api/products/bulk-drafts", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ imagePaths: ["seller-1/one.jpg"] }),
+      body: JSON.stringify({
+        imagePaths: ["seller-1/one.jpg"],
+        locale: "zhCn",
+      }),
     });
   });
 });

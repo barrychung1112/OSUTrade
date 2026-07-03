@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { crossPostPlatforms } from "./crossPostCopy";
 import {
+  CrossPostTranslationError,
   generateCrossPostPreview,
   parseCrossPostPreviewItems,
 } from "./crossPostPreview";
@@ -144,7 +145,7 @@ describe("cross-post preview", () => {
     expect(serializedRequest).not.toContain("attacker.example");
   });
 
-  test("falls back as one complete set when AI item ids are incomplete", async () => {
+  test("rejects incomplete translations instead of showing the wrong language", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -160,12 +161,39 @@ describe("cross-post preview", () => {
       )
     );
 
-    const result = await generateCrossPostPreview(items);
+    await expect(generateCrossPostPreview(items)).rejects.toBeInstanceOf(
+      CrossPostTranslationError
+    );
+  });
 
-    expect(result.source).toBe("fallback");
-    expect(result.copies).toHaveLength(5);
-    expect(result.copies.every((copy) => !copy.body.includes("/product/"))).toBe(
-      true
+  test("rejects a blank translated description when the source has content", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        ({
+          ok: true,
+          json: async () => ({
+            output_text: JSON.stringify({
+              ...validAiPayload,
+              localizedItems: [
+                { ...validAiPayload.localizedItems[0], enDescription: "" },
+              ],
+            }),
+          }),
+        }) as Response
+      )
+    );
+
+    await expect(generateCrossPostPreview(items)).rejects.toBeInstanceOf(
+      CrossPostTranslationError
+    );
+  });
+
+  test("rejects when AI translation is not configured", async () => {
+    delete process.env.OPENAI_API_KEY;
+
+    await expect(generateCrossPostPreview(items)).rejects.toBeInstanceOf(
+      CrossPostTranslationError
     );
   });
 });

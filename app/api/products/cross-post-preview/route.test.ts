@@ -19,6 +19,7 @@ vi.mock("@/app/lib/crossPostPreview", async () => {
 });
 
 import { maxDuration, POST } from "./route";
+import { CrossPostTranslationError } from "@/app/lib/crossPostPreview";
 
 const validItem = {
   clientId: "manual-1",
@@ -127,6 +128,22 @@ describe("cross-post preview route", () => {
     await expect(response.json()).resolves.toEqual({
       source: "fallback",
       copies: fiveCopies,
+    });
+  });
+
+  test("returns a retryable error when platform translations are incomplete", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mocks.generateCrossPostPreview.mockRejectedValue(
+      new CrossPostTranslationError("Incomplete platform translations.")
+    );
+
+    const response = await POST(request({ items: [validItem] }));
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      code: "CROSS_POST_TRANSLATION_FAILED",
+      message:
+        "AI could not create complete platform translations. Please try again.",
     });
   });
 });

@@ -19,6 +19,7 @@ describe("BulkDraftFields", () => {
             price: 1,
             quantity: 1,
             category: "home",
+            locale: "zh",
           }}
           categories={["general", "home"]}
           disabled={false}
@@ -41,6 +42,7 @@ describe("BulkDraftFields", () => {
       "home"
     );
     expect(screen.getByText("$")).toBeTruthy();
+    expect(screen.getByText("Draft language: 繁中")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("Price"), {
       target: { value: "25" },

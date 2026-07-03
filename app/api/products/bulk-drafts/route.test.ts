@@ -16,11 +16,11 @@ import { maxDuration, POST } from "./route";
 const originalApiKey = process.env.OPENAI_API_KEY;
 const originalBulkListingModel = process.env.OPENAI_BULK_LISTING_MODEL;
 
-function request(imagePaths: unknown) {
+function request(imagePaths: unknown, locale: unknown = "en") {
   return new NextRequest("https://osutrade.example/api/products/bulk-drafts", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ imagePaths }),
+    body: JSON.stringify({ imagePaths, locale }),
   });
 }
 
@@ -83,6 +83,18 @@ describe("bulk draft route", () => {
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 
+  test("rejects unsupported draft locales before storage access", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+
+    const response = await POST(request(["seller-1/one.jpg"], "fr"));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "Unsupported draft language.",
+    });
+    expect(mocks.createAdminClient).not.toHaveBeenCalled();
+  });
+
   test("allows enough Vercel runtime for the guarded OpenAI request", () => {
     expect(maxDuration).toBe(60);
   });
@@ -116,6 +128,7 @@ describe("bulk draft route", () => {
 
     expect(response.status).toBe(200);
     expect(payload.drafts[0].name).toBe("Desk lamp");
+    expect(payload.drafts[0].locale).toBe("en");
     expect(from).toHaveBeenCalledWith("product-images");
     const openAiRequest = JSON.parse(openAiFetch.mock.calls[0][1].body);
     const userContent = openAiRequest.input[1].content;
@@ -137,6 +150,27 @@ describe("bulk draft route", () => {
       },
     ]);
     expect(openAiFetch.mock.calls[0][1].body).not.toContain("base64");
+    expect(openAiRequest.input[0].content).toContain("English");
+  });
+
+  test.each([
+    ["zh", "Traditional Chinese"],
+    ["zhCn", "Simplified Chinese"],
+  ] as const)("requests %s draft copy", async (locale, languageName) => {
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mockStorage();
+    const openAiFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(aiResponse()), { status: 200 })
+    );
+    vi.stubGlobal("fetch", openAiFetch);
+
+    const response = await POST(request(["seller-1/one.jpg"], locale));
+    const payload = await response.json();
+    const openAiRequest = JSON.parse(openAiFetch.mock.calls[0][1].body);
+
+    expect(response.status).toBe(200);
+    expect(payload.drafts[0].locale).toBe(locale);
+    expect(openAiRequest.input[0].content).toContain(languageName);
   });
 
   test("omits unsupported array limits for a fine-tuned model", async () => {

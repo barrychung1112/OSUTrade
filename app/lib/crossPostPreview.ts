@@ -9,6 +9,13 @@ import {
 
 export const maxCrossPostPreviewItems = 10;
 
+export class CrossPostTranslationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CrossPostTranslationError";
+  }
+}
+
 export type CrossPostFlowStage =
   | "idle"
   | "generating"
@@ -52,29 +59,6 @@ const categories = new Set([
   "books",
   "home",
 ]);
-
-const fallbackHeadings: CrossPostHeadings = {
-  facebook: {
-    title: "Items coming soon",
-    introduction: "These items will be listed on OSUTrade soon:",
-  },
-  craigslist: {
-    title: "Items coming soon",
-    introduction: "These items will be listed on OSUTrade soon:",
-  },
-  line: {
-    title: "商品即將上架",
-    introduction: "以下商品即將在 OSUTrade 上架：",
-  },
-  wechat: {
-    title: "商品即将上架",
-    introduction: "以下商品即将在 OSUTrade 上架：",
-  },
-  discord: {
-    title: "Items coming soon",
-    introduction: "These items will be listed on OSUTrade soon:",
-  },
-};
 
 function clean(value: unknown) {
   return String(value ?? "").trim();
@@ -160,13 +144,6 @@ function buildCopies(
   );
 }
 
-function fallback(items: CrossPostPreviewItem[]): CrossPostGenerationResult {
-  return {
-    source: "fallback",
-    copies: buildCopies(items, fallbackHeadings),
-  };
-}
-
 function extractResponseText(payload: any) {
   if (typeof payload?.output_text === "string") return payload.output_text;
 
@@ -209,6 +186,7 @@ function normalizeAiResult(
   const localizedById = new Map<string, AiLocalizedItem>();
   for (const value of localizedItems) {
     const clientId = clean(value?.clientId);
+    const sourceItem = items.find((item) => item.clientId === clientId);
     const localized: AiLocalizedItem = {
       clientId,
       enName: clean(value?.enName),
@@ -219,11 +197,15 @@ function normalizeAiResult(
       zhCnDescription: clean(value?.zhCnDescription),
     };
     if (
-      !expectedIds.has(clientId) ||
+      !sourceItem ||
       localizedById.has(clientId) ||
       !localized.enName ||
       !localized.zhTwName ||
-      !localized.zhCnName
+      !localized.zhCnName ||
+      (Boolean(sourceItem.description) &&
+        (!localized.enDescription ||
+          !localized.zhTwDescription ||
+          !localized.zhCnDescription))
     ) {
       return null;
     }
@@ -272,9 +254,12 @@ function normalizeAiResult(
 export async function generateCrossPostPreview(
   items: CrossPostPreviewItem[]
 ): Promise<CrossPostGenerationResult> {
-  const fallbackResult = fallback(items);
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return fallbackResult;
+  if (!apiKey) {
+    throw new CrossPostTranslationError(
+      "Cross-post translation is not configured."
+    );
+  }
 
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -372,18 +357,33 @@ export async function generateCrossPostPreview(
       }),
     });
 
-    if (!response.ok) return fallbackResult;
+    if (!response.ok) {
+      throw new CrossPostTranslationError(
+        "Cross-post translation provider returned an error."
+      );
+    }
     const responseText = extractResponseText(await response.json());
-    if (!responseText) return fallbackResult;
+    if (!responseText) {
+      throw new CrossPostTranslationError(
+        "Cross-post translation response was empty."
+      );
+    }
 
     const normalized = normalizeAiResult(parseJsonBlock(responseText), items);
-    if (!normalized) return fallbackResult;
+    if (!normalized) {
+      throw new CrossPostTranslationError(
+        "Cross-post translation response was incomplete."
+      );
+    }
 
     return {
       source: "ai",
       copies: buildCopies(items, normalized.headings, normalized.localizedById),
     };
-  } catch {
-    return fallbackResult;
+  } catch (error) {
+    if (error instanceof CrossPostTranslationError) throw error;
+    throw new CrossPostTranslationError(
+      "Cross-post translation request failed."
+    );
   }
 }

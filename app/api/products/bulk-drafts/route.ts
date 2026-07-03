@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
+  type AiDraftLocale,
   createBulkDraftResponseFormat,
   extractAiDraftResponseText,
+  parseAiDraftLocale,
   parseAiDraftResponse,
 } from "@/app/lib/aiProductDrafts";
 import { isOwnedProductImagePath } from "@/app/lib/productImagePath";
@@ -17,7 +19,16 @@ export const maxDuration = 60;
 class AiProviderError extends Error {}
 class AiConfigurationError extends Error {}
 
-async function generateAiDrafts(imageUrls: string[]) {
+const draftLanguageInstructions: Record<AiDraftLocale, string> = {
+  en: "Write every draft name and description in English.",
+  zh: "Write every draft name and description in Traditional Chinese.",
+  zhCn: "Write every draft name and description in Simplified Chinese.",
+};
+
+async function generateAiDrafts(
+  imageUrls: string[],
+  locale: AiDraftLocale
+) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new AiConfigurationError("OPENAI_API_KEY is not configured.");
@@ -47,8 +58,7 @@ async function generateAiDrafts(imageUrls: string[]) {
         input: [
           {
             role: "system",
-            content:
-              "You create editable product listing drafts for a campus secondhand marketplace. Return JSON only. Never publish items. If unsure, use conservative defaults and warnings.",
+            content: `You create editable product listing drafts for a campus secondhand marketplace. ${draftLanguageInstructions[locale]} Return JSON only. Never publish items. If unsure, use conservative defaults and warnings.`,
           },
           {
             role: "user",
@@ -117,7 +127,7 @@ async function generateAiDrafts(imageUrls: string[]) {
 
   const responseText = extractAiDraftResponseText(payload);
   const drafts = responseText
-    ? parseAiDraftResponse(responseText, imageUrls.length)
+    ? parseAiDraftResponse(responseText, imageUrls.length, locale)
     : [];
 
   if (drafts.length === 0) {
@@ -146,8 +156,17 @@ export async function POST(request: Request) {
 
     const body = (await request.json().catch(() => null)) as {
       imagePaths?: unknown;
+      locale?: unknown;
     } | null;
     const imagePaths = body?.imagePaths;
+    const locale = parseAiDraftLocale(body?.locale);
+
+    if (!locale) {
+      return NextResponse.json(
+        { message: "Unsupported draft language." },
+        { status: 400 }
+      );
+    }
 
     if (!Array.isArray(imagePaths) || imagePaths.length === 0) {
       return NextResponse.json(
@@ -189,7 +208,7 @@ export async function POST(request: Request) {
     const imageUrls = imagePaths.map(
       (path) => bucket.getPublicUrl(path).data.publicUrl
     );
-    const aiDrafts = await generateAiDrafts(imageUrls);
+    const aiDrafts = await generateAiDrafts(imageUrls, locale);
 
     return NextResponse.json({ drafts: aiDrafts }, { status: 200 });
   } catch (error) {
