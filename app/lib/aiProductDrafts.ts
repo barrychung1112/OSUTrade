@@ -1,5 +1,8 @@
+export type AiDraftLocale = "en" | "zh" | "zhCn";
+
 export type AiProductDraft = {
   id: string;
+  locale: AiDraftLocale;
   name: string;
   description: string;
   category: string;
@@ -37,6 +40,12 @@ const categoryAliases: Record<string, string> = {
   book: "books",
   books: "books",
 };
+
+export function parseAiDraftLocale(value: unknown): AiDraftLocale | null {
+  return value === "en" || value === "zh" || value === "zhCn"
+    ? value
+    : null;
+}
 
 export function createBulkDraftResponseFormat(options?: {
   includeArrayLimits?: boolean;
@@ -148,7 +157,11 @@ function normalizeImageIndexes(value: unknown, imageCount: number, fallbackIndex
   return uniqueIndexes.length > 0 ? uniqueIndexes : [fallbackIndex];
 }
 
-export function parseAiDraftResponse(text: string, imageCount: number): AiProductDraft[] {
+export function parseAiDraftResponse(
+  text: string,
+  imageCount: number,
+  locale: AiDraftLocale = "en"
+): AiProductDraft[] {
   if (imageCount < 1) return [];
 
   try {
@@ -159,6 +172,7 @@ export function parseAiDraftResponse(text: string, imageCount: number): AiProduc
       .slice(0, imageCount)
       .map((draft, index) => ({
         id: `draft-${index + 1}`,
+        locale,
         name: cleanText(draft?.name, `Item ${index + 1}`),
         description: cleanText(draft?.description, ""),
         category: normalizeDraftCategory(draft?.category),
@@ -175,9 +189,13 @@ export function parseAiDraftResponse(text: string, imageCount: number): AiProduc
   }
 }
 
-export function createFallbackDrafts(imageCount: number): AiProductDraft[] {
+export function createFallbackDrafts(
+  imageCount: number,
+  locale: AiDraftLocale = "en"
+): AiProductDraft[] {
   return Array.from({ length: Math.max(0, imageCount) }, (_, index) => ({
     id: `draft-${index + 1}`,
+    locale,
     name: `Item ${index + 1}`,
     description:
       "AI could not confidently identify this item. Please review the photo and fill in the details.",

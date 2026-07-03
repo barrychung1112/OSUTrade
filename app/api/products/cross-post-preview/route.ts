@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import {
+  CrossPostTranslationError,
   generateCrossPostPreview,
   parseCrossPostPreviewItems,
 } from "@/app/lib/crossPostPreview";
@@ -54,6 +55,18 @@ export async function POST(request: NextRequest) {
     const result = await generateCrossPostPreview(parsed.items);
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
+    if (error instanceof CrossPostTranslationError) {
+      console.error("Cross-post translation failed", error.message);
+      return NextResponse.json(
+        {
+          code: "CROSS_POST_TRANSLATION_FAILED",
+          message:
+            "AI could not create complete platform translations. Please try again.",
+        },
+        { status: 502 }
+      );
+    }
+
     console.error(error);
     return NextResponse.json(
       { message: "Failed to generate cross-post preview." },

@@ -1,20 +1,26 @@
 import type { PublishedCrossPostProduct } from "./crossPostFinalizer";
 import type { CrossPostFlowStage } from "./crossPostPreview";
+import type { AiDraftLocale } from "./aiProductDrafts";
 
-export function createBulkDraftPayload(images: Array<{ path: string }>) {
+export function createBulkDraftPayload(
+  images: Array<{ path: string }>,
+  locale: AiDraftLocale
+) {
   return {
     imagePaths: images.map((image) => image.path),
+    locale,
   };
 }
 
 export function sendBulkDraftRequest(
   images: Array<{ path: string }>,
+  locale: AiDraftLocale,
   fetcher: typeof fetch = fetch
 ) {
   return fetcher("/api/products/bulk-drafts", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(createBulkDraftPayload(images)),
+    body: JSON.stringify(createBulkDraftPayload(images, locale)),
   });
 }
 

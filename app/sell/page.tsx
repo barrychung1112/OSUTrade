@@ -101,7 +101,7 @@ function FormSection({ step, title, description, children }: FormSectionProps) {
 }
 
 export default function SellPage() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const router = useRouter();
   const [listingMode, setListingMode] = useState<ListingMode>("manual");
   const [name, setName] = useState("");
@@ -564,7 +564,7 @@ export default function SellPage() {
         setBulkUploadedImages(uploadedImages);
       }
 
-      const res = await sendBulkDraftRequest(uploadedImages);
+      const res = await sendBulkDraftRequest(uploadedImages, locale);
 
       if (!res.ok) {
         throw new Error(await readApiError(res, t("sell.aiBulkError")));

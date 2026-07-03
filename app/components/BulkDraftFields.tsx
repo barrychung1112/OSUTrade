@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "../i18n";
+import type { AiDraftLocale } from "../lib/aiProductDrafts";
 
 type EditableBulkDraft = {
   id: string;
@@ -9,6 +10,7 @@ type EditableBulkDraft = {
   price: number;
   quantity: number;
   category: string;
+  locale: AiDraftLocale;
 };
 
 type BulkDraftPatch = Partial<Omit<EditableBulkDraft, "id">>;
@@ -30,9 +32,18 @@ export default function BulkDraftFields({
 }: BulkDraftFieldsProps) {
   const { t } = useI18n();
   const fieldId = draft.id.replace(/[^a-zA-Z0-9_-]/g, "-");
+  const languageLabel =
+    draft.locale === "zh"
+      ? t("common.zhTw")
+      : draft.locale === "zhCn"
+        ? t("common.zhCn")
+        : t("common.english");
 
   return (
     <div className="space-y-4">
+      <div className="inline-flex rounded-md border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-800">
+        {t("sell.aiBulkDraftLanguage", { language: languageLabel })}
+      </div>
       <div>
         <label className={labelClassName} htmlFor={`${fieldId}-name`}>
           {t("sell.itemName")}

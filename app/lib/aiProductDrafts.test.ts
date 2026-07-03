@@ -3,6 +3,7 @@ import {
   createBulkDraftResponseFormat,
   createFallbackDrafts,
   extractAiDraftResponseText,
+  parseAiDraftLocale,
   parseAiDraftResponse,
   prepareDraftsForClient,
 } from "./aiProductDrafts";
@@ -33,6 +34,20 @@ describe("createBulkDraftResponseFormat", () => {
   });
 });
 
+describe("parseAiDraftLocale", () => {
+  test.each(["en", "zh", "zhCn"] as const)(
+    "accepts supported locale %s",
+    (locale) => {
+      expect(parseAiDraftLocale(locale)).toBe(locale);
+    }
+  );
+
+  test("rejects unsupported locales", () => {
+    expect(parseAiDraftLocale("fr")).toBeNull();
+    expect(parseAiDraftLocale(null)).toBeNull();
+  });
+});
+
 describe("parseAiDraftResponse", () => {
   test("normalizes AI drafts and keeps only valid image indexes", () => {
     const result = parseAiDraftResponse(
@@ -50,12 +65,14 @@ describe("parseAiDraftResponse", () => {
           },
         ],
       }),
-      3
+      3,
+      "zh"
     );
 
     expect(result).toEqual([
       {
         id: "draft-1",
+        locale: "zh",
         name: "Dorm Mini Fridge",
         description: "Compact fridge with visible wear.",
         category: "home",
@@ -75,9 +92,10 @@ describe("parseAiDraftResponse", () => {
 
 describe("createFallbackDrafts", () => {
   test("creates one conservative draft per image", () => {
-    expect(createFallbackDrafts(2)).toEqual([
+    expect(createFallbackDrafts(2, "zhCn")).toEqual([
       {
         id: "draft-1",
+        locale: "zhCn",
         name: "Item 1",
         description: "AI could not confidently identify this item. Please review the photo and fill in the details.",
         category: "general",
@@ -89,6 +107,7 @@ describe("createFallbackDrafts", () => {
       },
       {
         id: "draft-2",
+        locale: "zhCn",
         name: "Item 2",
         description: "AI could not confidently identify this item. Please review the photo and fill in the details.",
         category: "general",
@@ -108,6 +127,7 @@ describe("prepareDraftsForClient", () => {
       [
         {
           id: "draft-1",
+          locale: "en",
           name: "Desk",
           description: "",
           category: "home",
