@@ -186,6 +186,7 @@ function normalizeAiResult(
   const localizedById = new Map<string, AiLocalizedItem>();
   for (const value of localizedItems) {
     const clientId = clean(value?.clientId);
+    const sourceItem = items.find((item) => item.clientId === clientId);
     const localized: AiLocalizedItem = {
       clientId,
       enName: clean(value?.enName),
@@ -196,11 +197,15 @@ function normalizeAiResult(
       zhCnDescription: clean(value?.zhCnDescription),
     };
     if (
-      !expectedIds.has(clientId) ||
+      !sourceItem ||
       localizedById.has(clientId) ||
       !localized.enName ||
       !localized.zhTwName ||
-      !localized.zhCnName
+      !localized.zhCnName ||
+      (Boolean(sourceItem.description) &&
+        (!localized.enDescription ||
+          !localized.zhTwDescription ||
+          !localized.zhCnDescription))
     ) {
       return null;
     }

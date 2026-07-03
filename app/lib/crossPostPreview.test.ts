@@ -166,6 +166,29 @@ describe("cross-post preview", () => {
     );
   });
 
+  test("rejects a blank translated description when the source has content", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        ({
+          ok: true,
+          json: async () => ({
+            output_text: JSON.stringify({
+              ...validAiPayload,
+              localizedItems: [
+                { ...validAiPayload.localizedItems[0], enDescription: "" },
+              ],
+            }),
+          }),
+        }) as Response
+      )
+    );
+
+    await expect(generateCrossPostPreview(items)).rejects.toBeInstanceOf(
+      CrossPostTranslationError
+    );
+  });
+
   test("rejects when AI translation is not configured", async () => {
     delete process.env.OPENAI_API_KEY;
 
