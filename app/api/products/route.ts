@@ -8,6 +8,7 @@ import {
   translateProductDescription,
   translateProductName,
 } from "@/app/lib/productTranslations";
+import { notifyMatchingWantedRequests } from "@/app/lib/wantedRequests";
 import { buildProductNameSearchFilter } from "@/app/lib/productSearch";
 import { applyProductListSort } from "@/app/lib/productSort";
 
@@ -125,6 +126,20 @@ function withoutUnsupportedSchemaField<T extends Record<string, unknown>>(
     values: nextValues,
     changed: Object.keys(nextValues).length !== Object.keys(values).length,
   };
+}
+
+async function safeNotifyMatchingWantedRequests({
+  supabase,
+  product,
+}: {
+  supabase: ReturnType<typeof createAdminClient>;
+  product: ProductRow;
+}) {
+  try {
+    await notifyMatchingWantedRequests({ supabase, product });
+  } catch (error) {
+    console.error("Failed to notify matching wanted requests.", error);
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -407,6 +422,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (error) throw error;
+
+    if (data) {
+      await safeNotifyMatchingWantedRequests({ supabase, product: data });
+    }
 
     return NextResponse.json(toProduct(data), { status: 201 });
   } catch (error) {
