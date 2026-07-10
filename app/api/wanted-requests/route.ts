@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const normalized = normalizeWantedRequestInput(body);
-    if (!normalized.ok) {
+    if (normalized.ok === false) {
       return NextResponse.json({ message: normalized.message }, { status: 400 });
     }
 
@@ -128,7 +128,7 @@ export async function PATCH(request: Request) {
 
     if (Object.prototype.hasOwnProperty.call(body, "query")) {
       const normalized = normalizeWantedRequestInput(body);
-      if (!normalized.ok) {
+      if (normalized.ok === false) {
         return NextResponse.json({ message: normalized.message }, { status: 400 });
       }
       Object.assign(values, normalized.values);
