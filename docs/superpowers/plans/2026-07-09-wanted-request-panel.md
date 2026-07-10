@@ -67,4 +67,3 @@
 - [ ] Add `wanted_requests` table, indexes, RLS policies, and status check.
 - [ ] Add `wanted_request_matches` table, unique `(wanted_request_id, product_id)`, indexes, RLS policies, and email tracking fields.
 - [ ] Run TypeScript/tests/build and commit schema.
-

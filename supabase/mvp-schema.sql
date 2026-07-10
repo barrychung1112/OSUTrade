@@ -144,6 +144,103 @@ create policy "Buyers can read their trade requests"
   to authenticated
   using (buyer_id = auth.uid());
 
+create table if not exists public.wanted_requests (
+  wanted_request_id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  query text not null check (length(trim(query)) > 0),
+  max_price numeric check (max_price is null or max_price > 0),
+  category text,
+  description text,
+  email_subscribed boolean not null default true,
+  status text not null default 'active' check (status in ('active', 'paused', 'fulfilled', 'deleted')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.wanted_requests
+  add column if not exists user_id uuid references auth.users(id) on delete cascade,
+  add column if not exists query text,
+  add column if not exists max_price numeric,
+  add column if not exists category text,
+  add column if not exists description text,
+  add column if not exists email_subscribed boolean not null default true,
+  add column if not exists status text not null default 'active',
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+create index if not exists wanted_requests_user_created_idx
+  on public.wanted_requests (user_id, created_at desc)
+  where status <> 'deleted';
+
+create index if not exists wanted_requests_active_subscribed_idx
+  on public.wanted_requests (status, email_subscribed, category)
+  where status = 'active' and email_subscribed = true;
+
+alter table public.wanted_requests enable row level security;
+
+drop policy if exists "Users can create wanted requests" on public.wanted_requests;
+create policy "Users can create wanted requests"
+  on public.wanted_requests
+  for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+drop policy if exists "Users can read their wanted requests" on public.wanted_requests;
+create policy "Users can read their wanted requests"
+  on public.wanted_requests
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+drop policy if exists "Users can update their wanted requests" on public.wanted_requests;
+create policy "Users can update their wanted requests"
+  on public.wanted_requests
+  for update
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+create table if not exists public.wanted_request_matches (
+  match_id uuid primary key default gen_random_uuid(),
+  wanted_request_id uuid not null references public.wanted_requests(wanted_request_id) on delete cascade,
+  product_id text not null,
+  score numeric,
+  emailed_at timestamptz,
+  email_error text,
+  created_at timestamptz not null default now(),
+  unique (wanted_request_id, product_id)
+);
+
+alter table public.wanted_request_matches
+  add column if not exists wanted_request_id uuid references public.wanted_requests(wanted_request_id) on delete cascade,
+  add column if not exists product_id text,
+  add column if not exists score numeric,
+  add column if not exists emailed_at timestamptz,
+  add column if not exists email_error text,
+  add column if not exists created_at timestamptz not null default now();
+
+create unique index if not exists wanted_request_matches_unique_idx
+  on public.wanted_request_matches (wanted_request_id, product_id);
+
+create index if not exists wanted_request_matches_request_created_idx
+  on public.wanted_request_matches (wanted_request_id, created_at desc);
+
+alter table public.wanted_request_matches enable row level security;
+
+drop policy if exists "Users can read their wanted request matches" on public.wanted_request_matches;
+create policy "Users can read their wanted request matches"
+  on public.wanted_request_matches
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.wanted_requests
+      where wanted_requests.wanted_request_id = wanted_request_matches.wanted_request_id
+        and wanted_requests.user_id = auth.uid()
+    )
+  );
+
 create table if not exists public.notifications (
   notification_id uuid primary key default gen_random_uuid(),
   recipient_id uuid not null references auth.users(id) on delete cascade,
