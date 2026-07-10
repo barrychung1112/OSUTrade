@@ -6,11 +6,13 @@ import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon, Cross2Icon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
+import WantedRequestsPanel from "../components/WantedRequestsPanel";
 import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
 type RequestFilter = RequestStatus | "all";
+type RequestsPanel = "trades" | "wanted";
 
 type BuyerRequest = {
   id: string;
@@ -55,6 +57,9 @@ export default function RequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<RequestsPanel>("trades");
+  const wantedTabLabel =
+    locale === "zh" ? "想買清單" : locale === "zhCn" ? "想买清单" : "Wanted Items";
 
   useEffect(() => {
     async function loadRequests({ notify }: { notify: boolean }) {
@@ -209,6 +214,35 @@ export default function RequestsPage() {
             </div>
           </div>
 
+          <div className="mb-5 inline-flex rounded-lg border border-orange-200 bg-white/90 p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setActivePanel("trades")}
+              className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+                activePanel === "trades"
+                  ? "bg-[#d73f09] text-white shadow-sm"
+                  : "text-gray-700 hover:bg-orange-50 hover:text-[#d73f09]"
+              }`}
+            >
+              {t("requests.title")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePanel("wanted")}
+              className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+                activePanel === "wanted"
+                  ? "bg-[#d73f09] text-white shadow-sm"
+                  : "text-gray-700 hover:bg-orange-50 hover:text-[#d73f09]"
+              }`}
+            >
+              {wantedTabLabel}
+            </button>
+          </div>
+
+          {activePanel === "wanted" ? (
+            <WantedRequestsPanel />
+          ) : (
+            <>
           <div className="mb-5 grid gap-3 sm:grid-cols-3">
             <RequestStatCard
               label={t("requests.activePending")}
@@ -325,6 +359,8 @@ export default function RequestsPage() {
               ))
             )}
           </div>
+            </>
+          )}
         </section>
       </main>
     </Theme>

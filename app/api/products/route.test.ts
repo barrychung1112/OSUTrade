@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   translateProductName: vi.fn(),
   translateProductDescription: vi.fn(),
+  notifyMatchingWantedRequests: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
@@ -19,6 +20,9 @@ vi.mock("@/utils/supabase/server", () => ({
 vi.mock("@/app/lib/productTranslations", () => ({
   translateProductName: mocks.translateProductName,
   translateProductDescription: mocks.translateProductDescription,
+}));
+vi.mock("@/app/lib/wantedRequests", () => ({
+  notifyMatchingWantedRequests: mocks.notifyMatchingWantedRequests,
 }));
 
 import { POST } from "./route";
@@ -102,6 +106,7 @@ describe("product create idempotency", () => {
     expect(lookup.eq).toHaveBeenNthCalledWith(1, "seller_id", "seller-1");
     expect(lookup.eq).toHaveBeenNthCalledWith(2, "client_request_id", "request-1");
     expect(mocks.translateProductName).not.toHaveBeenCalled();
+    expect(mocks.notifyMatchingWantedRequests).not.toHaveBeenCalled();
   });
 
   test("stores the idempotency key on a new product", async () => {
@@ -128,6 +133,13 @@ describe("product create idempotency", () => {
         client_request_id: "request-1",
       })
     );
+    expect(mocks.notifyMatchingWantedRequests).toHaveBeenCalledWith({
+      supabase: expect.anything(),
+      product: expect.objectContaining({
+        product_id: "product-1",
+        name: "Desk lamp",
+      }),
+    });
   });
 
   test("creates a product when the idempotency column is not deployed yet", async () => {

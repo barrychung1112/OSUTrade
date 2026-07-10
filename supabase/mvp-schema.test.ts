@@ -22,3 +22,15 @@ describe("product listing idempotency schema", () => {
     expect(schema).toMatch(/unique index[\s\S]*seller_id[\s\S]*client_request_id/i);
   });
 });
+
+describe("wanted request subscription schema", () => {
+  test("stores wanted requests and prevents duplicate product match notifications", () => {
+    const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
+
+    expect(schema).toContain("create table if not exists public.wanted_requests");
+    expect(schema).toContain("create table if not exists public.wanted_request_matches");
+    expect(schema).toMatch(/unique[\s\S]*wanted_request_id[\s\S]*product_id/i);
+    expect(schema).toContain("email_subscribed boolean not null default true");
+    expect(schema).toContain("email_error text");
+  });
+});
