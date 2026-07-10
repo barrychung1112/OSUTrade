@@ -2,8 +2,12 @@
 
 **Language:** English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-> A campus-first secondhand marketplace for listing, browsing, and requesting used items with a safer buyer-seller workflow.
 
+
+
+> A campus-first secondhand marketplace for listing, browsing, and requesting used items with a safer buyer-seller workflow.
+> 
+<img width="1566" height="902" alt="image" src="https://github.com/user-attachments/assets/e4e35792-4a17-40db-901a-36efa5133709" />
 OSUTrade is a full-stack marketplace built for campus communities. It helps students and local users list unused items, discover affordable secondhand goods, and contact sellers only after a trade request is accepted.
 
 The product focuses on three things: clear listings, safer contact flow, and multilingual accessibility.
