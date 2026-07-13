@@ -2,85 +2,78 @@
 
 **Language:** English | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
+> A campus-first secondhand marketplace where students can browse listings, send trade requests, post wanted items, and use AI to create better listings faster.
 
-
-
-> A campus-first secondhand marketplace for listing, browsing, and requesting used items with a safer buyer-seller workflow.
-> 
-<img width="1566" height="902" alt="image" src="https://github.com/user-attachments/assets/e4e35792-4a17-40db-901a-36efa5133709" />
-OSUTrade is a full-stack marketplace built for campus communities. It helps students and local users list unused items, discover affordable secondhand goods, and contact sellers only after a trade request is accepted.
-
-The product focuses on three things: clear listings, safer contact flow, and multilingual accessibility.
+<img width="1566" height="902" alt="OSUTrade marketplace screenshot" src="https://github.com/user-attachments/assets/e4e35792-4a17-40db-901a-36efa5133709" />
 
 [GitHub Repository](https://github.com/barrychung1112/OSUTrade) | [Discord Community](https://discord.gg/BqqAmmjJR) | [Tip OSUTrade](https://buymeacoffee.com/osutrade)
 
-## Project Overview
+## What Is OSUTrade?
 
-OSUTrade makes secondhand trading easier for campus life:
+OSUTrade is a full-stack marketplace built for campus and local communities. It helps users list secondhand items, browse available goods without signing in, and only share contact information after a seller accepts a buyer request.
 
-- Sellers can create listings with product photos, category, price, quantity, and status.
-- Buyers can browse the marketplace, filter listings, and add items to a request cart.
-- Buyers send trade requests with quantity and notes instead of exposing contact details immediately.
-- Sellers can accept or decline requests from a seller dashboard.
-- Contact emails are revealed only after a request is accepted.
-- The interface supports English, Traditional Chinese, and Simplified Chinese.
-- New listings can store AI-generated translated product names so the marketplace follows the selected language.
-- Sellers can use an AI pricing advisor to estimate a reasonable secondhand price.
+The product focuses on four things:
 
-## Why It Matters
+- **Lower friction discovery:** visitors can browse the marketplace and product pages before creating an account.
+- **Safer trading:** buyers send requests first; contact details are revealed only after acceptance.
+- **Seller speed:** sellers can upload multiple photos, use AI drafts, translate listings, and get pricing guidance.
+- **Buyer demand signals:** users can subscribe to wanted-item requests and get notified when matching listings appear.
 
-Campus secondhand trading often happens across scattered chats, social posts, and spreadsheets. That makes it hard to search, compare, track requests, and know when it is safe to share contact information.
+## Current MVP Features
 
-OSUTrade brings that workflow into one place:
-
-- **For buyers:** browse available items, request exactly the quantity needed, and track request status.
-- **For sellers:** manage listings, control inventory, and respond to buyers from one dashboard.
-- **For the community:** make reuse easier, reduce waste, and keep affordable goods circulating locally.
-
-## Core Features
-
-| Area | Feature |
+| Area | What is supported |
 | --- | --- |
-| Marketplace | Browse products, view details, search by localized product name, and filter by category. |
-| Listing | Create product listings with price, category, image, quantity, and availability status. |
-| Request Cart | Add items to a cart-like request flow before contacting sellers. |
-| Quantity Control | Buyers cannot request more units than the seller has available. |
-| Buyer Requests | Track sent, accepted, declined, and cancelled requests. |
-| Seller Dashboard | Manage listings, update status, and handle buyer requests. |
-| Safer Contact Flow | Buyer and seller emails are shown only after a seller accepts a request. |
-| Internationalization | Switch between English, Traditional Chinese, and Simplified Chinese. |
-| AI Translation | Translate new listing names into supported languages and store them in Supabase. |
-| AI Pricing Advisor | Suggest a secondhand price using local marketplace signals and new-price context. |
-| API Docs | Swagger UI is available for API exploration. |
+| Public marketplace | Browse `/overview` and product detail pages without logging in. Login is required only for sending requests, listing items, seller tools, and personal request data. |
+| Product listings | Create listings with name, description, category, price, quantity, status, and 1 to 3 photos. |
+| Listing localization | Product names and descriptions can be translated into English, Traditional Chinese, and Simplified Chinese, then displayed according to the selected language. |
+| AI bulk listing | Upload photos, generate AI listing drafts, edit fields, select drafts, and publish multiple listings from the Sell page. |
+| AI pricing advisor | Suggest a secondhand price using OSUTrade comparable listings, item details, and new-price context. |
+| Cross-platform copy | Generate social post copy for external promotion from listing drafts. |
+| Request cart | Buyers add items to a cart-like request flow, choose quantity, and leave notes for sellers. |
+| Quantity guardrails | Buyers cannot request more units than available inventory. |
+| Duplicate request protection | A buyer cannot send another active request for the same item until the previous request is declined or closed. |
+| Request lifecycle | Requests support waiting, accepted, declined, cancelled, and expired states, with a progress-style status display. |
+| Response window | Sellers have a response window for new requests. Expired requests are separated from active ones. |
+| Price snapshot | Requests preserve the price at request time and notify active buyers if a seller changes the price later. |
+| Seller dashboard | Sellers can edit listings, update status, manage quantity, and accept or decline buyer requests. |
+| Optional seller contact methods | Sellers may add phone, Line ID, and WeChat ID; these are shared only after a request is accepted. |
+| Wanted items | Buyers can post what they want, set a target price, subscribe to email alerts, and get matched with new related listings. |
+| Notifications | In-app notifications and optional Resend email notifications for trade activity and wanted-item matches. |
+| Authentication | Email/password login plus Google sign-in support. Embedded-browser Google sign-in guidance is shown when needed. |
+| Funding panel | Buy Me a Coffee support link for voluntary tips. |
+| API docs | Swagger UI is available at `/docs/swagger`. |
 
 ## Product Flow
 
 ### Buyer
 
-1. Browse the marketplace.
-2. Open a product detail page.
-3. Add the item and quantity to the request cart.
-4. Add a note for the seller.
-5. Send the request.
-6. Track the request status from **Requests**.
-7. If accepted, use the revealed seller email to arrange pickup.
+1. Browse the marketplace or product detail pages without signing in.
+2. Add a listing to the request cart.
+3. Sign in when ready to send a trade request.
+4. Choose quantity, add a note, and submit the request.
+5. Track request status from **Requests**.
+6. If accepted, view the seller contact details and arrange pickup.
+7. Optionally create a **Wanted Item** subscription for things you want to buy later.
 
 ### Seller
 
-1. Create a listing from **Sell**.
-2. Optionally use the AI pricing advisor.
-3. Review translated product names through the multilingual marketplace experience.
-4. Manage inventory and item status from **Seller**.
-5. Accept or decline buyer requests.
-6. Share contact information only after accepting a request.
+1. Sign in and open **Sell**.
+2. Create a single listing or use **AI bulk listing** to generate drafts from photos.
+3. Add description, price, quantity, category, and 1 to 3 photos.
+4. Optionally add phone, Line ID, or WeChat ID for accepted buyers.
+5. Use the AI pricing advisor if a price benchmark is needed.
+6. Manage inventory and incoming requests from **Seller**.
+7. Accept or decline requests before the response window expires.
 
 ## Tech Stack
 
 - **Framework:** Next.js 15, React 19, TypeScript
 - **UI:** Radix UI, Tailwind CSS, lucide-react
-- **Auth & Database:** Supabase, NextAuth
-- **Testing:** Vitest, Testing Library
-- **AI:** OpenAI API for pricing advice and product-name translation
+- **Auth:** NextAuth with email/password and Google OAuth
+- **Database & Storage:** Supabase Postgres, Supabase Auth, Supabase Storage
+- **AI:** OpenAI API for translation, pricing advice, bulk listing drafts, and cross-platform post copy
+- **Email:** Resend optional transactional emails
+- **Testing:** Vitest, Testing Library, Playwright smoke checks
 - **Deployment:** Vercel
 
 ## Getting Started
@@ -113,40 +106,48 @@ ENABLE_DEMO_PRODUCTS="false"
 OPENAI_API_KEY=""
 OPENAI_PRICING_MODEL="gpt-4.1-mini"
 OPENAI_TRANSLATION_MODEL="gpt-4.1-mini"
+OPENAI_BULK_LISTING_MODEL="gpt-4.1-mini"
+OPENAI_CROSS_POST_MODEL="gpt-4.1-mini"
 EMAIL_PROVIDER="console"
 RESEND_API_KEY=""
 EMAIL_FROM="OSUTrade <no-reply@osutrade.com>"
+FUNDING_GOAL_USD="2000"
+FUNDING_RAISED_USD="0"
+FUNDING_CURRENCY="USD"
+FUNDING_SUPPORT_URL="https://buymeacoffee.com/osutrade"
 ```
 
 Notes:
 
-- `OPENAI_API_KEY` is optional for local UI testing, but AI pricing and translation need it.
-- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are required in local `.env.local` and Vercel for Google sign-in.
-- `EMAIL_PROVIDER=console` keeps trade notifications in-app only. Use `EMAIL_PROVIDER=resend` with `RESEND_API_KEY` and `EMAIL_FROM` to send real emails.
-- Use a fresh private key and never commit secrets to the repository.
-- `SUPABASE_SERVICE_ROLE_KEY` must only be used server-side.
+- Keep `SUPABASE_SERVICE_ROLE_KEY` server-side only.
+- `OPENAI_API_KEY` is optional for basic UI testing, but AI translation, AI bulk listing, pricing advice, and cross-platform copy require it.
+- `EMAIL_PROVIDER=console` keeps email output in logs. Use `EMAIL_PROVIDER=resend` with `RESEND_API_KEY` and `EMAIL_FROM` to send real emails.
+- `AUTH_SECRET` and `NEXTAUTH_SECRET` should match if both are configured in a deployment environment.
+- Never commit real secrets to the repository.
 
 Google OAuth redirect URIs:
 
 - Local: `http://localhost:3000/api/auth/callback/google`
 - Production: `https://osutrade.com/api/auth/callback/google`
 
-### 3. Set up Supabase schema
+### 3. Set up Supabase
 
-Run the SQL in:
+Run the schema SQL in:
 
 ```text
 supabase/mvp-schema.sql
 ```
 
-At minimum, product translation support requires:
+This creates or updates the core tables and policies for:
 
-```sql
-alter table public.products
-  add column if not exists name_en text,
-  add column if not exists name_zh_tw text,
-  add column if not exists name_zh_cn text;
-```
+- `users`
+- `products`
+- `trade_requests`
+- `wanted_requests`
+- `wanted_request_matches`
+- `notifications`
+- `user_presence`
+- `product-images` storage bucket
 
 ### 4. Start the local development server
 
@@ -167,26 +168,27 @@ npm run dev
 npm run build
 npm run start
 npm test -- --run
+npx tsc --noEmit
 ```
 
 ## Main Routes
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Product landing page and entry point. |
-| `/overview` | Marketplace browsing experience. |
-| `/product/[id]` | Product details and add-to-cart flow. |
-| `/sell` | Seller listing form and AI pricing advisor. |
+| `/` | Home page, product value proposition, marketplace entry, funding panel. |
+| `/overview` | Public marketplace browsing experience. |
+| `/product/[id]` | Public product detail page and add-to-cart flow. |
+| `/sell` | Seller listing form, AI bulk listing, image upload, pricing advisor. |
 | `/cart` | Request cart and buyer request submission. |
-| `/requests` | Buyer request tracking. |
-| `/seller` | Seller dashboard for listings and incoming requests. |
+| `/requests` | Buyer request tracking and wanted-item subscriptions. Shows a login prompt when signed out. |
+| `/seller` | Seller dashboard for listings, inventory, and incoming requests. |
 | `/docs/swagger` | API documentation. |
 
 ## Author
 
 **Barry Chung**
 
-Barry Chung is the creator of OSUTrade, building the project as a practical full-stack marketplace for campus secondhand trading. The project combines product thinking, marketplace UX, Supabase-backed workflows, multilingual support, and AI-assisted seller tools.
+Barry Chung is the creator of OSUTrade, building it as a practical full-stack marketplace for campus secondhand trading. The project combines product thinking, marketplace UX, Supabase-backed workflows, multilingual support, and AI-assisted seller tools.
 
 - GitHub: [barrychung1112](https://github.com/barrychung1112)
 - Project: [OSUTrade](https://github.com/barrychung1112/OSUTrade)
@@ -197,4 +199,4 @@ Tips are voluntary payments that support OSUTrade development and operating cost
 
 ## Vision
 
-OSUTrade aims to become a lightweight, trusted marketplace for local campus communities: easy enough for quick listings, structured enough for serious transactions, and thoughtful enough to protect users until both sides are ready to connect.
+OSUTrade aims to become a lightweight, trusted marketplace for local campus communities: simple enough for quick listings, structured enough for serious transactions, and thoughtful enough to protect users until both sides are ready to connect.
