@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Badge, Button, Card, Heading, Text, Theme } from "@radix-ui/themes";
 import { ArrowLeftIcon, Cross2Icon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
+import LoginModal from "../components/LoginModal";
 import WantedRequestsPanel from "../components/WantedRequestsPanel";
 import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
@@ -52,16 +54,29 @@ function getResponseDeadline(createdAt: string) {
 
 export default function RequestsPage() {
   const { t, locale } = useI18n();
+  const { data: session, status } = useSession();
   const [requests, setRequests] = useState<BuyerRequest[]>([]);
   const [filter, setFilter] = useState<RequestFilter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<RequestsPanel>("trades");
+  const isAuthenticated = status === "authenticated" && Boolean(session?.user);
   const wantedTabLabel =
     locale === "zh" ? "想買清單" : locale === "zhCn" ? "想买清单" : "Wanted Items";
 
   useEffect(() => {
+    if (status === "loading") {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setRequests([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     async function loadRequests({ notify }: { notify: boolean }) {
       try {
         const res = await fetch("/api/requests", { cache: "no-store" });
@@ -142,7 +157,7 @@ export default function RequestsPage() {
     }, 60_000);
 
     return () => window.clearInterval(timer);
-  }, [t]);
+  }, [isAuthenticated, status, t]);
 
   async function cancelRequest(requestId: string) {
     const res = await fetch("/api/requests", {
@@ -239,7 +254,11 @@ export default function RequestsPage() {
             </button>
           </div>
 
-          {activePanel === "wanted" ? (
+          {status === "loading" ? (
+            <Card className="p-5">{t("requests.loading")}</Card>
+          ) : !isAuthenticated ? (
+            <LoginRequiredPanel t={t} />
+          ) : activePanel === "wanted" ? (
             <WantedRequestsPanel />
           ) : (
             <>
@@ -364,6 +383,35 @@ export default function RequestsPage() {
         </section>
       </main>
     </Theme>
+  );
+}
+
+function LoginRequiredPanel({
+  t,
+}: {
+  t: (key: string, values?: Record<string, string | number>) => string;
+}) {
+  return (
+    <Card className="p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <Heading size="5" className="mb-2">
+            {t("auth.requiredTitle")}
+          </Heading>
+          <Text color="gray">
+            {t("auth.requiredBody", { destination: t("nav.requests") })}
+          </Text>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <LoginModal redirectTo="/requests" />
+          <Link href="/overview">
+            <Button size="3" variant="soft" className="min-w-36">
+              <ArrowLeftIcon /> {t("requests.browse")}
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </Card>
   );
 }
 

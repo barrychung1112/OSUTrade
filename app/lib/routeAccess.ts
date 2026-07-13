@@ -1,4 +1,4 @@
-const protectedPrefixes = ["/sell", "/seller", "/requests"];
+const protectedPrefixes = ["/sell", "/seller"];
 
 function normalizePath(path: string) {
   const [pathname] = path.split("?");
