@@ -12,10 +12,14 @@ describe("requiresLogin", () => {
     expect(requiresLogin("/cart?from=product")).toBe(false);
   });
 
-  test("keeps seller and account request pages protected", () => {
+  test("keeps seller listing pages protected", () => {
     expect(requiresLogin("/sell")).toBe(true);
     expect(requiresLogin("/seller")).toBe(true);
-    expect(requiresLogin("/requests")).toBe(true);
+  });
+
+  test("lets visitors open the requests page so it can show a login prompt", () => {
+    expect(requiresLogin("/requests")).toBe(false);
+    expect(requiresLogin("/requests?panel=wanted")).toBe(false);
   });
 });
 
@@ -38,5 +42,15 @@ describe("getMiddlewareRedirect", () => {
         isLoggedIn: false,
       })
     ).toEqual({ pathname: "/", from: "/sell?draft=1" });
+  });
+
+  test("does not redirect visitors away from the requests page", () => {
+    expect(
+      getMiddlewareRedirect({
+        pathname: "/requests",
+        search: "",
+        isLoggedIn: false,
+      })
+    ).toBeNull();
   });
 });
