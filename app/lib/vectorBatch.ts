@@ -1,0 +1,390 @@
+import { sendEmail as defaultSendEmail, type SendEmail } from "./email";
+import { buildProductUrl, buildWantedRequestEmail } from "./wantedRequests";
+import {
+  buildProductEmbeddingInput,
+  buildWantedRequestEmbeddingInput,
+  contentHash,
+  findSemanticWantedMatches,
+  shouldEmbed,
+  type ProductEmbeddingSource,
+  type WantedRequestEmbeddingSource,
+} from "./vectorMatching";
+
+const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
+const DEFAULT_BATCH_LIMIT = 100;
+const DEFAULT_MATCH_THRESHOLD = 0.78;
+
+type SupabaseLike = {
+  from: (table: string) => any;
+  auth?: {
+    admin?: {
+      getUserById: (userId: string) => Promise<{
+        data: { user?: { email?: string | null } | null };
+        error: Error | null;
+      }>;
+    };
+  };
+};
+
+type EmbeddingRow = {
+  product_id?: string;
+  wanted_request_id?: string;
+  embedding?: number[] | string | null;
+  content_hash?: string | null;
+};
+
+export type VectorBatchResult = {
+  status: "completed" | "failed";
+  productsChecked: number;
+  productsEmbedded: number;
+  wantedRequestsChecked: number;
+  wantedRequestsEmbedded: number;
+  matchesCreated: number;
+  emailsSent: number;
+  errorMessage?: string;
+};
+
+type RunVectorMatchBatchOptions = {
+  supabase: SupabaseLike;
+  embedTexts?: (texts: string[], model: string) => Promise<number[][]>;
+  sendEmail?: SendEmail;
+  model?: string;
+  batchLimit?: number;
+  threshold?: number;
+  now?: () => Date;
+};
+
+function parseEmbedding(value: number[] | string | null | undefined) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  const trimmed = value.replace(/^\[|\]$/g, "");
+  return trimmed
+    .split(",")
+    .map((part) => Number(part.trim()))
+    .filter((number) => Number.isFinite(number));
+}
+
+async function insertBatchRun(supabase: SupabaseLike) {
+  const { data, error } = await supabase
+    .from("vector_batch_runs")
+    .insert({ status: "running" })
+    .select("run_id")
+    .single();
+
+  if (error) throw error;
+  return data?.run_id as string | undefined;
+}
+
+async function updateBatchRun(
+  supabase: SupabaseLike,
+  runId: string | undefined,
+  values: Record<string, unknown>
+) {
+  if (!runId) return;
+  await supabase.from("vector_batch_runs").update(values).eq("run_id", runId);
+}
+
+async function getEmailByUserId(supabase: SupabaseLike, userId: string) {
+  const result = await supabase.auth?.admin?.getUserById(userId);
+  if (result?.error) throw result.error;
+  return result?.data.user?.email ?? null;
+}
+
+export async function embedTextsWithOpenAI(
+  texts: string[],
+  model = process.env.OPENAI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL
+) {
+  if (texts.length === 0) return [];
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is required to generate embeddings.");
+  }
+
+  const response = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      input: texts,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`OpenAI embeddings failed: ${response.status} ${body}`);
+  }
+
+  const payload = await response.json();
+  return (payload.data ?? [])
+    .sort((left: { index: number }, right: { index: number }) => left.index - right.index)
+    .map((item: { embedding: number[] }) => item.embedding);
+}
+
+export async function runVectorMatchBatch({
+  supabase,
+  embedTexts = embedTextsWithOpenAI,
+  sendEmail = defaultSendEmail,
+  model = process.env.OPENAI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL,
+  batchLimit = DEFAULT_BATCH_LIMIT,
+  threshold = DEFAULT_MATCH_THRESHOLD,
+  now = () => new Date(),
+}: RunVectorMatchBatchOptions): Promise<VectorBatchResult> {
+  const runId = await insertBatchRun(supabase);
+
+  try {
+    const [{ data: products, error: productsError }, { data: wantedRequests, error: requestsError }] =
+      await Promise.all([
+        supabase
+          .from("products")
+          .select("*")
+          .eq("status", "available")
+          .gt("quantity", 0)
+          .limit(batchLimit),
+        supabase
+          .from("wanted_requests")
+          .select("*")
+          .eq("status", "active")
+          .eq("email_subscribed", true)
+          .limit(batchLimit),
+      ]);
+
+    if (productsError) throw productsError;
+    if (requestsError) throw requestsError;
+
+    const productRows = (products ?? []) as ProductEmbeddingSource[];
+    const wantedRows = (wantedRequests ?? []) as WantedRequestEmbeddingSource[];
+
+    const productIds = productRows.map((product) => String(product.product_id));
+    const wantedIds = wantedRows.map((request) => request.wanted_request_id);
+
+    const [{ data: productEmbeddings, error: productEmbeddingError }, { data: wantedEmbeddings, error: wantedEmbeddingError }] =
+      await Promise.all([
+        productIds.length
+          ? supabase
+              .from("product_embeddings")
+              .select("*")
+              .in("product_id", productIds)
+          : Promise.resolve({ data: [], error: null }),
+        wantedIds.length
+          ? supabase
+              .from("wanted_request_embeddings")
+              .select("*")
+              .in("wanted_request_id", wantedIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+    if (productEmbeddingError) throw productEmbeddingError;
+    if (wantedEmbeddingError) throw wantedEmbeddingError;
+
+    const productEmbeddingById = new Map(
+      ((productEmbeddings ?? []) as EmbeddingRow[]).map((row) => [
+        String(row.product_id),
+        row,
+      ])
+    );
+    const wantedEmbeddingById = new Map(
+      ((wantedEmbeddings ?? []) as EmbeddingRow[]).map((row) => [
+        String(row.wanted_request_id),
+        row,
+      ])
+    );
+
+    const productInputs = productRows.map((product) => ({
+      product,
+      input: buildProductEmbeddingInput(product),
+    }));
+    const wantedInputs = wantedRows.map((request) => ({
+      request,
+      input: buildWantedRequestEmbeddingInput(request),
+    }));
+
+    const productPending = productInputs.filter(({ product, input }) => {
+      const hash = contentHash(model, input);
+      return shouldEmbed(productEmbeddingById.get(String(product.product_id)), hash);
+    });
+    const wantedPending = wantedInputs.filter(({ request, input }) => {
+      const hash = contentHash(model, input);
+      return shouldEmbed(wantedEmbeddingById.get(request.wanted_request_id), hash);
+    });
+
+    const pendingInputs = [
+      ...productPending.map((item) => item.input),
+      ...wantedPending.map((item) => item.input),
+    ];
+    const pendingEmbeddings = await embedTexts(pendingInputs, model);
+    const embeddedAt = now().toISOString();
+
+    const productUpserts = productPending.map((item, index) => ({
+      product_id: String(item.product.product_id),
+      embedding_model: model,
+      embedding_input: item.input,
+      embedding: pendingEmbeddings[index],
+      content_hash: contentHash(model, item.input),
+      embedded_at: embeddedAt,
+    }));
+
+    const wantedOffset = productUpserts.length;
+    const wantedUpserts = wantedPending.map((item, index) => ({
+      wanted_request_id: item.request.wanted_request_id,
+      embedding_model: model,
+      embedding_input: item.input,
+      embedding: pendingEmbeddings[wantedOffset + index],
+      content_hash: contentHash(model, item.input),
+      embedded_at: embeddedAt,
+    }));
+
+    if (productUpserts.length > 0) {
+      const { error } = await supabase
+        .from("product_embeddings")
+        .upsert(productUpserts);
+      if (error) throw error;
+    }
+
+    if (wantedUpserts.length > 0) {
+      const { error } = await supabase
+        .from("wanted_request_embeddings")
+        .upsert(wantedUpserts);
+      if (error) throw error;
+    }
+
+    const nextProductEmbeddings = new Map(productEmbeddingById);
+    for (const row of productUpserts) {
+      nextProductEmbeddings.set(row.product_id, row);
+    }
+
+    const nextWantedEmbeddings = new Map(wantedEmbeddingById);
+    for (const row of wantedUpserts) {
+      nextWantedEmbeddings.set(row.wanted_request_id, row);
+    }
+
+    const embeddedProducts = productRows
+      .map((product) => ({
+        row: product,
+        embedding: parseEmbedding(
+          nextProductEmbeddings.get(String(product.product_id))?.embedding
+        ),
+      }))
+      .filter((item) => item.embedding.length > 0);
+
+    const embeddedWantedRequests = wantedRows
+      .map((request) => ({
+        row: request,
+        embedding: parseEmbedding(
+          nextWantedEmbeddings.get(request.wanted_request_id)?.embedding
+        ),
+      }))
+      .filter((item) => item.embedding.length > 0);
+
+    const matches = findSemanticWantedMatches({
+      products: embeddedProducts,
+      wantedRequests: embeddedWantedRequests,
+      threshold,
+    });
+
+    let matchesCreated = 0;
+    let emailsSent = 0;
+
+    for (const match of matches) {
+      const { data: matchRow, error: matchError } = await supabase
+        .from("wanted_request_matches")
+        .insert({
+          wanted_request_id: match.wantedRequestId,
+          product_id: match.productId,
+          score: match.score,
+        })
+        .select("match_id")
+        .single();
+
+      if (matchError) {
+        if (matchError.code === "23505") continue;
+        throw matchError;
+      }
+
+      matchesCreated += 1;
+
+      const wantedRequest = wantedRows.find(
+        (request) => request.wanted_request_id === match.wantedRequestId
+      );
+      const product = productRows.find(
+        (row) => String(row.product_id) === match.productId
+      );
+      let emailed = false;
+      let emailError: string | null = null;
+
+      try {
+        const email = await getEmailByUserId(supabase, match.userId);
+        if (email && product) {
+          await sendEmail({
+            to: email,
+            ...buildWantedRequestEmail({
+              wantedQuery: wantedRequest?.query ?? "your wanted item",
+              productName: product.name || "New OSUTrade listing",
+              productPrice: product.price,
+              productUrl: buildProductUrl(product.product_id),
+            }),
+          });
+          emailed = true;
+          emailsSent += 1;
+        }
+      } catch (error) {
+        emailError =
+          error instanceof Error ? error.message : "Failed to send wanted email.";
+      }
+
+      await supabase
+        .from("wanted_request_matches")
+        .update({
+          emailed_at: emailed ? now().toISOString() : null,
+          email_error: emailError,
+        })
+        .eq("match_id", matchRow?.match_id);
+    }
+
+    const result: VectorBatchResult = {
+      status: "completed",
+      productsChecked: productRows.length,
+      productsEmbedded: productUpserts.length,
+      wantedRequestsChecked: wantedRows.length,
+      wantedRequestsEmbedded: wantedUpserts.length,
+      matchesCreated,
+      emailsSent,
+    };
+
+    await updateBatchRun(supabase, runId, {
+      status: "completed",
+      products_checked: result.productsChecked,
+      products_embedded: result.productsEmbedded,
+      wanted_requests_checked: result.wantedRequestsChecked,
+      wanted_requests_embedded: result.wantedRequestsEmbedded,
+      matches_created: result.matchesCreated,
+      emails_sent: result.emailsSent,
+      finished_at: now().toISOString(),
+    });
+
+    return result;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Vector batch failed.";
+
+    await updateBatchRun(supabase, runId, {
+      status: "failed",
+      error_message: message,
+      finished_at: now().toISOString(),
+    });
+
+    return {
+      status: "failed",
+      productsChecked: 0,
+      productsEmbedded: 0,
+      wantedRequestsChecked: 0,
+      wantedRequestsEmbedded: 0,
+      matchesCreated: 0,
+      emailsSent: 0,
+      errorMessage: message,
+    };
+  }
+}
