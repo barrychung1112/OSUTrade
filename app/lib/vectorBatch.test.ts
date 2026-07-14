@@ -39,6 +39,7 @@ function createFakeSupabase({
     matchUpdates: [] as any[],
     runUpdates: [] as any[],
     insertedMatches: [] as any[],
+    ranges: [] as Array<{ table: string; from: number; to: number }>,
   };
 
   const tableCalls: string[] = [];
@@ -50,6 +51,17 @@ function createFakeSupabase({
       eq: vi.fn(() => builder),
       gt: vi.fn(() => builder),
       in: vi.fn(() => builder),
+      order: vi.fn(() => builder),
+      range: vi.fn(async (from: number, to: number) => {
+        state.ranges.push({ table, from, to });
+        if (table === "products") {
+          return { data: state.products.slice(from, to + 1), error: null };
+        }
+        if (table === "wanted_requests") {
+          return { data: state.wantedRequests.slice(from, to + 1), error: null };
+        }
+        return { data: [], error: null };
+      }),
       limit: vi.fn(async () => {
         if (table === "products") return { data: state.products, error: null };
         if (table === "wanted_requests") {
@@ -154,6 +166,7 @@ describe("runVectorMatchBatch", () => {
       supabase,
       embedTexts,
       sendEmail,
+      batchLimit: 1,
       now: () => new Date("2026-07-13T00:00:00.000Z"),
     });
 
@@ -162,6 +175,14 @@ describe("runVectorMatchBatch", () => {
     expect(result.wantedRequestsEmbedded).toBe(1);
     expect(result.matchesCreated).toBe(1);
     expect(result.emailsSent).toBe(1);
+    expect(state.ranges).toEqual(
+      expect.arrayContaining([
+        { table: "products", from: 0, to: 0 },
+        { table: "products", from: 1, to: 1 },
+        { table: "wanted_requests", from: 0, to: 0 },
+        { table: "wanted_requests", from: 1, to: 1 },
+      ])
+    );
     expect(embedTexts).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.stringContaining("Acer Monitor"),
@@ -219,5 +240,22 @@ describe("runVectorMatchBatch", () => {
     expect(result.matchesCreated).toBe(0);
     expect(result.emailsSent).toBe(0);
     expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  test("rejects embedding models that do not fit the 1536-dimension schema", async () => {
+    const { supabase } = createFakeSupabase();
+    const embedTexts = vi.fn(async (texts: string[]) =>
+      texts.map(() => [1, 0, 0])
+    );
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts,
+      model: "text-embedding-3-large",
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.errorMessage).toContain("1536");
+    expect(embedTexts).not.toHaveBeenCalled();
   });
 });

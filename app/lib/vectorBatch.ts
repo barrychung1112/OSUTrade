@@ -13,6 +13,10 @@ import {
 const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 const DEFAULT_BATCH_LIMIT = 100;
 const DEFAULT_MATCH_THRESHOLD = 0.78;
+const SUPPORTED_1536_DIMENSION_MODELS = new Set([
+  "text-embedding-3-small",
+  "text-embedding-ada-002",
+]);
 
 type SupabaseLike = {
   from: (table: string) => any;
@@ -90,6 +94,36 @@ async function getEmailByUserId(supabase: SupabaseLike, userId: string) {
   return result?.data.user?.email ?? null;
 }
 
+function assertSupportedEmbeddingModel(model: string) {
+  if (!SUPPORTED_1536_DIMENSION_MODELS.has(model)) {
+    throw new Error(
+      `${model} is not supported by the current vector(1536) schema. Use text-embedding-3-small or migrate the schema dimension first.`
+    );
+  }
+}
+
+async function selectAllPages<T>(
+  buildQuery: () => any,
+  pageSize: number
+): Promise<T[]> {
+  const rows: T[] = [];
+  let from = 0;
+
+  while (true) {
+    const to = from + pageSize - 1;
+    const { data, error } = await buildQuery().range(from, to);
+    if (error) throw error;
+
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows;
+}
+
 export async function embedTextsWithOpenAI(
   texts: string[],
   model = process.env.OPENAI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL
@@ -136,27 +170,30 @@ export async function runVectorMatchBatch({
   const runId = await insertBatchRun(supabase);
 
   try {
-    const [{ data: products, error: productsError }, { data: wantedRequests, error: requestsError }] =
-      await Promise.all([
-        supabase
+    assertSupportedEmbeddingModel(model);
+
+    const [productRows, wantedRows] = await Promise.all([
+      selectAllPages<ProductEmbeddingSource>(
+        () =>
+          supabase
           .from("products")
           .select("*")
           .eq("status", "available")
           .gt("quantity", 0)
-          .limit(batchLimit),
-        supabase
+          .order("created_at", { ascending: true }),
+        batchLimit
+      ),
+      selectAllPages<WantedRequestEmbeddingSource>(
+        () =>
+          supabase
           .from("wanted_requests")
           .select("*")
           .eq("status", "active")
           .eq("email_subscribed", true)
-          .limit(batchLimit),
-      ]);
-
-    if (productsError) throw productsError;
-    if (requestsError) throw requestsError;
-
-    const productRows = (products ?? []) as ProductEmbeddingSource[];
-    const wantedRows = (wantedRequests ?? []) as WantedRequestEmbeddingSource[];
+          .order("created_at", { ascending: true }),
+        batchLimit
+      ),
+    ]);
 
     const productIds = productRows.map((product) => String(product.product_id));
     const wantedIds = wantedRows.map((request) => request.wanted_request_id);
