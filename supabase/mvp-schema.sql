@@ -1,4 +1,5 @@
 create extension if not exists pgcrypto;
+create extension if not exists vector with schema extensions;
 
 create table if not exists public.users (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -240,6 +241,89 @@ create policy "Users can read their wanted request matches"
         and wanted_requests.user_id = auth.uid()
     )
   );
+
+create table if not exists public.product_embeddings (
+  product_id text primary key references public.products(product_id) on delete cascade,
+  embedding_model text not null,
+  embedding_input text not null,
+  embedding extensions.vector(1536) not null,
+  content_hash text not null,
+  embedded_at timestamptz not null default now()
+);
+
+alter table public.product_embeddings
+  add column if not exists embedding_model text,
+  add column if not exists embedding_input text,
+  add column if not exists embedding extensions.vector(1536),
+  add column if not exists content_hash text,
+  add column if not exists embedded_at timestamptz not null default now();
+
+create index if not exists product_embeddings_embedding_idx
+  on public.product_embeddings
+  using ivfflat (embedding extensions.vector_cosine_ops)
+  with (lists = 100);
+
+create index if not exists product_embeddings_content_hash_idx
+  on public.product_embeddings (content_hash);
+
+alter table public.product_embeddings enable row level security;
+
+create table if not exists public.wanted_request_embeddings (
+  wanted_request_id uuid primary key references public.wanted_requests(wanted_request_id) on delete cascade,
+  embedding_model text not null,
+  embedding_input text not null,
+  embedding extensions.vector(1536) not null,
+  content_hash text not null,
+  embedded_at timestamptz not null default now()
+);
+
+alter table public.wanted_request_embeddings
+  add column if not exists embedding_model text,
+  add column if not exists embedding_input text,
+  add column if not exists embedding extensions.vector(1536),
+  add column if not exists content_hash text,
+  add column if not exists embedded_at timestamptz not null default now();
+
+create index if not exists wanted_request_embeddings_embedding_idx
+  on public.wanted_request_embeddings
+  using ivfflat (embedding extensions.vector_cosine_ops)
+  with (lists = 100);
+
+create index if not exists wanted_request_embeddings_content_hash_idx
+  on public.wanted_request_embeddings (content_hash);
+
+alter table public.wanted_request_embeddings enable row level security;
+
+create table if not exists public.vector_batch_runs (
+  run_id uuid primary key default gen_random_uuid(),
+  status text not null default 'running' check (status in ('running', 'completed', 'failed')),
+  products_checked integer not null default 0,
+  products_embedded integer not null default 0,
+  wanted_requests_checked integer not null default 0,
+  wanted_requests_embedded integer not null default 0,
+  matches_created integer not null default 0,
+  emails_sent integer not null default 0,
+  error_message text,
+  started_at timestamptz not null default now(),
+  finished_at timestamptz
+);
+
+alter table public.vector_batch_runs
+  add column if not exists status text not null default 'running',
+  add column if not exists products_checked integer not null default 0,
+  add column if not exists products_embedded integer not null default 0,
+  add column if not exists wanted_requests_checked integer not null default 0,
+  add column if not exists wanted_requests_embedded integer not null default 0,
+  add column if not exists matches_created integer not null default 0,
+  add column if not exists emails_sent integer not null default 0,
+  add column if not exists error_message text,
+  add column if not exists started_at timestamptz not null default now(),
+  add column if not exists finished_at timestamptz;
+
+create index if not exists vector_batch_runs_started_idx
+  on public.vector_batch_runs (started_at desc);
+
+alter table public.vector_batch_runs enable row level security;
 
 create table if not exists public.notifications (
   notification_id uuid primary key default gen_random_uuid(),
