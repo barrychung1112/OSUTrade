@@ -64,10 +64,6 @@ function toNumber(value: unknown) {
   return Number.isFinite(number) ? number : null;
 }
 
-function normalizedCategory(value: unknown) {
-  return clean(value).toLowerCase();
-}
-
 export function buildProductEmbeddingInput(product: ProductEmbeddingSource) {
   return [
     optionalLine("Name", product.name),
@@ -136,12 +132,6 @@ function passesGuardrails(
   const quantity = toNumber(product.quantity);
   if (quantity !== null && quantity <= 0) return false;
   if (product.seller_id && product.seller_id === request.user_id) return false;
-
-  const requestCategory = normalizedCategory(request.category);
-  const productCategory = normalizedCategory(product.category);
-  if (requestCategory && productCategory && requestCategory !== productCategory) {
-    return false;
-  }
 
   const budget = toNumber(request.max_price);
   const price = toNumber(product.price);

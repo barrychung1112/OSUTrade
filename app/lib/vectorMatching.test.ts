@@ -72,7 +72,7 @@ describe("vector matching helpers", () => {
     expect(cosineSimilarity([1, 1], [1, 1])).toBeCloseTo(1);
   });
 
-  test("finds semantic matches with price, category, seller, and threshold guardrails", () => {
+  test("finds semantic matches without blocking different categories", () => {
     const matches = findSemanticWantedMatches({
       products: [
         {
@@ -112,7 +112,52 @@ describe("vector matching helpers", () => {
         productId: "product-1",
         score: expect.any(Number),
       },
+      {
+        wantedRequestId: "wanted-1",
+        userId: "buyer-1",
+        productId: "product-3",
+        score: expect.any(Number),
+      },
     ]);
     expect(matches[0].score).toBeGreaterThanOrEqual(0.78);
+  });
+
+  test("matches a desk wanted request to a table listing even when categories differ", () => {
+    const matches = findSemanticWantedMatches({
+      products: [
+        {
+          row: {
+            ...product,
+            product_id: "table-1",
+            name: "Wooden table",
+            category: "home",
+            price: 25,
+          },
+          embedding: [1, 0],
+        },
+      ],
+      wantedRequests: [
+        {
+          row: {
+            ...wanted,
+            wanted_request_id: "wanted-desk",
+            query: "desk",
+            category: "general",
+            max_price: 40,
+          },
+          embedding: [0.95, 0.05],
+        },
+      ],
+      threshold: 0.78,
+    });
+
+    expect(matches).toEqual([
+      {
+        wantedRequestId: "wanted-desk",
+        userId: "buyer-1",
+        productId: "table-1",
+        score: expect.any(Number),
+      },
+    ]);
   });
 });
