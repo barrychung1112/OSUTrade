@@ -148,6 +148,31 @@ describe("reviewWantedMatch", () => {
     expect(JSON.stringify(result)).not.toContain("secret upstream details");
   });
 
+  test("defers review when OpenAI returns 201", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify(
+          responseOutput({
+            relevant: true,
+            confidence: 0.99,
+            reason: "This output must not be accepted from a 201 response.",
+          })
+        ),
+        { status: 201 }
+      )
+    );
+
+    const result = await reviewWantedMatch(input, {
+      apiKey: "test-key",
+      fetchImpl,
+    });
+
+    expect(result).toEqual({
+      status: "deferred",
+      error: "AI match review request failed.",
+    });
+  });
+
   test("defers review when structured output is invalid", async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(
@@ -174,7 +199,7 @@ describe("reviewWantedMatch", () => {
     });
   });
 
-  test("defers review when fetch aborts or fails", async () => {
+  test("defers review when fetch fails", async () => {
     const fetchImpl = vi.fn(async () => {
       throw new Error("socket details must stay private");
     });
@@ -186,6 +211,35 @@ describe("reviewWantedMatch", () => {
         timeoutMs: 5,
       })
     ).resolves.toEqual({
+      status: "deferred",
+      error: "AI match review is temporarily unavailable.",
+    });
+  });
+
+  test("aborts a pending fetch after the configured timeout and defers review", async () => {
+    let aborted = false;
+    const fetchImpl = vi.fn<typeof fetch>(
+      async (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => {
+              aborted = true;
+              reject(new DOMException("The request was aborted.", "AbortError"));
+            },
+            { once: true }
+          );
+        })
+    );
+
+    const result = await reviewWantedMatch(input, {
+      apiKey: "test-key",
+      fetchImpl,
+      timeoutMs: 5,
+    });
+
+    expect(aborted).toBe(true);
+    expect(result).toEqual({
       status: "deferred",
       error: "AI match review is temporarily unavailable.",
     });

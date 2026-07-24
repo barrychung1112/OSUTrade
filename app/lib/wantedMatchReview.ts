@@ -176,7 +176,7 @@ export async function reviewWantedMatch(
       }
     );
 
-    if (!response.ok) {
+    if (response.status !== 200) {
       return {
         status: "deferred",
         error: "AI match review request failed.",
