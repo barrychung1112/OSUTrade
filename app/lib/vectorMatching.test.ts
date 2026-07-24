@@ -193,6 +193,36 @@ describe("vector matching helpers", () => {
     expect(result.decision).toBe("accept");
   });
 
+  test("covers a CJK request token contained inside a longer product name", () => {
+    const result = scoreWantedMatchCandidate({
+      product: {
+        row: { ...product, name: "電腦螢幕", description: "" },
+        embedding: [1, 0],
+      },
+      wantedRequest: {
+        row: { ...wanted, query: "螢幕", description: null },
+        embedding: [1, 0],
+      },
+    });
+
+    expect(result.lexicalScore).toBe(1);
+  });
+
+  test("does not fragment a decomposed combining-mark word into partial tokens", () => {
+    const result = scoreWantedMatchCandidate({
+      product: {
+        row: { ...product, name: "q", description: "" },
+        embedding: [1, 0],
+      },
+      wantedRequest: {
+        row: { ...wanted, query: "q\u0301z", description: null },
+        embedding: [1, 0],
+      },
+    });
+
+    expect(result.lexicalScore).toBe(0);
+  });
+
   test("uses category only as a soft boost", () => {
     const shared = {
       product: {

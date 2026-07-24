@@ -187,13 +187,42 @@ function passesGuardrails(
   return true;
 }
 
-function uniqueTokens(values: unknown[]) {
-  const tokens = values
-    .map(normalizedKey)
-    .join(" ")
-    .match(/[\p{L}\p{N}]+/gu);
+type WordSegment = {
+  segment: string;
+  isWordLike?: boolean;
+};
 
-  return new Set(tokens ?? []);
+type WordSegmenter = {
+  segment(input: string): Iterable<WordSegment>;
+};
+
+type WordSegmenterConstructor = new (
+  locale: string,
+  options: { granularity: "word" }
+) => WordSegmenter;
+
+function fallbackWordSegments(value: string) {
+  // Keep combining marks attached to their base word. CJK substring matching
+  // below covers runtimes whose fallback cannot infer CJK word boundaries.
+  return value.match(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*/gu) ?? [];
+}
+
+function wordSegments(value: unknown) {
+  const text = normalizedKey(value);
+  if (!text) return [];
+
+  const Segmenter = (
+    Intl as typeof Intl & { Segmenter?: WordSegmenterConstructor }
+  ).Segmenter;
+  if (!Segmenter) return fallbackWordSegments(text);
+
+  return [...new Segmenter("und", { granularity: "word" }).segment(text)]
+    .filter((part) => part.isWordLike)
+    .map((part) => part.segment);
+}
+
+function uniqueTokens(values: unknown[]) {
+  return new Set(values.flatMap(wordSegments));
 }
 
 function lexicalRequestTokenCoverage(
@@ -213,10 +242,28 @@ function lexicalRequestTokenCoverage(
     product.description_zh_tw,
     product.description_zh_cn,
   ]);
+  const productSearchText = [
+    product.name,
+    product.name_en,
+    product.name_zh_tw,
+    product.name_zh_cn,
+    product.description,
+    product.description_en,
+    product.description_zh_tw,
+    product.description_zh_cn,
+  ]
+    .map(normalizedKey)
+    .join(" ");
   let covered = 0;
 
   for (const token of requestTokens) {
-    if (productTokens.has(token)) covered += 1;
+    const isCjk = /\p{Script=Han}/u.test(token);
+    if (
+      productTokens.has(token) ||
+      (isCjk && productSearchText.includes(token))
+    ) {
+      covered += 1;
+    }
   }
 
   return covered / requestTokens.size;
