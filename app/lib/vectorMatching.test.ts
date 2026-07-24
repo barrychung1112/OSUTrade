@@ -5,7 +5,9 @@ import {
   contentHash,
   cosineSimilarity,
   findSemanticWantedMatches,
+  scoreWantedMatchCandidate,
   shouldEmbed,
+  WANTED_MATCH_CONFIG,
   type ProductEmbeddingSource,
   type WantedRequestEmbeddingSource,
 } from "./vectorMatching";
@@ -14,7 +16,7 @@ const product: ProductEmbeddingSource = {
   product_id: "product-1",
   name: "Acer Monitor",
   name_en: "Acer Computer Monitor",
-  name_zh_tw: "電腦螢幕",
+  name_zh_tw: "Acer Monitor",
   description: "22 inch screen for desk setup",
   description_en: "22 inch screen for desk setup",
   price: 30,
@@ -35,25 +37,37 @@ const wanted: WantedRequestEmbeddingSource = {
   status: "active",
 };
 
-describe("vector matching helpers", () => {
-  test("builds stable embedding input from product listing content", () => {
-    const input = buildProductEmbeddingInput(product);
+function embeddingWithSimilarity(similarity: number) {
+  return [similarity, Math.sqrt(1 - similarity ** 2)];
+}
 
-    expect(input).toContain("Name: Acer Monitor");
-    expect(input).toContain("English name: Acer Computer Monitor");
-    expect(input).toContain("Traditional Chinese name: 電腦螢幕");
-    expect(input).toContain("Description: 22 inch screen for desk setup");
-    expect(input).toContain("Category: electronics");
-    expect(input).toContain("Price: 30");
+describe("vector matching helpers", () => {
+  test("builds semantic-only product input from preferred translated content", () => {
+    const input = buildProductEmbeddingInput({
+      ...product,
+      name: "  Acer   Monitor  ",
+      name_en: "acer monitor",
+      description: "  22 inch screen for desk setup  ",
+      description_en: "22   inch screen for desk setup",
+    });
+
+    expect(input).toBe(
+      "Name: Acer Monitor\nDescription: 22 inch screen for desk setup"
+    );
+    expect(input).not.toContain("Category:");
+    expect(input).not.toContain("Price:");
   });
 
-  test("builds wanted request embedding input from buyer intent", () => {
-    const input = buildWantedRequestEmbeddingInput(wanted);
+  test("deduplicates a wanted description that repeats the normalized query", () => {
+    const input = buildWantedRequestEmbeddingInput({
+      ...wanted,
+      query: "  Computer   Monitor ",
+      description: "computer monitor",
+    });
 
-    expect(input).toContain("Wanted item: monitor");
-    expect(input).toContain("Description: need a screen for my desk");
-    expect(input).toContain("Category: electronics");
-    expect(input).toContain("Maximum price: 40");
+    expect(input).toBe("Wanted item: Computer Monitor");
+    expect(input).not.toContain("Category:");
+    expect(input).not.toContain("Maximum price:");
   });
 
   test("uses a deterministic content hash to decide whether embedding is stale", () => {
@@ -75,10 +89,7 @@ describe("vector matching helpers", () => {
   test("finds semantic matches without blocking different categories", () => {
     const matches = findSemanticWantedMatches({
       products: [
-        {
-          row: product,
-          embedding: [1, 0],
-        },
+        { row: product, embedding: [1, 0] },
         {
           row: { ...product, product_id: "product-2", price: 60 },
           embedding: [1, 0],
@@ -89,10 +100,7 @@ describe("vector matching helpers", () => {
         },
       ],
       wantedRequests: [
-        {
-          row: wanted,
-          embedding: [0.9, 0.1],
-        },
+        { row: wanted, embedding: [0.9, 0.1] },
         {
           row: { ...wanted, wanted_request_id: "wanted-2", user_id: "seller-1" },
           embedding: [1, 0],
@@ -105,19 +113,9 @@ describe("vector matching helpers", () => {
       threshold: 0.78,
     });
 
-    expect(matches).toEqual([
-      {
-        wantedRequestId: "wanted-1",
-        userId: "buyer-1",
-        productId: "product-1",
-        score: expect.any(Number),
-      },
-      {
-        wantedRequestId: "wanted-1",
-        userId: "buyer-1",
-        productId: "product-3",
-        score: expect.any(Number),
-      },
+    expect(matches.map((match) => match.productId)).toEqual([
+      "product-1",
+      "product-3",
     ]);
     expect(matches[0].score).toBeGreaterThanOrEqual(0.78);
   });
@@ -151,13 +149,194 @@ describe("vector matching helpers", () => {
       threshold: 0.78,
     });
 
-    expect(matches).toEqual([
-      {
-        wantedRequestId: "wanted-desk",
-        userId: "buyer-1",
-        productId: "table-1",
-        score: expect.any(Number),
+    expect(matches).toHaveLength(1);
+    expect(matches[0].productId).toBe("table-1");
+  });
+
+  test("centralizes the hybrid matching configuration", () => {
+    expect(WANTED_MATCH_CONFIG).toEqual({
+      semanticWeight: 0.75,
+      lexicalWeight: 0.2,
+      categoryWeight: 0.05,
+      minimumSemanticScore: 0.55,
+      aiReviewMinimumScore: 0.68,
+      automaticAcceptScore: 0.8,
+      maxMatchesPerRequest: 3,
+      budgetTolerance: 1.1,
+    });
+  });
+
+  test("scores request-token coverage across product name and description", () => {
+    const result = scoreWantedMatchCandidate({
+      product: {
+        row: {
+          ...product,
+          name: "Adjustable desk lamp",
+          description: "Bright light for reading",
+        },
+        embedding: [1, 0],
       },
+      wantedRequest: {
+        row: {
+          ...wanted,
+          query: "desk reading lamp",
+          description: null,
+        },
+        embedding: [1, 0],
+      },
+    });
+
+    expect(result.lexicalScore).toBe(1);
+    expect(result.semanticScore).toBe(1);
+    expect(result.categoryScore).toBe(1);
+    expect(result.finalScore).toBe(1);
+    expect(result.decision).toBe("accept");
+  });
+
+  test("uses category only as a soft boost", () => {
+    const shared = {
+      product: {
+        row: {
+          ...product,
+          name: "Wooden table",
+          description: "",
+          category: "home",
+        },
+        embedding: [1, 0],
+      },
+      wantedRequest: {
+        row: {
+          ...wanted,
+          query: "desk",
+          description: null,
+          category: "home",
+        },
+        embedding: embeddingWithSimilarity(0.8),
+      },
+    };
+
+    const sameCategory = scoreWantedMatchCandidate(shared);
+    const differentCategory = scoreWantedMatchCandidate({
+      ...shared,
+      wantedRequest: {
+        ...shared.wantedRequest,
+        row: { ...shared.wantedRequest.row, category: "general" },
+      },
+    });
+
+    expect(sameCategory.categoryScore).toBe(1);
+    expect(differentCategory.categoryScore).toBe(0);
+    expect(sameCategory.finalScore - differentCategory.finalScore).toBeCloseTo(
+      WANTED_MATCH_CONFIG.categoryWeight
+    );
+    expect(differentCategory.eligible).toBe(true);
+  });
+
+  test("allows exactly ten percent over budget and rejects more", () => {
+    const allowed = scoreWantedMatchCandidate({
+      product: {
+        row: { ...product, price: 110 },
+        embedding: [1, 0],
+      },
+      wantedRequest: {
+        row: { ...wanted, max_price: 100 },
+        embedding: [1, 0],
+      },
+    });
+    const tooExpensive = scoreWantedMatchCandidate({
+      product: {
+        row: { ...product, price: 110.01 },
+        embedding: [1, 0],
+      },
+      wantedRequest: {
+        row: { ...wanted, max_price: 100 },
+        embedding: [1, 0],
+      },
+    });
+
+    expect(allowed.eligible).toBe(true);
+    expect(tooExpensive.eligible).toBe(false);
+    expect(tooExpensive.decision).toBe("reject");
+  });
+
+  test("rejects self matches and inactive, unsubscribed, or unavailable pairs", () => {
+    const cases = [
+      {
+        product: { ...product, seller_id: wanted.user_id },
+        request: wanted,
+      },
+      {
+        product,
+        request: { ...wanted, status: "paused" },
+      },
+      {
+        product,
+        request: { ...wanted, email_subscribed: false },
+      },
+      {
+        product: { ...product, status: "sold" },
+        request: wanted,
+      },
+      {
+        product: { ...product, quantity: 0 },
+        request: wanted,
+      },
+    ];
+
+    for (const item of cases) {
+      const result = scoreWantedMatchCandidate({
+        product: { row: item.product, embedding: [1, 0] },
+        wantedRequest: { row: item.request, embedding: [1, 0] },
+      });
+      expect(result.eligible).toBe(false);
+      expect(result.decision).toBe("reject");
+    }
+  });
+
+  test("applies semantic minimum and accept, review, and reject bands", () => {
+    const scoreAt = (similarity: number, query: string) =>
+      scoreWantedMatchCandidate({
+        product: {
+          row: { ...product, name: "monitor", description: "" },
+          embedding: [1, 0],
+        },
+        wantedRequest: {
+          row: { ...wanted, query, description: null, category: "other" },
+          embedding: embeddingWithSimilarity(similarity),
+        },
+      });
+
+    expect(scoreAt(0.54, "monitor").decision).toBe("reject");
+    expect(scoreAt(0.65, "unrelated").decision).toBe("reject");
+    expect(scoreAt(0.7, "monitor").decision).toBe("review");
+    expect(scoreAt(0.85, "monitor").decision).toBe("accept");
+  });
+
+  test("keeps the top three accepted or review candidates per request", () => {
+    const matches = findSemanticWantedMatches({
+      products: [0.99, 0.95, 0.9, 0.85, 0.6].map((similarity, index) => ({
+        row: {
+          ...product,
+          product_id: `product-${index + 1}`,
+          name: "monitor",
+          category: "other",
+        },
+        embedding: embeddingWithSimilarity(similarity),
+      })),
+      wantedRequests: [
+        {
+          row: { ...wanted, query: "monitor", category: "general" },
+          embedding: [1, 0],
+        },
+      ],
+    });
+
+    expect(matches).toHaveLength(3);
+    expect(matches.map((match) => match.productId)).toEqual([
+      "product-1",
+      "product-2",
+      "product-3",
     ]);
+    expect(matches.every((match) => match.decision !== "reject")).toBe(true);
   });
 });
