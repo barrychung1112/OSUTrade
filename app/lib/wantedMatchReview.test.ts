@@ -24,8 +24,9 @@ const input: WantedMatchReviewInput = {
   },
 };
 
-function responseOutput(value: unknown) {
+function responseOutput(value: unknown, status = "completed") {
   return {
+    status,
     output: [
       {
         type: "message",
@@ -148,6 +149,45 @@ describe("reviewWantedMatch", () => {
     expect(JSON.stringify(result)).not.toContain("secret upstream details");
   });
 
+  test("cancels a non-200 response body before deferring", async () => {
+    const cancel = vi.fn(async () => undefined);
+    const response = {
+      status: 429,
+      body: { cancel },
+    } as unknown as Response;
+    const fetchImpl = vi.fn<typeof fetch>(async () => response);
+
+    const result = await reviewWantedMatch(input, {
+      apiKey: "test-key",
+      fetchImpl,
+    });
+
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(result.status).toBe("deferred");
+  });
+
+  test("still defers when cancelling a non-200 response body fails", async () => {
+    const cancel = vi.fn(async () => {
+      throw new Error("stream cancellation failed");
+    });
+    const response = {
+      status: 503,
+      body: { cancel },
+    } as unknown as Response;
+    const fetchImpl = vi.fn<typeof fetch>(async () => response);
+
+    await expect(
+      reviewWantedMatch(input, {
+        apiKey: "test-key",
+        fetchImpl,
+      })
+    ).resolves.toEqual({
+      status: "deferred",
+      error: "AI match review request failed.",
+    });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   test("defers review when OpenAI returns 201", async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(
@@ -173,10 +213,42 @@ describe("reviewWantedMatch", () => {
     });
   });
 
+  test.each(["incomplete", "failed", "cancelled"])(
+    "defers valid-looking output when response status is %s",
+    async (status) => {
+      const fetchImpl = vi.fn(async () =>
+        new Response(
+          JSON.stringify(
+            responseOutput(
+              {
+                relevant: true,
+                confidence: 0.99,
+                reason: "This must not be accepted before completion.",
+              },
+              status
+            )
+          ),
+          { status: 200 }
+        )
+      );
+
+      const result = await reviewWantedMatch(input, {
+        apiKey: "test-key",
+        fetchImpl,
+      });
+
+      expect(result).toEqual({
+        status: "deferred",
+        error: "AI match review returned invalid output.",
+      });
+    }
+  );
+
   test("defers review when structured output is invalid", async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(
         JSON.stringify({
+          status: "completed",
           output: [
             {
               type: "message",

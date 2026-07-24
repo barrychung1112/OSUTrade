@@ -177,6 +177,11 @@ export async function reviewWantedMatch(
     );
 
     if (response.status !== 200) {
+      try {
+        await response.body?.cancel();
+      } catch {
+        // Cancellation is best-effort and must not hide the upstream failure.
+      }
       return {
         status: "deferred",
         error: "AI match review request failed.",
@@ -187,6 +192,17 @@ export async function reviewWantedMatch(
     try {
       payload = await response.json();
     } catch {
+      return {
+        status: "deferred",
+        error: "AI match review returned invalid output.",
+      };
+    }
+
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      (payload as { status?: unknown }).status !== "completed"
+    ) {
       return {
         status: "deferred",
         error: "AI match review returned invalid output.",
