@@ -312,7 +312,7 @@ describe("vector matching helpers", () => {
     expect(scoreAt(0.85, "monitor").decision).toBe("accept");
   });
 
-  test("keeps the top three accepted or review candidates per request", () => {
+  test("ranks every non-rejected candidate for review orchestration", () => {
     const matches = findSemanticWantedMatches({
       products: [0.99, 0.95, 0.9, 0.85, 0.6].map((similarity, index) => ({
         row: {
@@ -331,11 +331,12 @@ describe("vector matching helpers", () => {
       ],
     });
 
-    expect(matches).toHaveLength(3);
+    expect(matches).toHaveLength(4);
     expect(matches.map((match) => match.productId)).toEqual([
       "product-1",
       "product-2",
       "product-3",
+      "product-4",
     ]);
     expect(matches.every((match) => match.decision !== "reject")).toBe(true);
   });

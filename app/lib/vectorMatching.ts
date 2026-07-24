@@ -316,9 +316,7 @@ export function findSemanticWantedMatches({
 
   return [...matchesByRequest.values()]
     .flatMap((matches) =>
-      matches
-        .sort((left, right) => right.finalScore - left.finalScore)
-        .slice(0, WANTED_MATCH_CONFIG.maxMatchesPerRequest)
+      matches.sort((left, right) => right.finalScore - left.finalScore)
     )
     .sort((left, right) => right.finalScore - left.finalScore);
 }
