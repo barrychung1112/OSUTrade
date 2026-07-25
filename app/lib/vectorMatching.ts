@@ -87,7 +87,7 @@ function toNumber(value: unknown) {
 }
 
 function normalizedKey(value: unknown) {
-  return clean(value).normalize("NFKC").toLocaleLowerCase();
+  return clean(value).normalize("NFKC").toLowerCase();
 }
 
 function firstNonEmpty(values: unknown[]) {
@@ -201,6 +201,13 @@ type WordSegmenterConstructor = new (
   options: { granularity: "word" }
 ) => WordSegmenter;
 
+const WordSegmenter = (
+  Intl as typeof Intl & { Segmenter?: WordSegmenterConstructor }
+).Segmenter;
+const sharedWordSegmenter = WordSegmenter
+  ? new WordSegmenter("und", { granularity: "word" })
+  : null;
+
 function fallbackWordSegments(value: string) {
   // Keep combining marks attached to their base word. CJK substring matching
   // below covers runtimes whose fallback cannot infer CJK word boundaries.
@@ -211,12 +218,9 @@ function wordSegments(value: unknown) {
   const text = normalizedKey(value);
   if (!text) return [];
 
-  const Segmenter = (
-    Intl as typeof Intl & { Segmenter?: WordSegmenterConstructor }
-  ).Segmenter;
-  if (!Segmenter) return fallbackWordSegments(text);
+  if (!sharedWordSegmenter) return fallbackWordSegments(text);
 
-  return [...new Segmenter("und", { granularity: "word" }).segment(text)]
+  return [...sharedWordSegmenter.segment(text)]
     .filter((part) => part.isWordLike)
     .map((part) => part.segment);
 }

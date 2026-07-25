@@ -177,6 +177,12 @@ embedding and evaluates it through the same shared matcher. If embedding or AI
 review fails, product publication still succeeds and matching is deferred to
 the nightly batch.
 
+Product publication schedules immediate matching with Next.js `after()` so the
+HTTP response is not blocked by embedding or review latency. Immediate AI
+review is limited to the six highest-scoring borderline candidates; lower
+candidates remain unpersisted and can be reconsidered by the authoritative
+nightly batch.
+
 Both paths use the same guardrails, score weights, decision bands, Top 3 limit,
 and persistence function.
 

@@ -181,7 +181,9 @@ npm.cmd test -- --run app/lib/wantedRequests.test.ts app/api/products/route.test
 
 Reuse the embedding API and shared decision functions. Keep
 `safeNotifyMatchingWantedRequests()` non-blocking from the product-creation
-perspective. Do not restore category hard filtering.
+perspective by scheduling it with Next.js `after()`. Bound immediate AI review
+to the six highest-scoring borderline candidates and defer the remainder to the
+nightly batch. Do not restore category hard filtering.
 
 - [ ] **Step 4: Add additive schema columns**
 

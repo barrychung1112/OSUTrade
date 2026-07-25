@@ -392,6 +392,31 @@ describe("immediate hybrid wanted matching", () => {
     expect(database.matchInserts).toEqual([]);
   });
 
+  test("rejects an unsupported embedding model before calling OpenAI", async () => {
+    const database = immediateSupabase();
+    const embedTexts = vi.fn();
+
+    await expect(
+      notifyMatchingWantedRequests({
+        supabase: database.supabase,
+        product: {
+          ...product,
+          seller_id: "seller-1",
+          status: "available",
+          quantity: 1,
+        },
+        embedTexts,
+        reviewMatch: vi.fn(),
+        sendEmail: vi.fn(),
+        model: "text-embedding-3-large",
+      })
+    ).resolves.toEqual({ matches: [] });
+
+    expect(embedTexts).not.toHaveBeenCalled();
+    expect(database.productEmbeddingUpserts).toEqual([]);
+    expect(database.requestEmbeddingUpserts).toEqual([]);
+  });
+
   test("reuses a valid request embedding and only embeds the new product", async () => {
     const requestInput = "Wanted item: computer monitor\nDescription: display";
     const database = immediateSupabase({
@@ -527,5 +552,43 @@ describe("immediate hybrid wanted matching", () => {
     });
     releaseReviews?.();
     await pending;
+  });
+
+  test("caps immediate AI reviews and defers lower-ranked candidates", async () => {
+    const requests = Array.from({ length: 8 }, (_, index) =>
+      wantedRequest({
+        wanted_request_id: `wanted-${index + 1}`,
+        user_id: `buyer-${index + 1}`,
+      })
+    );
+    const database = immediateSupabase({ requests });
+    const borderlineEmbedding = [
+      0.65,
+      Math.sqrt(1 - 0.65 ** 2),
+    ];
+    const reviewMatch = vi.fn().mockResolvedValue({
+      status: "rejected",
+      relevant: false,
+      confidence: 0.95,
+      reason: "Not relevant.",
+    });
+
+    await notifyMatchingWantedRequests({
+      supabase: database.supabase,
+      product: {
+        ...product,
+        seller_id: "seller-1",
+        status: "available",
+        quantity: 1,
+      },
+      embedTexts: vi.fn().mockResolvedValue([
+        [1, 0],
+        ...requests.map(() => borderlineEmbedding),
+      ]),
+      reviewMatch,
+      sendEmail: vi.fn(),
+    });
+
+    expect(reviewMatch).toHaveBeenCalledTimes(6);
   });
 });

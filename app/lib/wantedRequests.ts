@@ -10,6 +10,7 @@ import {
   type WantedRequestEmbeddingSource,
 } from "./vectorMatching";
 import {
+  assertSupportedEmbeddingModel,
   DEFAULT_EMBEDDING_MODEL,
   embedTextsWithOpenAI,
   parseEmbedding,
@@ -277,6 +278,7 @@ type AcceptedImmediateMatch = SemanticWantedMatch & {
 };
 
 const MAX_IMMEDIATE_REVIEW_CONCURRENCY = 3;
+const MAX_IMMEDIATE_AI_REVIEWS = 6;
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -329,6 +331,8 @@ export async function notifyMatchingWantedRequests({
   }> = [];
 
   try {
+    assertSupportedEmbeddingModel(model);
+
     const { data: wantedRequests, error: requestError } = await supabase
       .from("wanted_requests")
       .select("*")
@@ -466,9 +470,10 @@ export async function notifyMatchingWantedRequests({
           reviewConfidence: null,
           reviewError: null,
       }));
-    const reviewCandidates = candidates.filter(
-      (candidate) => candidate.decision === "review"
-    );
+    const reviewCandidates = candidates
+      .filter((candidate) => candidate.decision === "review")
+      .sort((left, right) => right.finalScore - left.finalScore)
+      .slice(0, MAX_IMMEDIATE_AI_REVIEWS);
     const reviewedMatches = await mapWithConcurrency(
       reviewCandidates,
       MAX_IMMEDIATE_REVIEW_CONCURRENCY,

@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { createHash } from "node:crypto";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -31,6 +31,8 @@ type ProductRow = {
   quantity: number | null;
   created_at?: string | null;
 };
+
+export const maxDuration = 60;
 
 function productIdForIdempotencyKey(userId: string, key: string) {
   const hex = createHash("sha256")
@@ -424,7 +426,9 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     if (data) {
-      await safeNotifyMatchingWantedRequests({ supabase, product: data });
+      after(() =>
+        safeNotifyMatchingWantedRequests({ supabase, product: data })
+      );
     }
 
     return NextResponse.json(toProduct(data), { status: 201 });
