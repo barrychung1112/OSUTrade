@@ -171,11 +171,11 @@ The nightly batch remains the authoritative path because it can generate and
 refresh embeddings. It evaluates all active subscribed requests against all
 available products.
 
-The immediate product-publish flow uses existing embeddings when available. If
-the new product has not yet been embedded, it generates only that product
-embedding and evaluates it through the same shared matcher. If embedding or AI
-review fails, product publication still succeeds and matching is deferred to
-the nightly batch.
+The immediate product-publish flow uses existing embeddings when available. It
+generates the new product embedding when needed and refreshes at most 24
+missing or stale active request embeddings. Requests beyond that bound are
+deferred to the nightly batch. If embedding or AI review fails, product
+publication still succeeds and matching is deferred to the nightly batch.
 
 Product publication schedules immediate matching with Next.js `after()` so the
 HTTP response is not blocked by embedding or review latency. Immediate AI

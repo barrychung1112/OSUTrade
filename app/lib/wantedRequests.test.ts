@@ -455,6 +455,46 @@ describe("immediate hybrid wanted matching", () => {
     );
   });
 
+  test("bounds stale request embedding refreshes in the immediate flow", async () => {
+    const requests = Array.from({ length: 30 }, (_, index) =>
+      wantedRequest({
+        wanted_request_id: `wanted-${index + 1}`,
+        user_id: `buyer-${index + 1}`,
+      })
+    );
+    const database = immediateSupabase({ requests });
+    const embedTexts = vi.fn().mockImplementation(async (inputs: string[]) =>
+      inputs.map(() => [1, 0])
+    );
+
+    await notifyMatchingWantedRequests({
+      supabase: database.supabase,
+      product: {
+        ...product,
+        seller_id: "seller-1",
+        status: "available",
+        quantity: 1,
+      },
+      embedTexts,
+      reviewMatch: vi.fn(),
+      sendEmail: vi.fn(),
+    });
+
+    expect(embedTexts).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.stringContaining("Name: Acer Computer Monitor"),
+      ]),
+      "text-embedding-3-small"
+    );
+    expect(embedTexts.mock.calls[0][0]).toHaveLength(25);
+    expect(database.requestEmbeddingUpserts).toEqual([
+      expect.arrayContaining([
+        expect.objectContaining({ wanted_request_id: "wanted-1" }),
+      ]),
+    ]);
+    expect(database.requestEmbeddingUpserts[0]).toHaveLength(24);
+  });
+
   test("does not email when matching email rollout is disabled", async () => {
     vi.stubEnv("WANTED_MATCH_EMAIL_ENABLED", "false");
     const database = immediateSupabase();

@@ -279,6 +279,7 @@ type AcceptedImmediateMatch = SemanticWantedMatch & {
 
 const MAX_IMMEDIATE_REVIEW_CONCURRENCY = 3;
 const MAX_IMMEDIATE_AI_REVIEWS = 6;
+const MAX_IMMEDIATE_REQUEST_EMBEDDINGS = 24;
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -389,9 +390,11 @@ export async function notifyMatchingWantedRequests({
       existingProductEmbedding as EmbeddingRow | null,
       productHash
     );
-    const pendingRequests = requestInputs.filter(({ request, hash }) =>
-      shouldEmbed(requestEmbeddingById.get(request.wanted_request_id), hash)
-    );
+    const pendingRequests = requestInputs
+      .filter(({ request, hash }) =>
+        shouldEmbed(requestEmbeddingById.get(request.wanted_request_id), hash)
+      )
+      .slice(0, MAX_IMMEDIATE_REQUEST_EMBEDDINGS);
     const pendingInputs = [
       ...(productNeedsEmbedding ? [productInput] : []),
       ...pendingRequests.map(({ input }) => input),
