@@ -20,6 +20,7 @@ import {
 const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 const DEFAULT_BATCH_LIMIT = 100;
 const DEFAULT_MATCH_THRESHOLD = WANTED_MATCH_CONFIG.minimumSemanticScore;
+const MAX_AI_REVIEW_CONCURRENCY = 3;
 const SUPPORTED_1536_DIMENSION_MODELS = new Set([
   "text-embedding-3-small",
   "text-embedding-ada-002",
@@ -172,6 +173,29 @@ function rankAcceptedMatches(matches: AcceptedMatch[]) {
   );
 }
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>
+) {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex]);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, () => worker())
+  );
+  return results;
+}
+
 async function selectAllPages<T>(
   buildQuery: () => any,
   pageSize: number
@@ -268,6 +292,18 @@ export async function runVectorMatchBatch({
 
     const productIds = productRows.map((product) => String(product.product_id));
     const wantedIds = wantedRows.map((request) => request.wanted_request_id);
+    const productRowsById = new Map(
+      productRows.map((product) => [
+        String(product.product_id),
+        product,
+      ])
+    );
+    const wantedRowsById = new Map(
+      wantedRows.map((request) => [
+        request.wanted_request_id,
+        request,
+      ])
+    );
 
     const [{ data: productEmbeddings, error: productEmbeddingError }, { data: wantedEmbeddings, error: wantedEmbeddingError }] =
       await Promise.all([
@@ -392,62 +428,85 @@ export async function runVectorMatchBatch({
       wantedRequests: embeddedWantedRequests,
       threshold,
     });
-    const acceptedMatches: AcceptedMatch[] = [];
-
-    for (const match of matches) {
-      if (match.decision === "accept") {
-        acceptedMatches.push({
-          ...match,
-          decisionSource: "hybrid",
-          decisionReason: "Automatically accepted by hybrid score.",
-          reviewConfidence: null,
-          reviewError: null,
-        });
-        continue;
-      }
-
-      const wantedRequest = wantedRows.find(
-        (request) => request.wanted_request_id === match.wantedRequestId
-      );
-      const product = productRows.find(
-        (row) => String(row.product_id) === match.productId
-      );
-      if (!wantedRequest || !product) continue;
-
-      let review: WantedMatchReviewResult;
-      try {
-        review = await reviewMatch({
-          wanted: {
-            query: wantedRequest.query,
-            description: wantedRequest.description,
-            maxPrice: nullableNumber(wantedRequest.max_price),
-          },
-          product: {
-            name: product.name || "Unnamed listing",
-            description: product.description,
-            price: nullableNumber(product.price),
-          },
-          scores: {
-            semantic: match.semanticScore,
-            lexical: match.lexicalScore,
-            category: match.categoryScore,
-            final: match.finalScore,
-          },
-        });
-      } catch {
-        continue;
-      }
-
-      if (review.status !== "accepted") continue;
-
-      acceptedMatches.push({
+    const automaticMatches = matches
+      .filter((match) => match.decision === "accept")
+      .map<AcceptedMatch>((match) => ({
         ...match,
-        decisionSource: "ai_review",
-        decisionReason: review.reason,
-        reviewConfidence: review.confidence,
+        decisionSource: "hybrid",
+        decisionReason: "Automatically accepted by hybrid score.",
+        reviewConfidence: null,
         reviewError: null,
-      });
+      }));
+    const automaticMatchesByRequest = new Map<string, AcceptedMatch[]>();
+    for (const match of automaticMatches) {
+      const requestMatches =
+        automaticMatchesByRequest.get(match.wantedRequestId) ?? [];
+      requestMatches.push(match);
+      automaticMatchesByRequest.set(match.wantedRequestId, requestMatches);
     }
+
+    const reviewCandidates = matches.filter((match) => {
+      if (match.decision !== "review") return false;
+      const higherAutomaticMatches = (
+        automaticMatchesByRequest.get(match.wantedRequestId) ?? []
+      ).filter(
+        (automaticMatch) =>
+          automaticMatch.finalScore > match.finalScore
+      );
+      return (
+        higherAutomaticMatches.length <
+        WANTED_MATCH_CONFIG.maxMatchesPerRequest
+      );
+    });
+    const reviewOutcomes = await mapWithConcurrency(
+      reviewCandidates,
+      MAX_AI_REVIEW_CONCURRENCY,
+      async (match): Promise<AcceptedMatch | null> => {
+        const wantedRequest = wantedRowsById.get(match.wantedRequestId);
+        const product = productRowsById.get(match.productId);
+        if (!wantedRequest || !product) return null;
+
+        let review: WantedMatchReviewResult;
+        try {
+          review = await reviewMatch({
+            wanted: {
+              query: wantedRequest.query,
+              description: wantedRequest.description,
+              maxPrice: nullableNumber(wantedRequest.max_price),
+            },
+            product: {
+              name: product.name || "Unnamed listing",
+              description: product.description,
+              price: nullableNumber(product.price),
+            },
+            scores: {
+              semantic: match.semanticScore,
+              lexical: match.lexicalScore,
+              category: match.categoryScore,
+              final: match.finalScore,
+            },
+          });
+        } catch {
+          return null;
+        }
+
+        if (review.status !== "accepted") return null;
+
+        return {
+          ...match,
+          decisionSource: "ai_review",
+          decisionReason: review.reason,
+          reviewConfidence: review.confidence,
+          reviewError: null,
+        };
+      }
+    );
+    const acceptedMatches = [
+      ...automaticMatches,
+      ...reviewOutcomes.filter(
+        (match): match is AcceptedMatch => match !== null
+      ),
+    ];
 
     const finalMatches = rankAcceptedMatches(acceptedMatches);
 
@@ -492,12 +551,8 @@ export async function runVectorMatchBatch({
         requestMatchesCreated + 1
       );
 
-      const wantedRequest = wantedRows.find(
-        (request) => request.wanted_request_id === match.wantedRequestId
-      );
-      const product = productRows.find(
-        (row) => String(row.product_id) === match.productId
-      );
+      const wantedRequest = wantedRowsById.get(match.wantedRequestId);
+      const product = productRowsById.get(match.productId);
       let emailed = false;
       let emailError: string | null = null;
 

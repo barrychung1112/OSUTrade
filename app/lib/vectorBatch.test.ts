@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { runVectorMatchBatch } from "./vectorBatch";
 
+function vectorForCosine(score: number) {
+  return [score, Math.sqrt(1 - score * score)];
+}
+
 function createFakeSupabase({
   duplicateMatch = false,
   duplicateProductIds = [],
@@ -423,20 +427,171 @@ describe("runVectorMatchBatch", () => {
     );
   });
 
-  test("ranks final accepted outcomes and keeps only the top three per request", async () => {
-    const products = Array.from({ length: 4 }, (_, index) => ({
-      product_id: `product-${index + 1}`,
-      name: `Computer screen ${index + 1}`,
+  test("limits AI review concurrency to three while completing all candidates", async () => {
+    const products = Array.from({ length: 5 }, (_, index) => ({
+      product_id: `review-product-${index + 1}`,
+      name: `Candidate item ${index + 1}`,
+      description: "unrelated listing",
+      price: 30,
+      category: "home",
+      status: "available",
+      quantity: 1,
+      seller_id: `seller-${index + 1}`,
+    }));
+    const { supabase } = createFakeSupabase({ products });
+    let activeReviews = 0;
+    let peakReviews = 0;
+    let completedReviews = 0;
+    const reviewMatch = vi.fn(async () => {
+      activeReviews += 1;
+      peakReviews = Math.max(peakReviews, activeReviews);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      activeReviews -= 1;
+      completedReviews += 1;
+      return {
+        status: "accepted" as const,
+        relevant: true,
+        confidence: 0.9,
+        reason: "Relevant candidate.",
+      };
+    });
+
+    await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) =>
+          text.includes("Wanted item")
+            ? [1, 0]
+            : vectorForCosine(0.92)
+        )
+      ),
+      reviewMatch,
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(reviewMatch).toHaveBeenCalledTimes(5);
+    expect(completedReviews).toBe(5);
+    expect(peakReviews).toBe(3);
+  });
+
+  test("skips borderline review when three higher automatic accepts already fill the request", async () => {
+    const products = [
+      ...Array.from({ length: 3 }, (_, index) => ({
+        product_id: `automatic-${index + 1}`,
+        name: `Computer screen ${index + 1}`,
+        description: "desk monitor",
+        price: 30,
+        category: "electronics",
+        status: "available",
+        quantity: 1,
+        seller_id: `seller-${index + 1}`,
+      })),
+      {
+        product_id: "borderline-1",
+        name: "Candidate item",
+        description: "unrelated listing",
+        price: 30,
+        category: "home",
+        status: "available",
+        quantity: 1,
+        seller_id: "seller-4",
+      },
+    ];
+    const { supabase, state } = createFakeSupabase({ products });
+    const reviewMatch = vi.fn(async () => ({
+      status: "accepted" as const,
+      relevant: true,
+      confidence: 0.9,
+      reason: "Relevant candidate.",
+    }));
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) => {
+          if (text.includes("Wanted item")) return [1, 0];
+          if (text.includes("Candidate item")) return vectorForCosine(0.92);
+          return [1, 0];
+        })
+      ),
+      reviewMatch,
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(reviewMatch).not.toHaveBeenCalled();
+    expect(result.matchesCreated).toBe(3);
+    expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
+      "automatic-1",
+      "automatic-2",
+      "automatic-3",
+    ]);
+  });
+
+  test("keeps lower fallback candidates when higher candidates also require review", async () => {
+    const products = [0.95, 0.94, 0.93, 0.92].map((score, index) => ({
+      product_id: `review-${index + 1}`,
+      name: `Review candidate ${index + 1}`,
+      description: "unrelated listing",
+      price: 30,
+      category: "home",
+      status: "available",
+      quantity: 1,
+      seller_id: `seller-${index + 1}`,
+      testScore: score,
+    }));
+    const { supabase, state } = createFakeSupabase({ products });
+    const reviewMatch = vi.fn(async (input) => {
+      const accepted = input.product.name === "Review candidate 4";
+      return {
+        status: accepted ? ("accepted" as const) : ("rejected" as const),
+        relevant: accepted,
+        confidence: 0.9,
+        reason: accepted ? "Fallback is relevant." : "Not relevant.",
+      };
+    });
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) => {
+          if (text.includes("Wanted item")) return [1, 0];
+          const product = products.find((item) => text.includes(item.name));
+          return vectorForCosine(product?.testScore ?? 0);
+        })
+      ),
+      reviewMatch,
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(reviewMatch).toHaveBeenCalledTimes(4);
+    expect(result.matchesCreated).toBe(1);
+    expect(state.insertedMatches[0].product_id).toBe("review-4");
+  });
+
+  test("ranks shuffled candidates by distinct final scores and keeps the true top three", async () => {
+    const products = [
+      { id: "lowest", score: 0.82 },
+      { id: "highest", score: 0.99 },
+      { id: "third", score: 0.86 },
+      { id: "second", score: 0.93 },
+    ].map(({ id, score }, index) => ({
+      product_id: id,
+      name: `Computer screen ${id}`,
       description: "desk monitor",
       price: 30,
       category: "electronics",
       status: "available",
       quantity: 1,
       seller_id: `seller-${index + 1}`,
+      testScore: score,
     }));
     const { supabase, state } = createFakeSupabase({ products });
     const embedTexts = vi.fn(async (texts: string[]) =>
-      texts.map(() => [1, 0, 0])
+      texts.map((text) => {
+        if (text.includes("Wanted item")) return [1, 0];
+        const product = products.find((item) => text.includes(item.name));
+        return vectorForCosine(product?.testScore ?? 0);
+      })
     );
 
     const result = await runVectorMatchBatch({
@@ -449,9 +604,9 @@ describe("runVectorMatchBatch", () => {
     expect(result.matchesCreated).toBe(3);
     expect(state.insertedMatches).toHaveLength(3);
     expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
-      "product-1",
-      "product-2",
-      "product-3",
+      "highest",
+      "second",
+      "third",
     ]);
   });
 
