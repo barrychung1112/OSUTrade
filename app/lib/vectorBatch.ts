@@ -6,13 +6,20 @@ import {
   contentHash,
   findSemanticWantedMatches,
   shouldEmbed,
+  WANTED_MATCH_CONFIG,
   type ProductEmbeddingSource,
+  type SemanticWantedMatch,
   type WantedRequestEmbeddingSource,
 } from "./vectorMatching";
+import {
+  reviewWantedMatch,
+  type WantedMatchReviewInput,
+  type WantedMatchReviewResult,
+} from "./wantedMatchReview";
 
 const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 const DEFAULT_BATCH_LIMIT = 100;
-const DEFAULT_MATCH_THRESHOLD = 0.78;
+const DEFAULT_MATCH_THRESHOLD = WANTED_MATCH_CONFIG.minimumSemanticScore;
 const SUPPORTED_1536_DIMENSION_MODELS = new Set([
   "text-embedding-3-small",
   "text-embedding-ada-002",
@@ -52,10 +59,20 @@ type RunVectorMatchBatchOptions = {
   supabase: SupabaseLike;
   embedTexts?: (texts: string[], model: string) => Promise<number[][]>;
   sendEmail?: SendEmail;
+  reviewMatch?: (
+    input: WantedMatchReviewInput
+  ) => Promise<WantedMatchReviewResult>;
   model?: string;
   batchLimit?: number;
   threshold?: number;
   now?: () => Date;
+};
+
+type AcceptedMatch = SemanticWantedMatch & {
+  decisionSource: "hybrid" | "ai_review";
+  decisionReason: string;
+  reviewConfidence: number | null;
+  reviewError: string | null;
 };
 
 function parseEmbedding(value: number[] | string | null | undefined) {
@@ -100,6 +117,61 @@ function assertSupportedEmbeddingModel(model: string) {
       `${model} is not supported by the current vector(1536) schema. Use text-embedding-3-small or migrate the schema dimension first.`
     );
   }
+}
+
+function nullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string" && error.trim()) return error.trim();
+
+  if (error && typeof error === "object") {
+    const details = error as {
+      message?: unknown;
+      code?: unknown;
+      details?: unknown;
+      hint?: unknown;
+    };
+    const parts = [
+      details.message,
+      details.code ? `code: ${String(details.code)}` : null,
+      details.details,
+      details.hint,
+    ]
+      .filter((value) => typeof value === "string" && value.trim())
+      .map((value) => String(value).trim());
+
+    if (parts.length > 0) return parts.join(" | ");
+
+    try {
+      const serialized = JSON.stringify(error);
+      if (serialized && serialized !== "{}") return serialized;
+    } catch {
+      // Fall through to the stable batch error below.
+    }
+  }
+
+  return "Vector batch failed.";
+}
+
+function rankAcceptedMatches(matches: AcceptedMatch[]) {
+  const byRequest = new Map<string, AcceptedMatch[]>();
+
+  for (const match of matches) {
+    const requestMatches = byRequest.get(match.wantedRequestId) ?? [];
+    requestMatches.push(match);
+    byRequest.set(match.wantedRequestId, requestMatches);
+  }
+
+  return [...byRequest.values()].flatMap((requestMatches) =>
+    requestMatches
+      .sort((left, right) => right.finalScore - left.finalScore)
+      .slice(0, WANTED_MATCH_CONFIG.maxMatchesPerRequest)
+  );
 }
 
 async function selectAllPages<T>(
@@ -162,6 +234,7 @@ export async function runVectorMatchBatch({
   supabase,
   embedTexts = embedTextsWithOpenAI,
   sendEmail = defaultSendEmail,
+  reviewMatch = reviewWantedMatch,
   model = process.env.OPENAI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL,
   batchLimit = DEFAULT_BATCH_LIMIT,
   threshold = DEFAULT_MATCH_THRESHOLD,
@@ -321,17 +394,82 @@ export async function runVectorMatchBatch({
       wantedRequests: embeddedWantedRequests,
       threshold,
     });
+    const acceptedMatches: AcceptedMatch[] = [];
+
+    for (const match of matches) {
+      if (match.decision === "accept") {
+        acceptedMatches.push({
+          ...match,
+          decisionSource: "hybrid",
+          decisionReason: "Automatically accepted by hybrid score.",
+          reviewConfidence: null,
+          reviewError: null,
+        });
+        continue;
+      }
+
+      const wantedRequest = wantedRows.find(
+        (request) => request.wanted_request_id === match.wantedRequestId
+      );
+      const product = productRows.find(
+        (row) => String(row.product_id) === match.productId
+      );
+      if (!wantedRequest || !product) continue;
+
+      let review: WantedMatchReviewResult;
+      try {
+        review = await reviewMatch({
+          wanted: {
+            query: wantedRequest.query,
+            description: wantedRequest.description,
+            maxPrice: nullableNumber(wantedRequest.max_price),
+          },
+          product: {
+            name: product.name || "Unnamed listing",
+            description: product.description,
+            price: nullableNumber(product.price),
+          },
+          scores: {
+            semantic: match.semanticScore,
+            lexical: match.lexicalScore,
+            category: match.categoryScore,
+            final: match.finalScore,
+          },
+        });
+      } catch {
+        continue;
+      }
+
+      if (review.status !== "accepted") continue;
+
+      acceptedMatches.push({
+        ...match,
+        decisionSource: "ai_review",
+        decisionReason: review.reason,
+        reviewConfidence: review.confidence,
+        reviewError: null,
+      });
+    }
+
+    const finalMatches = rankAcceptedMatches(acceptedMatches);
 
     let matchesCreated = 0;
     let emailsSent = 0;
 
-    for (const match of matches) {
+    for (const match of finalMatches) {
       const { data: matchRow, error: matchError } = await supabase
         .from("wanted_request_matches")
         .insert({
           wanted_request_id: match.wantedRequestId,
           product_id: match.productId,
-          score: match.score,
+          score: match.finalScore,
+          semantic_score: match.semanticScore,
+          lexical_score: match.lexicalScore,
+          category_score: match.categoryScore,
+          decision_source: match.decisionSource,
+          decision_reason: match.decisionReason,
+          review_confidence: match.reviewConfidence,
+          review_error: match.reviewError,
         })
         .select("match_id")
         .single();
@@ -353,8 +491,12 @@ export async function runVectorMatchBatch({
       let emailError: string | null = null;
 
       try {
-        const email = await getEmailByUserId(supabase, match.userId);
-        if (email && product) {
+        const emailEnabled =
+          process.env.WANTED_MATCH_EMAIL_ENABLED !== "false";
+        const email = emailEnabled
+          ? await getEmailByUserId(supabase, match.userId)
+          : null;
+        if (emailEnabled && email && product) {
           await sendEmail({
             to: email,
             ...buildWantedRequestEmail({
@@ -404,8 +546,7 @@ export async function runVectorMatchBatch({
 
     return result;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Vector batch failed.";
+    const message = errorMessage(error);
 
     await updateBatchRun(supabase, runId, {
       status: "failed",
