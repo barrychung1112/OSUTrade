@@ -19,6 +19,7 @@ export function parseEmbedding(
   if (Array.isArray(value)) return value;
   if (!value) return [];
   const trimmed = value.replace(/^\[|\]$/g, "");
+  if (!trimmed.trim()) return [];
   return trimmed
     .split(",")
     .map((part) => Number(part.trim()))

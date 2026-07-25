@@ -386,14 +386,18 @@ export async function notifyMatchingWantedRequests({
       };
     });
 
-    const productNeedsEmbedding = shouldEmbed(
-      existingProductEmbedding as EmbeddingRow | null,
-      productHash
-    );
+    const currentProductEmbedding = existingProductEmbedding as EmbeddingRow | null;
+    const productNeedsEmbedding =
+      shouldEmbed(currentProductEmbedding, productHash) ||
+      parseEmbedding(currentProductEmbedding?.embedding).length === 0;
     const pendingRequests = requestInputs
-      .filter(({ request, hash }) =>
-        shouldEmbed(requestEmbeddingById.get(request.wanted_request_id), hash)
-      )
+      .filter(({ request, hash }) => {
+        const existing = requestEmbeddingById.get(request.wanted_request_id);
+        return (
+          shouldEmbed(existing, hash) ||
+          parseEmbedding(existing?.embedding).length === 0
+        );
+      })
       .slice(0, MAX_IMMEDIATE_REQUEST_EMBEDDINGS);
     const pendingInputs = [
       ...(productNeedsEmbedding ? [productInput] : []),
