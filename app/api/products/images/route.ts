@@ -4,9 +4,23 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { isOwnedProductImagePath } from "@/app/lib/productImagePath";
 
 const bucketName = "product-images";
-const maxImageBytes = 5 * 1024 * 1024;
+const maxImageBytes = 10 * 1024 * 1024;
 const maxImages = 3;
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function validateProductImages(images: File[]) {
+  for (const image of images) {
+    if (!allowedTypes.has(image.type)) {
+      return "Only JPG, PNG, or WebP images are supported.";
+    }
+
+    if (image.size > maxImageBytes) {
+      return "Product images must be 10 MB or smaller.";
+    }
+  }
+
+  return null;
+}
 
 function extensionFor(file: File) {
   if (file.type === "image/png") return "png";
@@ -48,20 +62,12 @@ export async function POST(request: Request) {
       );
     }
 
-    for (const image of images) {
-      if (!allowedTypes.has(image.type)) {
-        return NextResponse.json(
-          { message: "Only JPG, PNG, or WebP images are supported." },
-          { status: 400 }
-        );
-      }
-
-      if (image.size > maxImageBytes) {
-        return NextResponse.json(
-          { message: "Product images must be 5 MB or smaller." },
-          { status: 400 }
-        );
-      }
+    const validationError = validateProductImages(images);
+    if (validationError) {
+      return NextResponse.json(
+        { message: validationError },
+        { status: 400 }
+      );
     }
 
     const supabase = createAdminClient();

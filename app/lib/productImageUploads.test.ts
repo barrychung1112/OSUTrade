@@ -29,13 +29,22 @@ describe("validateProductImageFiles", () => {
     ).toThrow("Only JPG, PNG, or WebP images are supported.");
   });
 
-  test("rejects images larger than 5 MB", () => {
-    expect(() =>
+  test("accepts images exactly 10 MB", () => {
+    expect(
       validateProductImageFiles(
-        [imageFile("large.jpg", "image/jpeg", 5 * 1024 * 1024 + 1)],
+        [imageFile("large.jpg", "image/jpeg", 10 * 1024 * 1024)],
         10
       )
-    ).toThrow("Images must be 5 MB or smaller.");
+    ).toBeUndefined();
+  });
+
+  test("rejects images larger than 10 MB", () => {
+    expect(() =>
+      validateProductImageFiles(
+        [imageFile("large.jpg", "image/jpeg", 10 * 1024 * 1024 + 1)],
+        10
+      )
+    ).toThrow("Images must be 10 MB or smaller.");
   });
 
   test("rejects more images than the caller allows", () => {
