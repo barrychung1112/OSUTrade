@@ -206,6 +206,13 @@ create table if not exists public.wanted_request_matches (
   wanted_request_id uuid not null references public.wanted_requests(wanted_request_id) on delete cascade,
   product_id text not null,
   score numeric,
+  semantic_score numeric,
+  lexical_score numeric,
+  category_score numeric,
+  decision_source text,
+  decision_reason text,
+  review_confidence numeric,
+  review_error text,
   emailed_at timestamptz,
   email_error text,
   created_at timestamptz not null default now(),
@@ -216,6 +223,13 @@ alter table public.wanted_request_matches
   add column if not exists wanted_request_id uuid references public.wanted_requests(wanted_request_id) on delete cascade,
   add column if not exists product_id text,
   add column if not exists score numeric,
+  add column if not exists semantic_score numeric,
+  add column if not exists lexical_score numeric,
+  add column if not exists category_score numeric,
+  add column if not exists decision_source text,
+  add column if not exists decision_reason text,
+  add column if not exists review_confidence numeric,
+  add column if not exists review_error text,
   add column if not exists emailed_at timestamptz,
   add column if not exists email_error text,
   add column if not exists created_at timestamptz not null default now();
@@ -243,7 +257,7 @@ create policy "Users can read their wanted request matches"
   );
 
 create table if not exists public.product_embeddings (
-  product_id text primary key references public.products(product_id) on delete cascade,
+  product_id uuid primary key references public.products(product_id) on delete cascade,
   embedding_model text not null,
   embedding_input text not null,
   embedding extensions.vector(1536) not null,

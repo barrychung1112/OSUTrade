@@ -142,6 +142,31 @@ describe("product create idempotency", () => {
     });
   });
 
+  test("still creates the product when immediate wanted matching fails", async () => {
+    const lookup = lookupQuery(null);
+    const insertQuery = {
+      insert: vi.fn(),
+      select: vi.fn(),
+      single: vi.fn().mockResolvedValue({ data: productRow(), error: null }),
+    };
+    insertQuery.insert.mockReturnValue(insertQuery);
+    insertQuery.select.mockReturnValue(insertQuery);
+    const from = vi
+      .fn()
+      .mockReturnValueOnce(lookup)
+      .mockReturnValueOnce(insertQuery);
+    mocks.createAdminClient.mockReturnValue({ from });
+    mocks.notifyMatchingWantedRequests.mockRejectedValueOnce(
+      new Error("Embedding provider unavailable")
+    );
+
+    const response = await POST(request("request-notify-failure"));
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload.id).toBe("product-1");
+  });
+
   test("creates a product when the idempotency column is not deployed yet", async () => {
     const lookup = {
       select: vi.fn(),

@@ -29,6 +29,16 @@ describe("wanted request subscription schema", () => {
 
     expect(schema).toContain("create table if not exists public.wanted_requests");
     expect(schema).toContain("create table if not exists public.wanted_request_matches");
+    expect(schema).toContain("add column if not exists semantic_score numeric");
+    expect(schema).toContain("add column if not exists lexical_score numeric");
+    expect(schema).toContain("add column if not exists category_score numeric");
+    expect(schema).toContain("add column if not exists decision_source text");
+    expect(schema).toContain("add column if not exists decision_reason text");
+    expect(schema).toContain("add column if not exists review_confidence numeric");
+    expect(schema).toContain("add column if not exists review_error text");
+    expect(schema).toMatch(
+      /create table if not exists public\.product_embeddings \(\s*product_id uuid primary key/
+    );
     expect(schema).toMatch(/unique[\s\S]*wanted_request_id[\s\S]*product_id/i);
     expect(schema).toContain("email_subscribed boolean not null default true");
     expect(schema).toContain("email_error text");
