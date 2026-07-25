@@ -445,149 +445,177 @@ export async function runVectorMatchBatch({
       automaticMatchesByRequest.set(match.wantedRequestId, requestMatches);
     }
 
-    const reviewCandidates = matches.filter((match) => {
-      if (match.decision !== "review") return false;
+    const eagerReviewCandidates: SemanticWantedMatch[] = [];
+    const deferredReviewCandidates: SemanticWantedMatch[] = [];
+    for (const match of matches) {
+      if (match.decision !== "review") continue;
       const higherAutomaticMatches = (
         automaticMatchesByRequest.get(match.wantedRequestId) ?? []
       ).filter(
         (automaticMatch) =>
           automaticMatch.finalScore > match.finalScore
       );
-      return (
+      if (
         higherAutomaticMatches.length <
         WANTED_MATCH_CONFIG.maxMatchesPerRequest
-      );
-    });
-    const reviewOutcomes = await mapWithConcurrency(
-      reviewCandidates,
-      MAX_AI_REVIEW_CONCURRENCY,
-      async (match): Promise<AcceptedMatch | null> => {
-        const wantedRequest = wantedRowsById.get(match.wantedRequestId);
-        const product = productRowsById.get(match.productId);
-        if (!wantedRequest || !product) return null;
-
-        let review: WantedMatchReviewResult;
-        try {
-          review = await reviewMatch({
-            wanted: {
-              query: wantedRequest.query,
-              description: wantedRequest.description,
-              maxPrice: nullableNumber(wantedRequest.max_price),
-            },
-            product: {
-              name: product.name || "Unnamed listing",
-              description: product.description,
-              price: nullableNumber(product.price),
-            },
-            scores: {
-              semantic: match.semanticScore,
-              lexical: match.lexicalScore,
-              category: match.categoryScore,
-              final: match.finalScore,
-            },
-          });
-        } catch {
-          return null;
-        }
-
-        if (review.status !== "accepted") return null;
-
-        return {
-          ...match,
-          decisionSource: "ai_review",
-          decisionReason: review.reason,
-          reviewConfidence: review.confidence,
-          reviewError: null,
-        };
+      ) {
+        eagerReviewCandidates.push(match);
+      } else {
+        deferredReviewCandidates.push(match);
       }
-    );
-    const acceptedMatches = [
-      ...automaticMatches,
-      ...reviewOutcomes.filter(
-        (match): match is AcceptedMatch => match !== null
-      ),
-    ];
+    }
 
-    const finalMatches = rankAcceptedMatches(acceptedMatches);
+    async function reviewCandidates(
+      candidates: SemanticWantedMatch[]
+    ) {
+      const outcomes = await mapWithConcurrency(
+        candidates,
+        MAX_AI_REVIEW_CONCURRENCY,
+        async (match): Promise<AcceptedMatch | null> => {
+          const wantedRequest = wantedRowsById.get(match.wantedRequestId);
+          const product = productRowsById.get(match.productId);
+          if (!wantedRequest || !product) return null;
+
+          let review: WantedMatchReviewResult;
+          try {
+            review = await reviewMatch({
+              wanted: {
+                query: wantedRequest.query,
+                description: wantedRequest.description,
+                maxPrice: nullableNumber(wantedRequest.max_price),
+              },
+              product: {
+                name: product.name || "Unnamed listing",
+                description: product.description,
+                price: nullableNumber(product.price),
+              },
+              scores: {
+                semantic: match.semanticScore,
+                lexical: match.lexicalScore,
+                category: match.categoryScore,
+                final: match.finalScore,
+              },
+            });
+          } catch {
+            return null;
+          }
+
+          if (review.status !== "accepted") return null;
+
+          return {
+            ...match,
+            decisionSource: "ai_review",
+            decisionReason: review.reason,
+            reviewConfidence: review.confidence,
+            reviewError: null,
+          };
+        }
+      );
+      return outcomes.filter(
+        (match): match is AcceptedMatch => match !== null
+      );
+    }
 
     let matchesCreated = 0;
     let emailsSent = 0;
     const createdMatchesByRequest = new Map<string, number>();
 
-    for (const match of finalMatches) {
-      const requestMatchesCreated =
-        createdMatchesByRequest.get(match.wantedRequestId) ?? 0;
-      if (
-        requestMatchesCreated >= WANTED_MATCH_CONFIG.maxMatchesPerRequest
-      ) {
-        continue;
-      }
-
-      const { data: matchRow, error: matchError } = await supabase
-        .from("wanted_request_matches")
-        .insert({
-          wanted_request_id: match.wantedRequestId,
-          product_id: match.productId,
-          score: match.finalScore,
-          semantic_score: match.semanticScore,
-          lexical_score: match.lexicalScore,
-          category_score: match.categoryScore,
-          decision_source: match.decisionSource,
-          decision_reason: match.decisionReason,
-          review_confidence: match.reviewConfidence,
-          review_error: match.reviewError,
-        })
-        .select("match_id")
-        .single();
-
-      if (matchError) {
-        if (matchError.code === "23505") continue;
-        throw matchError;
-      }
-
-      matchesCreated += 1;
-      createdMatchesByRequest.set(
-        match.wantedRequestId,
-        requestMatchesCreated + 1
-      );
-
-      const wantedRequest = wantedRowsById.get(match.wantedRequestId);
-      const product = productRowsById.get(match.productId);
-      let emailed = false;
-      let emailError: string | null = null;
-
-      try {
-        const emailEnabled =
-          process.env.WANTED_MATCH_EMAIL_ENABLED !== "false";
-        const email = emailEnabled
-          ? await getEmailByUserId(supabase, match.userId)
-          : null;
-        if (emailEnabled && email && product) {
-          await sendEmail({
-            to: email,
-            ...buildWantedRequestEmail({
-              wantedQuery: wantedRequest?.query ?? "your wanted item",
-              productName: product.name || "New OSUTrade listing",
-              productPrice: product.price,
-              productUrl: buildProductUrl(product.product_id),
-            }),
-          });
-          emailed = true;
-          emailsSent += 1;
+    async function persistAcceptedMatches(matchesToPersist: AcceptedMatch[]) {
+      for (const match of rankAcceptedMatches(matchesToPersist)) {
+        const requestMatchesCreated =
+          createdMatchesByRequest.get(match.wantedRequestId) ?? 0;
+        if (
+          requestMatchesCreated >= WANTED_MATCH_CONFIG.maxMatchesPerRequest
+        ) {
+          continue;
         }
-      } catch (error) {
-        emailError =
-          error instanceof Error ? error.message : "Failed to send wanted email.";
-      }
 
-      await supabase
-        .from("wanted_request_matches")
-        .update({
-          emailed_at: emailed ? now().toISOString() : null,
-          email_error: emailError,
-        })
-        .eq("match_id", matchRow?.match_id);
+        const { data: matchRow, error: matchError } = await supabase
+          .from("wanted_request_matches")
+          .insert({
+            wanted_request_id: match.wantedRequestId,
+            product_id: match.productId,
+            score: match.finalScore,
+            semantic_score: match.semanticScore,
+            lexical_score: match.lexicalScore,
+            category_score: match.categoryScore,
+            decision_source: match.decisionSource,
+            decision_reason: match.decisionReason,
+            review_confidence: match.reviewConfidence,
+            review_error: match.reviewError,
+          })
+          .select("match_id")
+          .single();
+
+        if (matchError) {
+          if (matchError.code === "23505") continue;
+          throw matchError;
+        }
+
+        matchesCreated += 1;
+        createdMatchesByRequest.set(
+          match.wantedRequestId,
+          requestMatchesCreated + 1
+        );
+
+        const wantedRequest = wantedRowsById.get(match.wantedRequestId);
+        const product = productRowsById.get(match.productId);
+        let emailed = false;
+        let emailError: string | null = null;
+
+        try {
+          const emailEnabled =
+            process.env.WANTED_MATCH_EMAIL_ENABLED !== "false";
+          const email = emailEnabled
+            ? await getEmailByUserId(supabase, match.userId)
+            : null;
+          if (emailEnabled && email && product) {
+            await sendEmail({
+              to: email,
+              ...buildWantedRequestEmail({
+                wantedQuery: wantedRequest?.query ?? "your wanted item",
+                productName: product.name || "New OSUTrade listing",
+                productPrice: product.price,
+                productUrl: buildProductUrl(product.product_id),
+              }),
+            });
+            emailed = true;
+            emailsSent += 1;
+          }
+        } catch (error) {
+          emailError =
+            error instanceof Error
+              ? error.message
+              : "Failed to send wanted email.";
+        }
+
+        await supabase
+          .from("wanted_request_matches")
+          .update({
+            emailed_at: emailed ? now().toISOString() : null,
+            email_error: emailError,
+          })
+          .eq("match_id", matchRow?.match_id);
+      }
     }
+
+    const eagerReviewedMatches = await reviewCandidates(
+      eagerReviewCandidates
+    );
+    await persistAcceptedMatches([
+      ...automaticMatches,
+      ...eagerReviewedMatches,
+    ]);
+
+    const competitiveDeferredCandidates = deferredReviewCandidates.filter(
+      (match) =>
+        (createdMatchesByRequest.get(match.wantedRequestId) ?? 0) <
+        WANTED_MATCH_CONFIG.maxMatchesPerRequest
+    );
+    const deferredReviewedMatches = await reviewCandidates(
+      competitiveDeferredCandidates
+    );
+    await persistAcceptedMatches(deferredReviewedMatches);
 
     const result: VectorBatchResult = {
       status: "completed",

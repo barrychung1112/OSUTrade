@@ -527,6 +527,76 @@ describe("runVectorMatchBatch", () => {
     ]);
   });
 
+  test("reviews a deferred borderline fallback after an automatic duplicate opens a slot", async () => {
+    const products = [
+      ...Array.from({ length: 3 }, (_, index) => ({
+        product_id: `automatic-${index + 1}`,
+        name: `Computer screen ${index + 1}`,
+        description: "desk monitor",
+        price: 30,
+        category: "electronics",
+        status: "available",
+        quantity: 1,
+        seller_id: `seller-${index + 1}`,
+      })),
+      {
+        product_id: "borderline-fallback",
+        name: "Candidate item",
+        description: "unrelated listing",
+        price: 30,
+        category: "home",
+        status: "available",
+        quantity: 1,
+        seller_id: "seller-4",
+      },
+    ];
+    const { supabase, state } = createFakeSupabase({
+      products,
+      duplicateProductIds: ["automatic-1"],
+    });
+    let attemptsAtReview: string[] = [];
+    const reviewMatch = vi.fn(async () => {
+      attemptsAtReview = state.matchInsertAttempts.map(
+        (match) => match.product_id
+      );
+      return {
+        status: "accepted" as const,
+        relevant: true,
+        confidence: 0.92,
+        reason: "Fallback candidate is relevant.",
+      };
+    });
+    const sendEmail = vi.fn(async () => undefined);
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) => {
+          if (text.includes("Wanted item")) return [1, 0];
+          if (text.includes("Candidate item")) return vectorForCosine(0.92);
+          return [1, 0];
+        })
+      ),
+      reviewMatch,
+      sendEmail,
+    });
+
+    expect(reviewMatch).toHaveBeenCalledTimes(1);
+    expect(attemptsAtReview).toEqual([
+      "automatic-1",
+      "automatic-2",
+      "automatic-3",
+    ]);
+    expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
+      "automatic-2",
+      "automatic-3",
+      "borderline-fallback",
+    ]);
+    expect(result.matchesCreated).toBe(3);
+    expect(result.emailsSent).toBe(3);
+    expect(sendEmail).toHaveBeenCalledTimes(3);
+  });
+
   test("keeps lower fallback candidates when higher candidates also require review", async () => {
     const products = [0.95, 0.94, 0.93, 0.92].map((score, index) => ({
       product_id: `review-${index + 1}`,
