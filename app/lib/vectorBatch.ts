@@ -607,15 +607,50 @@ export async function runVectorMatchBatch({
       ...eagerReviewedMatches,
     ]);
 
-    const competitiveDeferredCandidates = deferredReviewCandidates.filter(
-      (match) =>
-        (createdMatchesByRequest.get(match.wantedRequestId) ?? 0) <
-        WANTED_MATCH_CONFIG.maxMatchesPerRequest
-    );
-    const deferredReviewedMatches = await reviewCandidates(
-      competitiveDeferredCandidates
-    );
-    await persistAcceptedMatches(deferredReviewedMatches);
+    const deferredCandidatesByRequest = new Map<
+      string,
+      SemanticWantedMatch[]
+    >();
+    for (const match of deferredReviewCandidates) {
+      const requestCandidates =
+        deferredCandidatesByRequest.get(match.wantedRequestId) ?? [];
+      requestCandidates.push(match);
+      deferredCandidatesByRequest.set(
+        match.wantedRequestId,
+        requestCandidates
+      );
+    }
+
+    for (const [
+      wantedRequestId,
+      requestCandidates,
+    ] of deferredCandidatesByRequest) {
+      const orderedCandidates = requestCandidates.sort(
+        (left, right) => right.finalScore - left.finalScore
+      );
+      let nextCandidateIndex = 0;
+
+      while (nextCandidateIndex < orderedCandidates.length) {
+        const remainingSlots =
+          WANTED_MATCH_CONFIG.maxMatchesPerRequest -
+          (createdMatchesByRequest.get(wantedRequestId) ?? 0);
+        if (remainingSlots <= 0) break;
+
+        const waveSize = Math.min(
+          MAX_AI_REVIEW_CONCURRENCY,
+          remainingSlots,
+          orderedCandidates.length - nextCandidateIndex
+        );
+        const candidateWave = orderedCandidates.slice(
+          nextCandidateIndex,
+          nextCandidateIndex + waveSize
+        );
+        nextCandidateIndex += waveSize;
+
+        const reviewedWave = await reviewCandidates(candidateWave);
+        await persistAcceptedMatches(reviewedWave);
+      }
+    }
 
     const result: VectorBatchResult = {
       status: "completed",

@@ -527,7 +527,20 @@ describe("runVectorMatchBatch", () => {
     ]);
   });
 
-  test("reviews a deferred borderline fallback after an automatic duplicate opens a slot", async () => {
+  test("stops deferred reviews after the first accepted fallback fills the only slot", async () => {
+    const fallbackProducts = [0.95, 0.94, 0.93, 0.92].map(
+      (score, index) => ({
+        product_id: `borderline-fallback-${index + 1}`,
+        name: `Candidate item ${index + 1}`,
+        description: "unrelated listing",
+        price: 30,
+        category: "home",
+        status: "available",
+        quantity: 1,
+        seller_id: `fallback-seller-${index + 1}`,
+        testScore: score,
+      })
+    );
     const products = [
       ...Array.from({ length: 3 }, (_, index) => ({
         product_id: `automatic-${index + 1}`,
@@ -539,26 +552,19 @@ describe("runVectorMatchBatch", () => {
         quantity: 1,
         seller_id: `seller-${index + 1}`,
       })),
-      {
-        product_id: "borderline-fallback",
-        name: "Candidate item",
-        description: "unrelated listing",
-        price: 30,
-        category: "home",
-        status: "available",
-        quantity: 1,
-        seller_id: "seller-4",
-      },
+      ...fallbackProducts,
     ];
     const { supabase, state } = createFakeSupabase({
       products,
       duplicateProductIds: ["automatic-1"],
     });
     let attemptsAtReview: string[] = [];
-    const reviewMatch = vi.fn(async () => {
+    const reviewedProducts: string[] = [];
+    const reviewMatch = vi.fn(async (input) => {
       attemptsAtReview = state.matchInsertAttempts.map(
         (match) => match.product_id
       );
+      reviewedProducts.push(input.product.name);
       return {
         status: "accepted" as const,
         relevant: true,
@@ -573,7 +579,10 @@ describe("runVectorMatchBatch", () => {
       embedTexts: vi.fn(async (texts: string[]) =>
         texts.map((text) => {
           if (text.includes("Wanted item")) return [1, 0];
-          if (text.includes("Candidate item")) return vectorForCosine(0.92);
+          const fallback = fallbackProducts.find((item) =>
+            text.includes(item.name)
+          );
+          if (fallback) return vectorForCosine(fallback.testScore);
           return [1, 0];
         })
       ),
@@ -582,6 +591,7 @@ describe("runVectorMatchBatch", () => {
     });
 
     expect(reviewMatch).toHaveBeenCalledTimes(1);
+    expect(reviewedProducts).toEqual(["Candidate item 1"]);
     expect(attemptsAtReview).toEqual([
       "automatic-1",
       "automatic-2",
@@ -590,11 +600,81 @@ describe("runVectorMatchBatch", () => {
     expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
       "automatic-2",
       "automatic-3",
-      "borderline-fallback",
+      "borderline-fallback-1",
     ]);
     expect(result.matchesCreated).toBe(3);
     expect(result.emailsSent).toBe(3);
     expect(sendEmail).toHaveBeenCalledTimes(3);
+  });
+
+  test("reviews the next deferred candidate only after the first is rejected", async () => {
+    const fallbackProducts = [0.95, 0.94, 0.93].map((score, index) => ({
+      product_id: `borderline-fallback-${index + 1}`,
+      name: `Candidate item ${index + 1}`,
+      description: "unrelated listing",
+      price: 30,
+      category: "home",
+      status: "available",
+      quantity: 1,
+      seller_id: `fallback-seller-${index + 1}`,
+      testScore: score,
+    }));
+    const products = [
+      ...Array.from({ length: 3 }, (_, index) => ({
+        product_id: `automatic-${index + 1}`,
+        name: `Computer screen ${index + 1}`,
+        description: "desk monitor",
+        price: 30,
+        category: "electronics",
+        status: "available",
+        quantity: 1,
+        seller_id: `seller-${index + 1}`,
+      })),
+      ...fallbackProducts,
+    ];
+    const { supabase, state } = createFakeSupabase({
+      products,
+      duplicateProductIds: ["automatic-1"],
+    });
+    const reviewedProducts: string[] = [];
+    const reviewMatch = vi.fn(async (input) => {
+      reviewedProducts.push(input.product.name);
+      const accepted = input.product.name === "Candidate item 2";
+      return {
+        status: accepted ? ("accepted" as const) : ("rejected" as const),
+        relevant: accepted,
+        confidence: 0.92,
+        reason: accepted ? "Fallback is relevant." : "Not relevant.",
+      };
+    });
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) => {
+          if (text.includes("Wanted item")) return [1, 0];
+          const fallback = fallbackProducts.find((item) =>
+            text.includes(item.name)
+          );
+          if (fallback) return vectorForCosine(fallback.testScore);
+          return [1, 0];
+        })
+      ),
+      reviewMatch,
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(reviewMatch).toHaveBeenCalledTimes(2);
+    expect(reviewedProducts).toEqual([
+      "Candidate item 1",
+      "Candidate item 2",
+    ]);
+    expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
+      "automatic-2",
+      "automatic-3",
+      "borderline-fallback-2",
+    ]);
+    expect(result.matchesCreated).toBe(3);
   });
 
   test("keeps lower fallback candidates when higher candidates also require review", async () => {
