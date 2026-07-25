@@ -168,9 +168,7 @@ function rankAcceptedMatches(matches: AcceptedMatch[]) {
   }
 
   return [...byRequest.values()].flatMap((requestMatches) =>
-    requestMatches
-      .sort((left, right) => right.finalScore - left.finalScore)
-      .slice(0, WANTED_MATCH_CONFIG.maxMatchesPerRequest)
+    requestMatches.sort((left, right) => right.finalScore - left.finalScore)
   );
 }
 
@@ -455,8 +453,17 @@ export async function runVectorMatchBatch({
 
     let matchesCreated = 0;
     let emailsSent = 0;
+    const createdMatchesByRequest = new Map<string, number>();
 
     for (const match of finalMatches) {
+      const requestMatchesCreated =
+        createdMatchesByRequest.get(match.wantedRequestId) ?? 0;
+      if (
+        requestMatchesCreated >= WANTED_MATCH_CONFIG.maxMatchesPerRequest
+      ) {
+        continue;
+      }
+
       const { data: matchRow, error: matchError } = await supabase
         .from("wanted_request_matches")
         .insert({
@@ -480,6 +487,10 @@ export async function runVectorMatchBatch({
       }
 
       matchesCreated += 1;
+      createdMatchesByRequest.set(
+        match.wantedRequestId,
+        requestMatchesCreated + 1
+      );
 
       const wantedRequest = wantedRows.find(
         (request) => request.wanted_request_id === match.wantedRequestId

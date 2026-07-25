@@ -3,11 +3,13 @@ import { runVectorMatchBatch } from "./vectorBatch";
 
 function createFakeSupabase({
   duplicateMatch = false,
+  duplicateProductIds = [],
   products,
   wantedRequests,
   productSelectError = null,
 }: {
   duplicateMatch?: boolean;
+  duplicateProductIds?: string[];
   products?: any[];
   wantedRequests?: any[];
   productSelectError?: unknown;
@@ -45,6 +47,7 @@ function createFakeSupabase({
     matchUpdates: [] as any[],
     runUpdates: [] as any[],
     insertedMatches: [] as any[],
+    matchInsertAttempts: [] as any[],
     ranges: [] as Array<{ table: string; from: number; to: number }>,
   };
 
@@ -88,7 +91,11 @@ function createFakeSupabase({
         }
 
         if (table === "wanted_request_matches") {
-          if (duplicateMatch) {
+          state.matchInsertAttempts.push(payload);
+          if (
+            duplicateMatch ||
+            duplicateProductIds.includes(payload.product_id)
+          ) {
             return {
               select: () => ({
                 single: async () => ({
@@ -446,6 +453,48 @@ describe("runVectorMatchBatch", () => {
       "product-2",
       "product-3",
     ]);
+  });
+
+  test("does not let a duplicate consume one of three fresh match slots", async () => {
+    const products = Array.from({ length: 4 }, (_, index) => ({
+      product_id: `product-${index + 1}`,
+      name: `Computer screen ${index + 1}`,
+      description: "desk monitor",
+      price: 30,
+      category: "electronics",
+      status: "available",
+      quantity: 1,
+      seller_id: `seller-${index + 1}`,
+    }));
+    const { supabase, state } = createFakeSupabase({
+      products,
+      duplicateProductIds: ["product-1"],
+    });
+    const sendEmail = vi.fn(async () => undefined);
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map(() => [1, 0, 0])
+      ),
+      reviewMatch: vi.fn(),
+      sendEmail,
+    });
+
+    expect(state.matchInsertAttempts.map((match) => match.product_id)).toEqual([
+      "product-1",
+      "product-2",
+      "product-3",
+      "product-4",
+    ]);
+    expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
+      "product-2",
+      "product-3",
+      "product-4",
+    ]);
+    expect(result.matchesCreated).toBe(3);
+    expect(result.emailsSent).toBe(3);
+    expect(sendEmail).toHaveBeenCalledTimes(3);
   });
 
   test("persists accepted matches without sending email when rollout email is disabled", async () => {
