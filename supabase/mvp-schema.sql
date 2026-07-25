@@ -51,7 +51,7 @@ values (
   'product-images',
   'product-images',
   true,
-  5242880,
+  10485760,
   array['image/jpeg', 'image/png', 'image/webp']::text[]
 )
 on conflict (id) do update set

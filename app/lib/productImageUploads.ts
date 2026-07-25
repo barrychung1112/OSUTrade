@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 const bucketName = "product-images";
-const maxImageBytes = 5 * 1024 * 1024;
+const maxImageBytes = 10 * 1024 * 1024;
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export type UploadedProductImage = {
@@ -52,7 +52,7 @@ export function validateProductImageFiles(files: File[], maxFiles: number) {
     }
 
     if (file.size > maxImageBytes) {
-      throw new Error("Images must be 5 MB or smaller.");
+      throw new Error("Images must be 10 MB or smaller.");
     }
   }
 }

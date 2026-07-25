@@ -68,7 +68,7 @@ describe("signed product image upload route", () => {
         {
           name: "large.jpg",
           type: "image/jpeg",
-          size: 5 * 1024 * 1024 + 1,
+          size: 10 * 1024 * 1024 + 1,
         },
       ])
     );
@@ -83,7 +83,10 @@ describe("signed product image upload route", () => {
     const { bucket, from } = mockStorage();
 
     const response = await POST(
-      request([validFile("desk.jpg"), { ...validFile("lamp.png"), type: "image/png" }])
+      request([
+        { ...validFile("desk.jpg"), size: 10 * 1024 * 1024 },
+        { ...validFile("lamp.png"), type: "image/png" },
+      ])
     );
     const payload = await response.json();
 

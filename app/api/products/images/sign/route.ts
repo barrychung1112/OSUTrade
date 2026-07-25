@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 const bucketName = "product-images";
-const maxImageBytes = 5 * 1024 * 1024;
+const maxImageBytes = 10 * 1024 * 1024;
 const maxImages = 10;
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
     if (!files.every(isFileMetadata)) {
       return NextResponse.json(
-        { message: "Images must be JPG, PNG, or WebP files no larger than 5 MB." },
+        { message: "Images must be JPG, PNG, or WebP files no larger than 10 MB." },
         { status: 400 }
       );
     }
