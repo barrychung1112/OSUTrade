@@ -455,6 +455,98 @@ describe("immediate hybrid wanted matching", () => {
     );
   });
 
+  test("refreshes a product embedding when the hash matches but the vector is empty", async () => {
+    const productInput =
+      "Name: Acer Computer Monitor\nDescription: 24 inch display with HDMI cable";
+    const requestInput = "Wanted item: computer monitor\nDescription: display";
+    const database = immediateSupabase({
+      productEmbedding: {
+        product_id: "product-1",
+        embedding: null,
+        content_hash: contentHash("text-embedding-3-small", productInput),
+      },
+      requestEmbeddings: [
+        {
+          wanted_request_id: "wanted-1",
+          embedding: [1, 0],
+          content_hash: contentHash("text-embedding-3-small", requestInput),
+        },
+      ],
+    });
+    const embedTexts = vi.fn().mockResolvedValue([[1, 0]]);
+
+    await notifyMatchingWantedRequests({
+      supabase: database.supabase,
+      product: {
+        ...product,
+        seller_id: "seller-1",
+        status: "available",
+        quantity: 1,
+      },
+      embedTexts,
+      reviewMatch: vi.fn(),
+      sendEmail: vi.fn(),
+    });
+
+    expect(embedTexts).toHaveBeenCalledWith(
+      [productInput],
+      "text-embedding-3-small"
+    );
+    expect(database.productEmbeddingUpserts).toEqual([
+      expect.objectContaining({
+        product_id: "product-1",
+        embedding: [1, 0],
+      }),
+    ]);
+  });
+
+  test("refreshes a request embedding when the hash matches but the vector is empty", async () => {
+    const productInput =
+      "Name: Acer Computer Monitor\nDescription: 24 inch display with HDMI cable";
+    const requestInput = "Wanted item: computer monitor\nDescription: display";
+    const database = immediateSupabase({
+      productEmbedding: {
+        product_id: "product-1",
+        embedding: [1, 0],
+        content_hash: contentHash("text-embedding-3-small", productInput),
+      },
+      requestEmbeddings: [
+        {
+          wanted_request_id: "wanted-1",
+          embedding: "[]",
+          content_hash: contentHash("text-embedding-3-small", requestInput),
+        },
+      ],
+    });
+    const embedTexts = vi.fn().mockResolvedValue([[1, 0]]);
+
+    await notifyMatchingWantedRequests({
+      supabase: database.supabase,
+      product: {
+        ...product,
+        seller_id: "seller-1",
+        status: "available",
+        quantity: 1,
+      },
+      embedTexts,
+      reviewMatch: vi.fn(),
+      sendEmail: vi.fn(),
+    });
+
+    expect(embedTexts).toHaveBeenCalledWith(
+      [requestInput],
+      "text-embedding-3-small"
+    );
+    expect(database.requestEmbeddingUpserts).toEqual([
+      [
+        expect.objectContaining({
+          wanted_request_id: "wanted-1",
+          embedding: [1, 0],
+        }),
+      ],
+    ]);
+  });
+
   test("bounds stale request embedding refreshes in the immediate flow", async () => {
     const requests = Array.from({ length: 30 }, (_, index) =>
       wantedRequest({

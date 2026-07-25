@@ -265,6 +265,36 @@ create table if not exists public.product_embeddings (
   embedded_at timestamptz not null default now()
 );
 
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'product_embeddings'
+      and column_name = 'product_id'
+      and data_type = 'text'
+  ) then
+    alter table public.product_embeddings
+      drop constraint if exists product_embeddings_product_id_fkey;
+    delete from public.product_embeddings
+    where product_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      or not exists (
+        select 1
+        from public.products
+        where products.product_id::text = product_embeddings.product_id
+      );
+    alter table public.product_embeddings
+      alter column product_id type uuid using product_id::uuid;
+    alter table public.product_embeddings
+      add constraint product_embeddings_product_id_fkey
+      foreign key (product_id)
+      references public.products(product_id)
+      on delete cascade;
+  end if;
+end
+$$;
+
 alter table public.product_embeddings
   add column if not exists embedding_model text,
   add column if not exists embedding_input text,

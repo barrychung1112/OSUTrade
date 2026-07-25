@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { runVectorMatchBatch } from "./vectorBatch";
+import {
+  buildProductEmbeddingInput,
+  buildWantedRequestEmbeddingInput,
+  contentHash,
+} from "./vectorMatching";
 
 function vectorForCosine(score: number) {
   return [score, Math.sqrt(1 - score * score)];
@@ -259,6 +264,59 @@ describe("runVectorMatchBatch", () => {
         emails_sent: 1,
       })
     );
+  });
+
+  test("regenerates hash-current product and wanted request rows with empty embeddings", async () => {
+    const { supabase, state } = createFakeSupabase();
+    const model = "text-embedding-3-small";
+    const product = state.products[0];
+    const wantedRequest = state.wantedRequests[0];
+
+    state.productEmbeddings.push({
+      product_id: product.product_id,
+      embedding_model: model,
+      embedding_input: buildProductEmbeddingInput(product),
+      embedding: null,
+      content_hash: contentHash(model, buildProductEmbeddingInput(product)),
+      embedded_at: "2026-07-12T00:00:00.000Z",
+    });
+    state.wantedRequestEmbeddings.push({
+      wanted_request_id: wantedRequest.wanted_request_id,
+      embedding_model: model,
+      embedding_input: buildWantedRequestEmbeddingInput(wantedRequest),
+      embedding: "[]",
+      content_hash: contentHash(
+        model,
+        buildWantedRequestEmbeddingInput(wantedRequest)
+      ),
+      embedded_at: "2026-07-12T00:00:00.000Z",
+    });
+
+    const embedTexts = vi.fn(async (texts: string[]) =>
+      texts.map(() => [1, 0, 0])
+    );
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts,
+      sendEmail: vi.fn(async () => undefined),
+      reviewMatch: vi.fn(),
+      batchLimit: 1,
+      now: () => new Date("2026-07-13T00:00:00.000Z"),
+    });
+
+    expect(result.status).toBe("completed");
+    expect(result.productsEmbedded).toBe(1);
+    expect(result.wantedRequestsEmbedded).toBe(1);
+    expect(embedTexts).toHaveBeenCalledWith(
+      [
+        buildProductEmbeddingInput(product),
+        buildWantedRequestEmbeddingInput(wantedRequest),
+      ],
+      model
+    );
+    expect(state.productEmbeddings.at(-1)?.embedding).toEqual([1, 0, 0]);
+    expect(state.wantedRequestEmbeddings.at(-1)?.embedding).toEqual([1, 0, 0]);
   });
 
   test("reviews only borderline candidates and persists accepted AI metadata", async () => {

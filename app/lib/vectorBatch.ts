@@ -299,11 +299,13 @@ export async function runVectorMatchBatch({
 
     const productPending = productInputs.filter(({ product, input }) => {
       const hash = contentHash(model, input);
-      return shouldEmbed(productEmbeddingById.get(String(product.product_id)), hash);
+      const existing = productEmbeddingById.get(String(product.product_id));
+      return shouldEmbed(existing, hash) || parseEmbedding(existing?.embedding).length === 0;
     });
     const wantedPending = wantedInputs.filter(({ request, input }) => {
       const hash = contentHash(model, input);
-      return shouldEmbed(wantedEmbeddingById.get(request.wanted_request_id), hash);
+      const existing = wantedEmbeddingById.get(request.wanted_request_id);
+      return shouldEmbed(existing, hash) || parseEmbedding(existing?.embedding).length === 0;
     });
 
     const pendingInputs = [

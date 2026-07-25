@@ -39,6 +39,15 @@ describe("wanted request subscription schema", () => {
     expect(schema).toMatch(
       /create table if not exists public\.product_embeddings \(\s*product_id uuid primary key/
     );
+    expect(schema).toMatch(
+      /if[\s\S]*product_embeddings[\s\S]*data_type\s*=\s*'text'[\s\S]*alter column product_id type uuid[\s\S]*using product_id::uuid/i
+    );
+    expect(schema).toMatch(
+      /data_type\s*=\s*'text'[\s\S]*delete from public\.product_embeddings[\s\S]*product_id\s*!~\*[\s\S]*not exists[\s\S]*public\.products[\s\S]*alter column product_id type uuid/i
+    );
+    expect(schema).toMatch(
+      /drop constraint if exists product_embeddings_product_id_fkey[\s\S]*add constraint product_embeddings_product_id_fkey[\s\S]*foreign key \(product_id\)[\s\S]*references public\.products\(product_id\)[\s\S]*on delete cascade/i
+    );
     expect(schema).toMatch(/unique[\s\S]*wanted_request_id[\s\S]*product_id/i);
     expect(schema).toContain("email_subscribed boolean not null default true");
     expect(schema).toContain("email_error text");
