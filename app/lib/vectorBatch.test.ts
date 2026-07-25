@@ -1,16 +1,28 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { runVectorMatchBatch } from "./vectorBatch";
+
+function vectorForCosine(score: number) {
+  return [score, Math.sqrt(1 - score * score)];
+}
 
 function createFakeSupabase({
   duplicateMatch = false,
+  duplicateProductIds = [],
+  products,
+  wantedRequests,
+  productSelectError = null,
 }: {
   duplicateMatch?: boolean;
+  duplicateProductIds?: string[];
+  products?: any[];
+  wantedRequests?: any[];
+  productSelectError?: unknown;
 } = {}) {
   const state = {
     batchRun: {
       run_id: "run-1",
     },
-    products: [
+    products: products ?? [
       {
         product_id: "product-1",
         name: "Acer Monitor",
@@ -22,7 +34,7 @@ function createFakeSupabase({
         seller_id: "seller-1",
       },
     ],
-    wantedRequests: [
+    wantedRequests: wantedRequests ?? [
       {
         wanted_request_id: "wanted-1",
         user_id: "buyer-1",
@@ -39,6 +51,7 @@ function createFakeSupabase({
     matchUpdates: [] as any[],
     runUpdates: [] as any[],
     insertedMatches: [] as any[],
+    matchInsertAttempts: [] as any[],
     ranges: [] as Array<{ table: string; from: number; to: number }>,
   };
 
@@ -55,6 +68,9 @@ function createFakeSupabase({
       range: vi.fn(async (from: number, to: number) => {
         state.ranges.push({ table, from, to });
         if (table === "products") {
+          if (productSelectError) {
+            return { data: null, error: productSelectError };
+          }
           return { data: state.products.slice(from, to + 1), error: null };
         }
         if (table === "wanted_requests") {
@@ -79,7 +95,11 @@ function createFakeSupabase({
         }
 
         if (table === "wanted_request_matches") {
-          if (duplicateMatch) {
+          state.matchInsertAttempts.push(payload);
+          if (
+            duplicateMatch ||
+            duplicateProductIds.includes(payload.product_id)
+          ) {
             return {
               select: () => ({
                 single: async () => ({
@@ -93,7 +113,9 @@ function createFakeSupabase({
           return {
             select: () => ({
               single: async () => ({
-                data: { match_id: "match-1" },
+                data: {
+                  match_id: `match-${state.insertedMatches.length}`,
+                },
                 error: null,
               }),
             }),
@@ -155,17 +177,23 @@ function createFakeSupabase({
 }
 
 describe("runVectorMatchBatch", () => {
-  test("embeds stale rows, creates semantic matches, and sends email for new matches", async () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test("persists hybrid component scores for a high-score match without AI review", async () => {
     const { supabase, state } = createFakeSupabase();
     const embedTexts = vi.fn(async (texts: string[]) =>
       texts.map(() => [1, 0, 0])
     );
     const sendEmail = vi.fn(async () => undefined);
+    const reviewMatch = vi.fn();
 
     const result = await runVectorMatchBatch({
       supabase,
       embedTexts,
       sendEmail,
+      reviewMatch,
       batchLimit: 1,
       now: () => new Date("2026-07-13T00:00:00.000Z"),
     });
@@ -207,8 +235,17 @@ describe("runVectorMatchBatch", () => {
       expect.objectContaining({
         wanted_request_id: "wanted-1",
         product_id: "product-1",
+        score: 0.9,
+        semantic_score: 1,
+        lexical_score: 0.5,
+        category_score: 1,
+        decision_source: "hybrid",
+        decision_reason: expect.stringContaining("Automatically accepted"),
+        review_confidence: null,
+        review_error: null,
       })
     );
+    expect(reviewMatch).not.toHaveBeenCalled();
     expect(sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "buyer@example.com",
@@ -220,6 +257,613 @@ describe("runVectorMatchBatch", () => {
         status: "completed",
         matches_created: 1,
         emails_sent: 1,
+      })
+    );
+  });
+
+  test("reviews only borderline candidates and persists accepted AI metadata", async () => {
+    const { supabase, state } = createFakeSupabase({
+      products: [
+        {
+          product_id: "product-review",
+          name: "Adjustable study light",
+          description: "Flexible task lighting",
+          price: "20",
+          category: "home",
+          status: "available",
+          quantity: 1,
+          seller_id: "seller-1",
+        },
+      ],
+      wantedRequests: [
+        {
+          wanted_request_id: "wanted-1",
+          user_id: "buyer-1",
+          query: "desk lamp",
+          description: "lamp for reading",
+          max_price: "40",
+          category: "electronics",
+          email_subscribed: true,
+          status: "active",
+        },
+      ],
+    });
+    const embedTexts = vi.fn(async (texts: string[]) =>
+      texts.map((text) =>
+        text.includes("Wanted item") ? [1, 0] : [0.92, 0.39191836]
+      )
+    );
+    const reviewMatch = vi.fn(async () => ({
+      status: "accepted" as const,
+      relevant: true,
+      confidence: 0.91,
+      reason: "The product is the requested kind of lamp.",
+    }));
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts,
+      reviewMatch,
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(result.status).toBe("completed");
+    expect(reviewMatch).toHaveBeenCalledTimes(1);
+    expect(reviewMatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        wanted: expect.objectContaining({
+          query: "desk lamp",
+          maxPrice: 40,
+        }),
+        product: expect.objectContaining({
+          name: "Adjustable study light",
+          price: 20,
+        }),
+        scores: expect.objectContaining({
+          semantic: expect.any(Number),
+          final: expect.any(Number),
+        }),
+      })
+    );
+    expect(state.insertedMatches).toHaveLength(1);
+    expect(state.insertedMatches[0]).toEqual(
+      expect.objectContaining({
+        decision_source: "ai_review",
+        decision_reason: "The product is the requested kind of lamp.",
+        review_confidence: 0.91,
+        review_error: null,
+      })
+    );
+  });
+
+  test.each([
+    {
+      label: "rejected",
+      review: {
+        status: "rejected" as const,
+        relevant: false,
+        confidence: 0.94,
+        reason: "The product does not satisfy the request.",
+      },
+    },
+    {
+      label: "deferred",
+      review: {
+        status: "deferred" as const,
+        error: "AI match review is temporarily unavailable.",
+      },
+    },
+  ])(
+    "does not insert a $label AI candidate and keeps the batch running",
+    async ({ review }) => {
+      const { supabase, state } = createFakeSupabase({
+        products: [
+          {
+            product_id: "product-review",
+            name: "Adjustable study light",
+            description: "Flexible task lighting",
+            price: 20,
+            category: "home",
+            status: "available",
+            quantity: 1,
+            seller_id: "seller-1",
+          },
+        ],
+      });
+      const embedTexts = vi.fn(async (texts: string[]) =>
+        texts.map((text) =>
+          text.includes("Wanted item") ? [1, 0] : [0.92, 0.39191836]
+        )
+      );
+
+      const result = await runVectorMatchBatch({
+        supabase,
+        embedTexts,
+        reviewMatch: vi.fn(async () => review),
+        sendEmail: vi.fn(async () => undefined),
+      });
+
+      expect(result.status).toBe("completed");
+      expect(result.matchesCreated).toBe(0);
+      expect(state.insertedMatches).toHaveLength(0);
+    }
+  );
+
+  test("isolates an unexpected AI reviewer failure to its candidate", async () => {
+    const { supabase, state } = createFakeSupabase({
+      products: [
+        {
+          product_id: "product-review",
+          name: "Adjustable study light",
+          description: "Flexible task lighting",
+          price: 20,
+          category: "home",
+          status: "available",
+          quantity: 1,
+          seller_id: "seller-1",
+        },
+      ],
+    });
+    const embedTexts = vi.fn(async (texts: string[]) =>
+      texts.map((text) =>
+        text.includes("Wanted item") ? [1, 0] : [0.92, 0.39191836]
+      )
+    );
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts,
+      reviewMatch: vi.fn(async () => {
+        throw new Error("review transport failed");
+      }),
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(result.status).toBe("completed");
+    expect(result.matchesCreated).toBe(0);
+    expect(state.insertedMatches).toHaveLength(0);
+    expect(state.runUpdates.at(-1)).toEqual(
+      expect.objectContaining({ status: "completed" })
+    );
+  });
+
+  test("limits AI review concurrency to three while completing all candidates", async () => {
+    const products = Array.from({ length: 5 }, (_, index) => ({
+      product_id: `review-product-${index + 1}`,
+      name: `Candidate item ${index + 1}`,
+      description: "unrelated listing",
+      price: 30,
+      category: "home",
+      status: "available",
+      quantity: 1,
+      seller_id: `seller-${index + 1}`,
+    }));
+    const { supabase } = createFakeSupabase({ products });
+    let activeReviews = 0;
+    let peakReviews = 0;
+    let completedReviews = 0;
+    const reviewMatch = vi.fn(async () => {
+      activeReviews += 1;
+      peakReviews = Math.max(peakReviews, activeReviews);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      activeReviews -= 1;
+      completedReviews += 1;
+      return {
+        status: "accepted" as const,
+        relevant: true,
+        confidence: 0.9,
+        reason: "Relevant candidate.",
+      };
+    });
+
+    await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) =>
+          text.includes("Wanted item")
+            ? [1, 0]
+            : vectorForCosine(0.92)
+        )
+      ),
+      reviewMatch,
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(reviewMatch).toHaveBeenCalledTimes(5);
+    expect(completedReviews).toBe(5);
+    expect(peakReviews).toBe(3);
+  });
+
+  test("skips borderline review when three higher automatic accepts already fill the request", async () => {
+    const products = [
+      ...Array.from({ length: 3 }, (_, index) => ({
+        product_id: `automatic-${index + 1}`,
+        name: `Computer screen ${index + 1}`,
+        description: "desk monitor",
+        price: 30,
+        category: "electronics",
+        status: "available",
+        quantity: 1,
+        seller_id: `seller-${index + 1}`,
+      })),
+      {
+        product_id: "borderline-1",
+        name: "Candidate item",
+        description: "unrelated listing",
+        price: 30,
+        category: "home",
+        status: "available",
+        quantity: 1,
+        seller_id: "seller-4",
+      },
+    ];
+    const { supabase, state } = createFakeSupabase({ products });
+    const reviewMatch = vi.fn(async () => ({
+      status: "accepted" as const,
+      relevant: true,
+      confidence: 0.9,
+      reason: "Relevant candidate.",
+    }));
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) => {
+          if (text.includes("Wanted item")) return [1, 0];
+          if (text.includes("Candidate item")) return vectorForCosine(0.92);
+          return [1, 0];
+        })
+      ),
+      reviewMatch,
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(reviewMatch).not.toHaveBeenCalled();
+    expect(result.matchesCreated).toBe(3);
+    expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
+      "automatic-1",
+      "automatic-2",
+      "automatic-3",
+    ]);
+  });
+
+  test("stops deferred reviews after the first accepted fallback fills the only slot", async () => {
+    const fallbackProducts = [0.95, 0.94, 0.93, 0.92].map(
+      (score, index) => ({
+        product_id: `borderline-fallback-${index + 1}`,
+        name: `Candidate item ${index + 1}`,
+        description: "unrelated listing",
+        price: 30,
+        category: "home",
+        status: "available",
+        quantity: 1,
+        seller_id: `fallback-seller-${index + 1}`,
+        testScore: score,
+      })
+    );
+    const products = [
+      ...Array.from({ length: 3 }, (_, index) => ({
+        product_id: `automatic-${index + 1}`,
+        name: `Computer screen ${index + 1}`,
+        description: "desk monitor",
+        price: 30,
+        category: "electronics",
+        status: "available",
+        quantity: 1,
+        seller_id: `seller-${index + 1}`,
+      })),
+      ...fallbackProducts,
+    ];
+    const { supabase, state } = createFakeSupabase({
+      products,
+      duplicateProductIds: ["automatic-1"],
+    });
+    let attemptsAtReview: string[] = [];
+    const reviewedProducts: string[] = [];
+    const reviewMatch = vi.fn(async (input) => {
+      attemptsAtReview = state.matchInsertAttempts.map(
+        (match) => match.product_id
+      );
+      reviewedProducts.push(input.product.name);
+      return {
+        status: "accepted" as const,
+        relevant: true,
+        confidence: 0.92,
+        reason: "Fallback candidate is relevant.",
+      };
+    });
+    const sendEmail = vi.fn(async () => undefined);
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) => {
+          if (text.includes("Wanted item")) return [1, 0];
+          const fallback = fallbackProducts.find((item) =>
+            text.includes(item.name)
+          );
+          if (fallback) return vectorForCosine(fallback.testScore);
+          return [1, 0];
+        })
+      ),
+      reviewMatch,
+      sendEmail,
+    });
+
+    expect(reviewMatch).toHaveBeenCalledTimes(1);
+    expect(reviewedProducts).toEqual(["Candidate item 1"]);
+    expect(attemptsAtReview).toEqual([
+      "automatic-1",
+      "automatic-2",
+      "automatic-3",
+    ]);
+    expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
+      "automatic-2",
+      "automatic-3",
+      "borderline-fallback-1",
+    ]);
+    expect(result.matchesCreated).toBe(3);
+    expect(result.emailsSent).toBe(3);
+    expect(sendEmail).toHaveBeenCalledTimes(3);
+  });
+
+  test("reviews the next deferred candidate only after the first is rejected", async () => {
+    const fallbackProducts = [0.95, 0.94, 0.93].map((score, index) => ({
+      product_id: `borderline-fallback-${index + 1}`,
+      name: `Candidate item ${index + 1}`,
+      description: "unrelated listing",
+      price: 30,
+      category: "home",
+      status: "available",
+      quantity: 1,
+      seller_id: `fallback-seller-${index + 1}`,
+      testScore: score,
+    }));
+    const products = [
+      ...Array.from({ length: 3 }, (_, index) => ({
+        product_id: `automatic-${index + 1}`,
+        name: `Computer screen ${index + 1}`,
+        description: "desk monitor",
+        price: 30,
+        category: "electronics",
+        status: "available",
+        quantity: 1,
+        seller_id: `seller-${index + 1}`,
+      })),
+      ...fallbackProducts,
+    ];
+    const { supabase, state } = createFakeSupabase({
+      products,
+      duplicateProductIds: ["automatic-1"],
+    });
+    const reviewedProducts: string[] = [];
+    const reviewMatch = vi.fn(async (input) => {
+      reviewedProducts.push(input.product.name);
+      const accepted = input.product.name === "Candidate item 2";
+      return {
+        status: accepted ? ("accepted" as const) : ("rejected" as const),
+        relevant: accepted,
+        confidence: 0.92,
+        reason: accepted ? "Fallback is relevant." : "Not relevant.",
+      };
+    });
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) => {
+          if (text.includes("Wanted item")) return [1, 0];
+          const fallback = fallbackProducts.find((item) =>
+            text.includes(item.name)
+          );
+          if (fallback) return vectorForCosine(fallback.testScore);
+          return [1, 0];
+        })
+      ),
+      reviewMatch,
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(reviewMatch).toHaveBeenCalledTimes(2);
+    expect(reviewedProducts).toEqual([
+      "Candidate item 1",
+      "Candidate item 2",
+    ]);
+    expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
+      "automatic-2",
+      "automatic-3",
+      "borderline-fallback-2",
+    ]);
+    expect(result.matchesCreated).toBe(3);
+  });
+
+  test("keeps lower fallback candidates when higher candidates also require review", async () => {
+    const products = [0.95, 0.94, 0.93, 0.92].map((score, index) => ({
+      product_id: `review-${index + 1}`,
+      name: `Review candidate ${index + 1}`,
+      description: "unrelated listing",
+      price: 30,
+      category: "home",
+      status: "available",
+      quantity: 1,
+      seller_id: `seller-${index + 1}`,
+      testScore: score,
+    }));
+    const { supabase, state } = createFakeSupabase({ products });
+    const reviewMatch = vi.fn(async (input) => {
+      const accepted = input.product.name === "Review candidate 4";
+      return {
+        status: accepted ? ("accepted" as const) : ("rejected" as const),
+        relevant: accepted,
+        confidence: 0.9,
+        reason: accepted ? "Fallback is relevant." : "Not relevant.",
+      };
+    });
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map((text) => {
+          if (text.includes("Wanted item")) return [1, 0];
+          const product = products.find((item) => text.includes(item.name));
+          return vectorForCosine(product?.testScore ?? 0);
+        })
+      ),
+      reviewMatch,
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(reviewMatch).toHaveBeenCalledTimes(4);
+    expect(result.matchesCreated).toBe(1);
+    expect(state.insertedMatches[0].product_id).toBe("review-4");
+  });
+
+  test("ranks shuffled candidates by distinct final scores and keeps the true top three", async () => {
+    const products = [
+      { id: "lowest", score: 0.82 },
+      { id: "highest", score: 0.99 },
+      { id: "third", score: 0.86 },
+      { id: "second", score: 0.93 },
+    ].map(({ id, score }, index) => ({
+      product_id: id,
+      name: `Computer screen ${id}`,
+      description: "desk monitor",
+      price: 30,
+      category: "electronics",
+      status: "available",
+      quantity: 1,
+      seller_id: `seller-${index + 1}`,
+      testScore: score,
+    }));
+    const { supabase, state } = createFakeSupabase({ products });
+    const embedTexts = vi.fn(async (texts: string[]) =>
+      texts.map((text) => {
+        if (text.includes("Wanted item")) return [1, 0];
+        const product = products.find((item) => text.includes(item.name));
+        return vectorForCosine(product?.testScore ?? 0);
+      })
+    );
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts,
+      reviewMatch: vi.fn(),
+      sendEmail: vi.fn(async () => undefined),
+    });
+
+    expect(result.matchesCreated).toBe(3);
+    expect(state.insertedMatches).toHaveLength(3);
+    expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
+      "highest",
+      "second",
+      "third",
+    ]);
+  });
+
+  test("does not let a duplicate consume one of three fresh match slots", async () => {
+    const products = Array.from({ length: 4 }, (_, index) => ({
+      product_id: `product-${index + 1}`,
+      name: `Computer screen ${index + 1}`,
+      description: "desk monitor",
+      price: 30,
+      category: "electronics",
+      status: "available",
+      quantity: 1,
+      seller_id: `seller-${index + 1}`,
+    }));
+    const { supabase, state } = createFakeSupabase({
+      products,
+      duplicateProductIds: ["product-1"],
+    });
+    const sendEmail = vi.fn(async () => undefined);
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map(() => [1, 0, 0])
+      ),
+      reviewMatch: vi.fn(),
+      sendEmail,
+    });
+
+    expect(state.matchInsertAttempts.map((match) => match.product_id)).toEqual([
+      "product-1",
+      "product-2",
+      "product-3",
+      "product-4",
+    ]);
+    expect(state.insertedMatches.map((match) => match.product_id)).toEqual([
+      "product-2",
+      "product-3",
+      "product-4",
+    ]);
+    expect(result.matchesCreated).toBe(3);
+    expect(result.emailsSent).toBe(3);
+    expect(sendEmail).toHaveBeenCalledTimes(3);
+  });
+
+  test("persists accepted matches without sending email when rollout email is disabled", async () => {
+    vi.stubEnv("WANTED_MATCH_EMAIL_ENABLED", "false");
+    const { supabase, state } = createFakeSupabase();
+    const sendEmail = vi.fn(async () => undefined);
+
+    const result = await runVectorMatchBatch({
+      supabase,
+      embedTexts: vi.fn(async (texts: string[]) =>
+        texts.map(() => [1, 0, 0])
+      ),
+      sendEmail,
+    });
+
+    expect(result.matchesCreated).toBe(1);
+    expect(result.emailsSent).toBe(0);
+    expect(state.insertedMatches).toHaveLength(1);
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect(state.matchUpdates[0]).toEqual(
+      expect.objectContaining({
+        emailed_at: null,
+        email_error: null,
+      })
+    );
+  });
+
+  test.each([
+    {
+      label: "string",
+      error: "embedding provider unavailable",
+      expected: "embedding provider unavailable",
+    },
+    {
+      label: "Supabase plain object",
+      error: {
+        message: "products table unavailable",
+        code: "PGRST205",
+        details: "relation is missing",
+      },
+      expected: "products table unavailable",
+    },
+  ])("preserves a useful $label error message", async ({ error, expected }) => {
+    const setup =
+      typeof error === "string"
+        ? createFakeSupabase()
+        : createFakeSupabase({ productSelectError: error });
+
+    const result = await runVectorMatchBatch({
+      supabase: setup.supabase,
+      embedTexts:
+        typeof error === "string"
+          ? vi.fn(async () => {
+              throw error;
+            })
+          : vi.fn(),
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.errorMessage).toContain(expected);
+    expect(setup.state.runUpdates.at(-1)).toEqual(
+      expect.objectContaining({
+        status: "failed",
+        error_message: expect.stringContaining(expected),
       })
     );
   });

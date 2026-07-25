@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
+  after: vi.fn(),
   auth: vi.fn(),
   createAdminClient: vi.fn(),
   createClient: vi.fn(),
@@ -10,6 +11,10 @@ const mocks = vi.hoisted(() => ({
   notifyMatchingWantedRequests: vi.fn(),
 }));
 
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return { ...actual, after: mocks.after };
+});
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
 vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
@@ -80,6 +85,12 @@ function lookupQuery(data: ReturnType<typeof productRow> | null) {
 describe("product create idempotency", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.after.mockImplementation(
+      (callback: () => void | Promise<void>) => {
+        void callback();
+      }
+    );
+    mocks.notifyMatchingWantedRequests.mockResolvedValue({ matches: [] });
     mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
     mocks.translateProductName.mockResolvedValue({
       en: "Desk lamp",
@@ -140,6 +151,60 @@ describe("product create idempotency", () => {
         name: "Desk lamp",
       }),
     });
+  });
+
+  test("still creates the product when immediate wanted matching fails", async () => {
+    const lookup = lookupQuery(null);
+    const insertQuery = {
+      insert: vi.fn(),
+      select: vi.fn(),
+      single: vi.fn().mockResolvedValue({ data: productRow(), error: null }),
+    };
+    insertQuery.insert.mockReturnValue(insertQuery);
+    insertQuery.select.mockReturnValue(insertQuery);
+    const from = vi
+      .fn()
+      .mockReturnValueOnce(lookup)
+      .mockReturnValueOnce(insertQuery);
+    mocks.createAdminClient.mockReturnValue({ from });
+    mocks.notifyMatchingWantedRequests.mockRejectedValueOnce(
+      new Error("Embedding provider unavailable")
+    );
+
+    const response = await POST(request("request-notify-failure"));
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload.id).toBe("product-1");
+  });
+
+  test("returns the created product without waiting for wanted matching", async () => {
+    const lookup = lookupQuery(null);
+    const insertQuery = {
+      insert: vi.fn(),
+      select: vi.fn(),
+      single: vi.fn().mockResolvedValue({ data: productRow(), error: null }),
+    };
+    insertQuery.insert.mockReturnValue(insertQuery);
+    insertQuery.select.mockReturnValue(insertQuery);
+    const from = vi
+      .fn()
+      .mockReturnValueOnce(lookup)
+      .mockReturnValueOnce(insertQuery);
+    mocks.createAdminClient.mockReturnValue({ from });
+    let scheduledWork: (() => void | Promise<void>) | undefined;
+    mocks.after.mockImplementationOnce((callback) => {
+      scheduledWork = callback;
+    });
+    mocks.notifyMatchingWantedRequests.mockImplementation(
+      () => new Promise(() => undefined)
+    );
+
+    const response = await POST(request("request-background-match"));
+
+    expect(response.status).toBe(201);
+    expect(scheduledWork).toEqual(expect.any(Function));
+    expect(mocks.notifyMatchingWantedRequests).not.toHaveBeenCalled();
   });
 
   test("creates a product when the idempotency column is not deployed yet", async () => {

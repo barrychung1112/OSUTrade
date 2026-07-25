@@ -1,4 +1,25 @@
 import { sendEmail as defaultSendEmail, type SendEmail } from "./email";
+import {
+  buildProductEmbeddingInput,
+  buildWantedRequestEmbeddingInput,
+  contentHash,
+  findSemanticWantedMatches,
+  shouldEmbed,
+  type ProductEmbeddingSource,
+  type SemanticWantedMatch,
+  type WantedRequestEmbeddingSource,
+} from "./vectorMatching";
+import {
+  assertSupportedEmbeddingModel,
+  DEFAULT_EMBEDDING_MODEL,
+  embedTextsWithOpenAI,
+  parseEmbedding,
+} from "./vectorEmbeddings";
+import {
+  reviewWantedMatch,
+  type WantedMatchReviewInput,
+  type WantedMatchReviewResult,
+} from "./wantedMatchReview";
 
 export type WantedRequestStatus = "active" | "paused" | "fulfilled" | "deleted";
 
@@ -27,6 +48,9 @@ export type WantedProductRow = {
   description_zh_cn?: string | null;
   price?: number | string | null;
   category?: string | null;
+  status?: string | null;
+  quantity?: number | string | null;
+  seller_id?: string | null;
 };
 
 export type WantedMatch = {
@@ -231,7 +255,56 @@ type NotifyWantedMatchesOptions = {
   };
   product: WantedProductRow;
   sendEmail?: SendEmail;
+  embedTexts?: (texts: string[], model: string) => Promise<number[][]>;
+  reviewMatch?: (
+    input: WantedMatchReviewInput
+  ) => Promise<WantedMatchReviewResult>;
+  model?: string;
+  now?: () => Date;
 };
+
+type EmbeddingRow = {
+  product_id?: string;
+  wanted_request_id?: string;
+  embedding?: number[] | string | null;
+  content_hash?: string | null;
+};
+
+type AcceptedImmediateMatch = SemanticWantedMatch & {
+  decisionSource: "hybrid" | "ai_review";
+  decisionReason: string;
+  reviewConfidence: number | null;
+  reviewError: string | null;
+};
+
+const MAX_IMMEDIATE_REVIEW_CONCURRENCY = 3;
+const MAX_IMMEDIATE_AI_REVIEWS = 6;
+const MAX_IMMEDIATE_REQUEST_EMBEDDINGS = 24;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>
+) {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await mapper(items[index]);
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(concurrency, items.length) },
+      () => worker()
+    )
+  );
+  return results;
+}
 
 async function getEmailByUserId(
   supabase: NotifyWantedMatchesOptions["supabase"],
@@ -246,16 +319,11 @@ export async function notifyMatchingWantedRequests({
   supabase,
   product,
   sendEmail = defaultSendEmail,
+  embedTexts = embedTextsWithOpenAI,
+  reviewMatch = reviewWantedMatch,
+  model = process.env.OPENAI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL,
+  now = () => new Date(),
 }: NotifyWantedMatchesOptions) {
-  const { data: wantedRequests, error: requestError } = await supabase
-    .from("wanted_requests")
-    .select("*")
-    .eq("status", "active")
-    .eq("email_subscribed", true);
-
-  if (requestError) throw requestError;
-
-  const matches = findWantedRequestMatches(product, wantedRequests ?? []);
   const results: Array<{
     wantedRequestId: string;
     productId: string;
@@ -263,63 +331,272 @@ export async function notifyMatchingWantedRequests({
     emailError: string | null;
   }> = [];
 
-  for (const match of matches) {
-    const { data: matchRow, error: matchError } = await supabase
-      .from("wanted_request_matches")
-      .insert({
-        wanted_request_id: match.wantedRequestId,
-        product_id: match.productId,
-        score: match.score,
-      })
-      .select("match_id")
-      .single();
+  try {
+    assertSupportedEmbeddingModel(model);
 
-    if (matchError) {
-      if (matchError.code === "23505") continue;
-      throw matchError;
-    }
+    const { data: wantedRequests, error: requestError } = await supabase
+      .from("wanted_requests")
+      .select("*")
+      .eq("status", "active")
+      .eq("email_subscribed", true);
 
-    const wantedRequest = (wantedRequests ?? []).find(
-      (request: WantedRequestRow) =>
-        request.wanted_request_id === match.wantedRequestId
+    if (requestError) throw requestError;
+
+    const requestRows = (wantedRequests ?? []) as WantedRequestRow[];
+    if (requestRows.length === 0) return { matches: results };
+
+    const productId = String(product.product_id);
+    const requestIds = requestRows.map((row) => row.wanted_request_id);
+    const [
+      { data: existingProductEmbedding, error: productEmbeddingError },
+      { data: existingRequestEmbeddings, error: requestEmbeddingError },
+    ] = await Promise.all([
+      supabase
+        .from("product_embeddings")
+        .select("*")
+        .eq("product_id", productId)
+        .maybeSingle(),
+      supabase
+        .from("wanted_request_embeddings")
+        .select("*")
+        .in("wanted_request_id", requestIds),
+    ]);
+
+    if (productEmbeddingError) throw productEmbeddingError;
+    if (requestEmbeddingError) throw requestEmbeddingError;
+
+    const productInput = buildProductEmbeddingInput(
+      product as ProductEmbeddingSource
     );
-    const productName = product.name || "New OSUTrade listing";
-    let emailError: string | null = null;
-    let emailed = false;
+    const productHash = contentHash(model, productInput);
+    const requestEmbeddingById = new Map(
+      ((existingRequestEmbeddings ?? []) as EmbeddingRow[]).map((row) => [
+        String(row.wanted_request_id),
+        row,
+      ])
+    );
+    const requestInputs = requestRows.map((request) => {
+      const input = buildWantedRequestEmbeddingInput(
+        request as WantedRequestEmbeddingSource
+      );
+      return {
+        request,
+        input,
+        hash: contentHash(model, input),
+      };
+    });
 
-    try {
-      const email = await getEmailByUserId(supabase, match.userId);
-      if (email) {
-        await sendEmail({
-          to: email,
-          ...buildWantedRequestEmail({
-            wantedQuery: wantedRequest?.query ?? "your wanted item",
-            productName,
-            productPrice: product.price,
-            productUrl: buildProductUrl(product.product_id),
-          }),
-        });
-        emailed = true;
-      }
-    } catch (error) {
-      emailError =
-        error instanceof Error ? error.message : "Failed to send wanted email.";
+    const productNeedsEmbedding = shouldEmbed(
+      existingProductEmbedding as EmbeddingRow | null,
+      productHash
+    );
+    const pendingRequests = requestInputs
+      .filter(({ request, hash }) =>
+        shouldEmbed(requestEmbeddingById.get(request.wanted_request_id), hash)
+      )
+      .slice(0, MAX_IMMEDIATE_REQUEST_EMBEDDINGS);
+    const pendingInputs = [
+      ...(productNeedsEmbedding ? [productInput] : []),
+      ...pendingRequests.map(({ input }) => input),
+    ];
+    const embeddings = await embedTexts(pendingInputs, model);
+    if (embeddings.length !== pendingInputs.length) {
+      throw new Error("Embedding response count did not match input count.");
     }
 
-    await supabase
-      .from("wanted_request_matches")
-      .update({
-        emailed_at: emailed ? new Date().toISOString() : null,
-        email_error: emailError,
-      })
-      .eq("match_id", matchRow?.match_id);
+    const embeddedAt = now().toISOString();
+    let embeddingIndex = 0;
+    const productEmbedding = productNeedsEmbedding
+      ? embeddings[embeddingIndex++]
+      : parseEmbedding(
+          (existingProductEmbedding as EmbeddingRow | null)?.embedding
+        );
 
-    results.push({
-      wantedRequestId: match.wantedRequestId,
-      productId: match.productId,
-      emailed,
-      emailError,
+    if (productNeedsEmbedding) {
+      const { error } = await supabase.from("product_embeddings").upsert({
+        product_id: productId,
+        embedding_model: model,
+        embedding_input: productInput,
+        embedding: productEmbedding,
+        content_hash: productHash,
+        embedded_at: embeddedAt,
+      });
+      if (error) throw error;
+    }
+
+    const nextRequestEmbeddings = new Map(requestEmbeddingById);
+    const requestUpserts = pendingRequests.map(({ request, input, hash }) => {
+      const row = {
+        wanted_request_id: request.wanted_request_id,
+        embedding_model: model,
+        embedding_input: input,
+        embedding: embeddings[embeddingIndex++],
+        content_hash: hash,
+        embedded_at: embeddedAt,
+      };
+      nextRequestEmbeddings.set(request.wanted_request_id, row);
+      return row;
     });
+
+    if (requestUpserts.length > 0) {
+      const { error } = await supabase
+        .from("wanted_request_embeddings")
+        .upsert(requestUpserts);
+      if (error) throw error;
+    }
+
+    const candidates = findSemanticWantedMatches({
+      products: [
+        {
+          row: product as ProductEmbeddingSource,
+          embedding: productEmbedding,
+        },
+      ],
+      wantedRequests: requestRows
+        .map((request) => ({
+          row: request as WantedRequestEmbeddingSource,
+          embedding: parseEmbedding(
+            nextRequestEmbeddings.get(request.wanted_request_id)?.embedding
+          ),
+        }))
+        .filter((item) => item.embedding.length > 0),
+    });
+    const requestById = new Map(
+      requestRows.map((request) => [request.wanted_request_id, request])
+    );
+    const automaticMatches = candidates
+      .filter((candidate) => candidate.decision === "accept")
+      .map<AcceptedImmediateMatch>((candidate) => ({
+          ...candidate,
+          decisionSource: "hybrid",
+          decisionReason: "Automatically accepted by hybrid score.",
+          reviewConfidence: null,
+          reviewError: null,
+      }));
+    const reviewCandidates = candidates
+      .filter((candidate) => candidate.decision === "review")
+      .sort((left, right) => right.finalScore - left.finalScore)
+      .slice(0, MAX_IMMEDIATE_AI_REVIEWS);
+    const reviewedMatches = await mapWithConcurrency(
+      reviewCandidates,
+      MAX_IMMEDIATE_REVIEW_CONCURRENCY,
+      async (
+        candidate
+      ): Promise<AcceptedImmediateMatch | null> => {
+        const request = requestById.get(candidate.wantedRequestId);
+        if (!request) return null;
+
+        let review: WantedMatchReviewResult;
+        try {
+          review = await reviewMatch({
+            wanted: {
+              query: request.query,
+              description: request.description,
+              maxPrice: normalizePrice(request.max_price),
+            },
+            product: {
+              name: product.name || "Unnamed listing",
+              description: product.description,
+              price: normalizePrice(product.price),
+            },
+            scores: {
+              semantic: candidate.semanticScore,
+              lexical: candidate.lexicalScore,
+              category: candidate.categoryScore,
+              final: candidate.finalScore,
+            },
+          });
+        } catch {
+          return null;
+        }
+
+        if (review.status !== "accepted") return null;
+        return {
+          ...candidate,
+          decisionSource: "ai_review",
+          decisionReason: review.reason,
+          reviewConfidence: review.confidence,
+          reviewError: null,
+        };
+      }
+    );
+    const accepted = [
+      ...automaticMatches,
+      ...reviewedMatches.filter(
+        (match): match is AcceptedImmediateMatch => match !== null
+      ),
+    ].sort((left, right) => right.finalScore - left.finalScore);
+
+    for (const match of accepted) {
+      const { data: matchRow, error: matchError } = await supabase
+        .from("wanted_request_matches")
+        .insert({
+          wanted_request_id: match.wantedRequestId,
+          product_id: match.productId,
+          score: match.finalScore,
+          semantic_score: match.semanticScore,
+          lexical_score: match.lexicalScore,
+          category_score: match.categoryScore,
+          decision_source: match.decisionSource,
+          decision_reason: match.decisionReason,
+          review_confidence: match.reviewConfidence,
+          review_error: match.reviewError,
+        })
+        .select("match_id")
+        .single();
+
+      if (matchError) {
+        if (matchError.code === "23505") continue;
+        throw matchError;
+      }
+
+      const wantedRequest = requestById.get(match.wantedRequestId);
+      const productName = product.name || "New OSUTrade listing";
+      let emailError: string | null = null;
+      let emailed = false;
+
+      try {
+        const emailEnabled =
+          process.env.WANTED_MATCH_EMAIL_ENABLED !== "false";
+        const email = emailEnabled
+          ? await getEmailByUserId(supabase, match.userId)
+          : null;
+        if (emailEnabled && email) {
+          await sendEmail({
+            to: email,
+            ...buildWantedRequestEmail({
+              wantedQuery: wantedRequest?.query ?? "your wanted item",
+              productName,
+              productPrice: product.price,
+              productUrl: buildProductUrl(product.product_id),
+            }),
+          });
+          emailed = true;
+        }
+      } catch (error) {
+        emailError =
+          error instanceof Error
+            ? error.message
+            : "Failed to send wanted email.";
+      }
+
+      await supabase
+        .from("wanted_request_matches")
+        .update({
+          emailed_at: emailed ? now().toISOString() : null,
+          email_error: emailError,
+        })
+        .eq("match_id", matchRow?.match_id);
+
+      results.push({
+        wantedRequestId: match.wantedRequestId,
+        productId: match.productId,
+        emailed,
+        emailError,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to match new product to wanted requests.", error);
   }
 
   return { matches: results };
