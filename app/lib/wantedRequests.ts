@@ -47,6 +47,7 @@ export type WantedProductRow = {
   description_zh_tw?: string | null;
   description_zh_cn?: string | null;
   price?: number | string | null;
+  effective_price?: number | string | null;
   category?: string | null;
   status?: string | null;
   quantity?: number | string | null;
@@ -170,7 +171,7 @@ export function findWantedRequestMatches(
   product: WantedProductRow,
   requests: WantedRequestRow[]
 ): WantedMatch[] {
-  const productPrice = normalizePrice(product.price);
+  const productPrice = normalizePrice(product.effective_price ?? product.price);
   const productCategory = normalizeSearchText(product.category);
   const searchable = productSearchText(product);
 
@@ -501,7 +502,7 @@ export async function notifyMatchingWantedRequests({
             product: {
               name: product.name || "Unnamed listing",
               description: product.description,
-              price: normalizePrice(product.price),
+              price: normalizePrice(product.effective_price ?? product.price),
             },
             scores: {
               semantic: candidate.semanticScore,
@@ -571,7 +572,7 @@ export async function notifyMatchingWantedRequests({
             ...buildWantedRequestEmail({
               wantedQuery: wantedRequest?.query ?? "your wanted item",
               productName,
-              productPrice: product.price,
+              productPrice: product.effective_price ?? product.price,
               productUrl: buildProductUrl(product.product_id),
             }),
           });

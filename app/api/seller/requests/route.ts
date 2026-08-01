@@ -4,6 +4,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 import { getAcceptedRequestProductStatus } from "@/app/lib/sellerRequestAcceptance";
 import { notifyTradeEvent } from "@/app/lib/notifications";
+import { getProductPricing } from "@/app/lib/productDiscount";
 
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
 type ResponseStatus = RequestStatus | "expired";
@@ -15,6 +16,8 @@ type ProductRow = {
   name_zh_tw?: string | null;
   name_zh_cn?: string | null;
   price: number;
+  discount_percent?: number | null;
+  effective_price?: number | null;
   image_url: string | null;
   image_urls?: string[] | null;
   quantity?: number | null;
@@ -105,7 +108,7 @@ function toSellerRequest(
             zhTw: product.name_zh_tw ?? product.name,
             zhCn: product.name_zh_cn ?? product.name,
           },
-          price: product.price,
+          price: getProductPricing(product).effectivePrice,
           imageUrl: imageUrls[0] ?? null,
           imageUrls,
           quantity: product.quantity ?? 1,
@@ -412,7 +415,7 @@ export async function PATCH(request: Request) {
               product: {
                 id: responseProduct.product_id,
                 name: responseProduct.name,
-                price: responseProduct.price,
+                price: getProductPricing(responseProduct).effectivePrice,
               },
             },
             recipientEmail: await safeGetEmailByUserId(declinedRequest.buyer_id),

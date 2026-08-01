@@ -11,6 +11,7 @@ export type ProductEmbeddingSource = {
   description_zh_tw?: string | null;
   description_zh_cn?: string | null;
   price?: number | string | null;
+  effective_price?: number | string | null;
   category?: string | null;
   status?: string | null;
   quantity?: number | string | null;
@@ -175,7 +176,7 @@ function passesGuardrails(
   if (product.seller_id && product.seller_id === request.user_id) return false;
 
   const budget = toNumber(request.max_price);
-  const price = toNumber(product.price);
+  const price = toNumber(product.effective_price ?? product.price);
   if (
     budget !== null &&
     price !== null &&

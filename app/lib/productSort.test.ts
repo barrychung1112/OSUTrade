@@ -24,7 +24,7 @@ describe("applyProductListSort", () => {
 
     applyProductListSort(query, "asc");
 
-    expect(query.order).toHaveBeenNthCalledWith(1, "price", {
+    expect(query.order).toHaveBeenNthCalledWith(1, "effective_price", {
       ascending: true,
     });
     expect(query.order).toHaveBeenNthCalledWith(2, "created_at", {

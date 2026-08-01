@@ -10,6 +10,7 @@ import {
   requestSelectFieldsWithoutPrice,
   stripPriceAtRequest,
 } from "@/app/lib/requestSchema";
+import { getProductPricing } from "@/app/lib/productDiscount";
 
 type RequestRow = {
   request_id: string;
@@ -29,6 +30,8 @@ type ProductRow = {
   name_zh_tw?: string | null;
   name_zh_cn?: string | null;
   price: number;
+  discount_percent?: number | null;
+  effective_price?: number | null;
   image_url: string | null;
   image_urls?: string[] | null;
   contact_phone?: string | null;
@@ -52,7 +55,8 @@ function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) 
   const imageUrls = product
     ? normalizeImageUrls(product.image_urls, product.image_url)
     : [];
-  const priceChange = getRequestPriceChange(row, product?.price);
+  const currentPrice = product ? getProductPricing(product).effectivePrice : undefined;
+  const priceChange = getRequestPriceChange(row, currentPrice);
 
   return {
     id: row.request_id,
@@ -84,7 +88,7 @@ function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) 
             zhTw: product.name_zh_tw ?? product.name,
             zhCn: product.name_zh_cn ?? product.name,
           },
-          price: product.price,
+          price: currentPrice,
           imageUrl: imageUrls[0] ?? null,
           imageUrls,
           quantity: product.quantity ?? 1,
@@ -328,7 +332,7 @@ export async function PATCH(request: Request) {
           product: {
             id: product.product_id,
             name: product.name,
-            price: product.price,
+            price: getProductPricing(product).effectivePrice,
           },
         },
         recipientEmail: await safeGetEmailByUserId(product.seller_id),
@@ -436,7 +440,7 @@ export async function POST(request: Request) {
       buyer_id: session.user.id,
       quantity,
       note: note || null,
-      price_at_request: product.price,
+      price_at_request: getProductPricing(product).effectivePrice,
       status: "sent",
     });
 
@@ -462,7 +466,7 @@ export async function POST(request: Request) {
           product: {
             id: product.product_id,
             name: product.name,
-            price: product.price,
+            price: getProductPricing(product).effectivePrice,
           },
         },
         recipientEmail: await safeGetEmailByUserId(product.seller_id),

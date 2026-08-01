@@ -440,7 +440,7 @@ export async function runVectorMatchBatch({
               product: {
                 name: product.name || "Unnamed listing",
                 description: product.description,
-                price: nullableNumber(product.price),
+                price: nullableNumber(product.effective_price ?? product.price),
               },
               scores: {
                 semantic: match.semanticScore,
@@ -528,7 +528,7 @@ export async function runVectorMatchBatch({
               ...buildWantedRequestEmail({
                 wantedQuery: wantedRequest?.query ?? "your wanted item",
                 productName: product.name || "New OSUTrade listing",
-                productPrice: product.price,
+                productPrice: product.effective_price ?? product.price,
                 productUrl: buildProductUrl(product.product_id),
               }),
             });

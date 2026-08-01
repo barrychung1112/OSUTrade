@@ -31,6 +31,11 @@ import {
 } from "../lib/crossPostSelection";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 import { requestResponseWindowMs } from "../lib/requestExpiry";
+import {
+  calculateEffectivePrice,
+  PRODUCT_DISCOUNT_OPTIONS,
+  type ProductDiscountPercent,
+} from "../lib/productDiscount";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
@@ -41,6 +46,9 @@ type SellerProduct = {
   description?: string | null;
   nameTranslations?: ProductNameTranslations | null;
   price: number;
+  originalPrice?: number;
+  effectivePrice?: number;
+  discountPercent?: ProductDiscountPercent;
   category?: string | null;
   imageUrl?: string | null;
   sellerContact?: {
@@ -56,6 +64,7 @@ type ProductEditValues = {
   name: string;
   description: string;
   price: number;
+  discountPercent: ProductDiscountPercent;
   category: string;
   quantity: number;
   contactPhone: string;
@@ -807,7 +816,8 @@ function ProductRow({
   const [editValues, setEditValues] = useState<ProductEditValues>(() => ({
     name: product.name,
     description: product.description ?? "",
-    price: Number(product.price ?? 0),
+    price: Number(product.originalPrice ?? product.price ?? 0),
+    discountPercent: product.discountPercent ?? 0,
     category: product.category ?? "general",
     quantity: product.quantity ?? 0,
     contactPhone: product.sellerContact?.phone ?? "",
@@ -828,7 +838,8 @@ function ProductRow({
     setEditValues({
       name: product.name,
       description: product.description ?? "",
-      price: Number(product.price ?? 0),
+      price: Number(product.originalPrice ?? product.price ?? 0),
+      discountPercent: product.discountPercent ?? 0,
       category: product.category ?? "general",
       quantity: product.quantity ?? 0,
       contactPhone: product.sellerContact?.phone ?? "",
@@ -922,6 +933,11 @@ function ProductRow({
                   <DollarSign className="h-3.5 w-3.5" />
                   {currency(product.price)}
                 </span>
+                {(product.discountPercent ?? 0) > 0 && (
+                  <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-bold text-red-700">
+                    {product.discountPercent}% OFF
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 font-medium text-green-800">
                   <Boxes className="h-3.5 w-3.5" />
                   {t("product.stock", { quantity: product.quantity ?? 1 })}
@@ -1093,6 +1109,43 @@ function ProductRow({
                   </select>
                 </label>
               </div>
+              <fieldset className="rounded-md border border-orange-100 bg-orange-50/50 p-3">
+                <legend className="px-1 text-sm font-semibold text-gray-800">
+                  {t("seller.discount")}
+                </legend>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {PRODUCT_DISCOUNT_OPTIONS.map((discount) => (
+                    <button
+                      key={discount}
+                      type="button"
+                      aria-pressed={editValues.discountPercent === discount}
+                      onClick={() =>
+                        setEditValues((current) => ({
+                          ...current,
+                          discountPercent: discount,
+                        }))
+                      }
+                      className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
+                        editValues.discountPercent === discount
+                          ? "border-[#d73f09] bg-[#d73f09] text-white"
+                          : "border-orange-200 bg-white text-gray-700 hover:bg-orange-50"
+                      }`}
+                    >
+                      {discount === 0 ? t("seller.noDiscount") : `${discount}%`}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                  {t("seller.discountPreview", {
+                    price: currency(
+                      calculateEffectivePrice(
+                        Number(editValues.price) || 0,
+                        editValues.discountPercent
+                      )
+                    ),
+                  })}
+                </p>
+              </fieldset>
               {Number(editValues.price) !== Number(product.price) && (
                 <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                   {t("seller.priceChangeWarning")}

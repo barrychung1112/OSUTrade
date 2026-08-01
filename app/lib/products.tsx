@@ -13,6 +13,9 @@ export type Product = {
     zhCn?: string | null;
   } | null;
   price: number;
+  originalPrice?: number;
+  effectivePrice?: number;
+  discountPercent?: number;
   category?: string | null;
   imageUrl?: string | null;
   imageUrls?: string[] | null;
