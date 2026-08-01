@@ -23,6 +23,16 @@ describe("product listing idempotency schema", () => {
   });
 });
 
+describe("product discount schema", () => {
+  test("stores preset discounts and generates the effective price", () => {
+    const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
+
+    expect(schema).toContain("discount_percent integer not null default 0");
+    expect(schema).toMatch(/products_discount_percent_check[\s\S]*discount_percent in \(0, 10, 20, 30, 50\)/i);
+    expect(schema).toMatch(/effective_price numeric[\s\S]*generated always as/i);
+  });
+});
+
 describe("wanted request subscription schema", () => {
   test("stores wanted requests and prevents duplicate product match notifications", () => {
     const schema = readFileSync("supabase/mvp-schema.sql", "utf8");

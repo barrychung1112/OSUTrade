@@ -179,6 +179,8 @@ export default function ProductListPage() {
                   )}
                   nameTranslations={product.nameTranslations}
                   price={product.price}
+                  originalPrice={product.originalPrice}
+                  discountPercent={product.discountPercent}
                   category={product.category}
                   quantity={product.quantity}
                   imageUrl={

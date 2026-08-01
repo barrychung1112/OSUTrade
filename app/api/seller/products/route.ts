@@ -10,6 +10,7 @@ import {
   getActivePriceChangeRecipients,
   notifyTradeEvent,
 } from "@/app/lib/notifications";
+import { getProductPricing } from "@/app/lib/productDiscount";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 
@@ -24,6 +25,8 @@ type ProductRow = {
   name_zh_tw?: string | null;
   name_zh_cn?: string | null;
   price: number;
+  discount_percent?: number | null;
+  effective_price?: number | null;
   category: string | null;
   image_url: string | null;
   image_urls?: string[] | null;
@@ -53,6 +56,7 @@ function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | nul
 
 function toProduct(row: ProductRow) {
   const imageUrls = normalizeImageUrls(row.image_urls, row.image_url);
+  const pricing = getProductPricing(row);
   return {
     id: row.product_id,
     name: row.name,
@@ -67,7 +71,10 @@ function toProduct(row: ProductRow) {
       zhTw: row.description_zh_tw ?? row.description ?? "",
       zhCn: row.description_zh_cn ?? row.description ?? "",
     },
-    price: row.price,
+    price: pricing.effectivePrice,
+    originalPrice: pricing.originalPrice,
+    effectivePrice: pricing.effectivePrice,
+    discountPercent: pricing.discountPercent,
     category: row.category,
     imageUrl: imageUrls[0] ?? null,
     imageUrls,
@@ -240,10 +247,11 @@ export async function PATCH(request: Request) {
         .eq("status", "sent");
     }
 
-    const oldPrice = Number(existing.price);
-    const newPrice = Number(data.price);
+    const oldPrice = getProductPricing(existing).effectivePrice;
+    const newPrice = getProductPricing(data).effectivePrice;
     const priceChanged =
-      Object.prototype.hasOwnProperty.call(body, "price") &&
+      (Object.prototype.hasOwnProperty.call(body, "price") ||
+        Object.prototype.hasOwnProperty.call(body, "discountPercent")) &&
       Number.isFinite(oldPrice) &&
       Number.isFinite(newPrice) &&
       oldPrice !== newPrice;
@@ -288,7 +296,7 @@ export async function PATCH(request: Request) {
             product: {
               id: data.product_id,
               name: data.name,
-              price: data.price,
+              price: newPrice,
             },
             priceChange: {
               oldPrice: recipient.oldPrice,

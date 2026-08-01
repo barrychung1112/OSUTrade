@@ -62,7 +62,7 @@ async function querySupabaseSimilarProducts({
   const supabase = createAdminClient();
   let query = supabase
     .from("products")
-    .select("name, description, price, category, status, quantity")
+    .select("name, description, price, effective_price, category, status, quantity")
     .eq("category", category)
     .gt("price", 0)
     .limit(12);
@@ -85,7 +85,7 @@ async function querySupabaseSimilarProducts({
     .map((row: any) => ({
       source: "supabase" as const,
       name: String(row.name ?? "Similar item"),
-      price: Number(row.price),
+      price: Number(row.effective_price ?? row.price),
     }))
     .filter((item) => Number.isFinite(item.price) && item.price > 0);
 }

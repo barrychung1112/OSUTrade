@@ -12,7 +12,7 @@ export function applyProductListSort<TQuery extends SortableQuery>(
   let sortedQuery: SortableQuery = query;
 
   if (sort === "asc" || sort === "desc") {
-    sortedQuery = sortedQuery.order("price", { ascending: sort === "asc" });
+    sortedQuery = sortedQuery.order("effective_price", { ascending: sort === "asc" });
   }
 
   sortedQuery = sortedQuery

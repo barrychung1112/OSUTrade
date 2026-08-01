@@ -14,7 +14,7 @@ function currency(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(value);
 }
 
@@ -98,6 +98,11 @@ export default function ProductListCard() {
                 </span>
                 <span className="shrink-0 font-semibold text-[#d73f09]">
                   {currency(product.price)}
+                  {(product.discountPercent ?? 0) > 0 && (
+                    <span className="ml-1 text-[10px] font-bold text-red-700">
+                      {product.discountPercent}% OFF
+                    </span>
+                  )}
                 </span>
               </Link>
             </li>

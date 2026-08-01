@@ -15,6 +15,8 @@ interface ProductCardProps {
   displayName?: string;
   nameTranslations?: ProductNameTranslations | null;
   price: number;
+  originalPrice?: number;
+  discountPercent?: number;
   imageUrl: string;
   category?: string | null;
   quantity?: number | null;
@@ -29,6 +31,8 @@ export default function ProductCard({
   displayName,
   nameTranslations,
   price,
+  originalPrice,
+  discountPercent = 0,
   imageUrl,
   category,
   quantity,
@@ -99,9 +103,21 @@ export default function ProductCard({
           </Heading>
         </Link>
 
-        <Text size="5" weight="bold" className="mt-3 block text-[#d73f09]">
-          {currency(price)}
-        </Text>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Text size="5" weight="bold" className="text-[#d73f09]">
+            {currency(price)}
+          </Text>
+          {discountPercent > 0 && originalPrice !== undefined && (
+            <>
+              <span className="text-sm text-gray-500 line-through">
+                {currency(originalPrice)}
+              </span>
+              <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-bold text-red-700">
+                {discountPercent}% OFF
+              </span>
+            </>
+          )}
+        </div>
 
         <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-700">
           <span className="font-medium">{t("product.availability")}</span>

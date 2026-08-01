@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { canUseDemoProducts, findDemoProduct } from "@/app/lib/demoProducts";
+import { getProductPricing } from "@/app/lib/productDiscount";
 
 type ProductRow = {
   product_id: string | number;
@@ -13,6 +14,8 @@ type ProductRow = {
   name_zh_tw?: string | null;
   name_zh_cn?: string | null;
   price: number;
+  discount_percent?: number | null;
+  effective_price?: number | null;
   category: string | null;
   image_url: string | null;
   image_urls?: string[] | null;
@@ -31,6 +34,7 @@ function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | nul
 
 function toProduct(row: ProductRow) {
   const imageUrls = normalizeImageUrls(row.image_urls, row.image_url);
+  const pricing = getProductPricing(row);
   return {
     id: row.product_id,
     name: row.name,
@@ -45,7 +49,10 @@ function toProduct(row: ProductRow) {
       zhTw: row.description_zh_tw ?? row.description ?? "",
       zhCn: row.description_zh_cn ?? row.description ?? "",
     },
-    price: row.price,
+    price: pricing.effectivePrice,
+    originalPrice: pricing.originalPrice,
+    effectivePrice: pricing.effectivePrice,
+    discountPercent: pricing.discountPercent,
     category: row.category,
     imageUrl: imageUrls[0] ?? null,
     imageUrls,

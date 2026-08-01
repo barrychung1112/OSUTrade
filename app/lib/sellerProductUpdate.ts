@@ -1,3 +1,5 @@
+import { parseProductDiscount } from "./productDiscount";
+
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 
 type ExistingProduct = {
@@ -9,6 +11,7 @@ export type SellerProductEditInput = {
   name?: unknown;
   description?: unknown;
   price?: unknown;
+  discountPercent?: unknown;
   category?: unknown;
   quantity?: unknown;
   contactPhone?: unknown;
@@ -34,7 +37,10 @@ export function buildSellerProductUpdate(
   updatedAt = new Date().toISOString()
 ): SellerProductUpdateResult {
   const values: Record<string, unknown> = {};
-  const editsPriceOrQuantity = hasOwn(input, "price") || hasOwn(input, "quantity");
+  const editsPriceOrQuantity =
+    hasOwn(input, "price") ||
+    hasOwn(input, "quantity") ||
+    hasOwn(input, "discountPercent");
 
   if (existing.status === "sold" && editsPriceOrQuantity) {
     return {
@@ -59,6 +65,14 @@ export function buildSellerProductUpdate(
       return { ok: false, message: "Price must be greater than 0." };
     }
     values.price = price;
+  }
+
+  if (hasOwn(input, "discountPercent")) {
+    const discountPercent = parseProductDiscount(input.discountPercent);
+    if (discountPercent === null) {
+      return { ok: false, message: "Choose a valid discount." };
+    }
+    values.discount_percent = discountPercent;
   }
 
   if (hasOwn(input, "category")) {

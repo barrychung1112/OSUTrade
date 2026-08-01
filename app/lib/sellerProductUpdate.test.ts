@@ -12,6 +12,7 @@ describe("seller product edits", () => {
         name: "Desk lamp",
         description: "Warm light, works well",
         price: 18.5,
+        discountPercent: 20,
         category: "home",
         quantity: 4,
         contactPhone: "541-555-0101",
@@ -27,6 +28,7 @@ describe("seller product edits", () => {
         name: "Desk lamp",
         description: "Warm light, works well",
         price: 18.5,
+        discount_percent: 20,
         category: "home",
         quantity: 4,
         contact_phone: "541-555-0101",
@@ -54,5 +56,14 @@ describe("seller product edits", () => {
       ok: false,
       message: "Sold listings cannot change price or quantity.",
     });
+  });
+
+  test("rejects unsupported discounts", () => {
+    const result = buildSellerProductUpdate(
+      { status: "available", quantity: 1 },
+      { discountPercent: 15 }
+    );
+
+    expect(result).toEqual({ ok: false, message: "Choose a valid discount." });
   });
 });

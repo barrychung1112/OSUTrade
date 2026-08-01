@@ -224,6 +224,16 @@ export default function ProductDetailPage() {
             <p className="mt-3 text-3xl font-bold text-[#d73f09]">
               ${Number(product.price).toLocaleString()}
             </p>
+            {(product.discountPercent ?? 0) > 0 && product.originalPrice !== undefined && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-base text-gray-500 line-through">
+                  ${Number(product.originalPrice).toLocaleString()}
+                </span>
+                <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-bold text-red-700">
+                  {product.discountPercent}% OFF
+                </span>
+              </div>
+            )}
             <p className="mt-2 text-sm font-medium text-gray-600">
               {t("product.stock", { quantity: availableQuantity })}
             </p>
