@@ -11,11 +11,14 @@ import {
   Clock3,
   Copy,
   DollarSign,
+  LockKeyhole,
   Megaphone,
   PackageCheck,
   Pencil,
   RefreshCw,
   Save,
+  Search,
+  SlidersHorizontal,
   Tag,
   X,
 } from "lucide-react";
@@ -36,6 +39,12 @@ import {
   PRODUCT_DISCOUNT_OPTIONS,
   type ProductDiscountPercent,
 } from "../lib/productDiscount";
+import {
+  canBatchEditSellerProduct,
+  filterAndSortSellerProducts,
+  type SellerWorkspaceFilter,
+  type SellerWorkspaceSort,
+} from "../lib/sellerProductWorkspace";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
@@ -58,6 +67,7 @@ type SellerProduct = {
   } | null;
   status: ProductStatus;
   quantity?: number | null;
+  createdAt?: string | null;
   hasActiveRequest?: boolean;
 };
 
@@ -94,13 +104,6 @@ type SellerRequest = {
 const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
-const productStatusPriority: Record<ProductStatus, number> = {
-  available: 0,
-  pending: 1,
-  sold: 2,
-  removed: 3,
-};
-
 const requestStatusPriority: Record<RequestStatus, number> = {
   sent: 0,
   accepted: 1,
@@ -135,6 +138,12 @@ export default function SellerPage() {
   const [pendingProductId, setPendingProductId] = useState<string | number | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [productQuery, setProductQuery] = useState("");
+  const [productFilter, setProductFilter] =
+    useState<SellerWorkspaceFilter>("all");
+  const [productSort, setProductSort] =
+    useState<SellerWorkspaceSort>("newest");
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const [crossPostLoading, setCrossPostLoading] = useState(false);
   const [crossPostError, setCrossPostError] = useState<string | null>(null);
   const [crossPostCopies, setCrossPostCopies] = useState<CrossPostCopy[]>([]);
@@ -170,7 +179,10 @@ export default function SellerPage() {
 
       setProducts(nextProducts);
       setSelectedProductIds((current) => {
-        const next = reconcileCrossPostSelection(current, nextProducts);
+        const next = reconcileCrossPostSelection(
+          current,
+          nextProducts.filter(canBatchEditSellerProduct)
+        );
         return current.length === next.length &&
           current.every((id, index) => id === next[index])
           ? current
@@ -197,30 +209,26 @@ export default function SellerPage() {
     () => requests.filter((request) => request.status === "sent").length,
     [requests]
   );
-  const expiredRequests = useMemo(
-    () => requests.filter((request) => request.status === "expired").length,
-    [requests]
-  );
-  const activeListings = useMemo(
-    () => products.filter((product) => product.status !== "sold").length,
+  const availableListings = useMemo(
+    () => products.filter((product) => product.status === "available").length,
     [products]
   );
-  const availableUnits = useMemo(
+  const pendingListings = useMemo(
+    () => products.filter((product) => product.status === "pending").length,
+    [products]
+  );
+  const soldListings = useMemo(
+    () => products.filter((product) => product.status === "sold").length,
+    [products]
+  );
+  const visibleProducts = useMemo(
     () =>
-      products.reduce(
-        (total, product) =>
-          product.status === "available" ? total + (product.quantity ?? 0) : total,
-        0
-      ),
-    [products]
-  );
-  const sortedProducts = useMemo(
-    () =>
-      [...products].sort(
-        (a, b) =>
-          productStatusPriority[a.status] - productStatusPriority[b.status]
-      ),
-    [products]
+      filterAndSortSellerProducts(products, {
+        query: productQuery,
+        status: productFilter,
+        sort: productSort,
+      }),
+    [productFilter, productQuery, productSort, products]
   );
   const selectedProducts = useMemo(() => {
     const productsById = new Map(
@@ -248,8 +256,11 @@ export default function SellerPage() {
     [selectedProducts]
   );
   const availableSelectionIds = useMemo(
-    () => selectAllAvailable(sortedProducts),
-    [sortedProducts]
+    () =>
+      selectAllAvailable(
+        visibleProducts.filter(canBatchEditSellerProduct)
+      ),
+    [visibleProducts]
   );
   const allAvailableSelected =
     availableSelectionIds.length > 0 &&
@@ -304,7 +315,9 @@ export default function SellerPage() {
   }
 
   function selectAvailableProducts() {
-    const next = selectAllAvailable(sortedProducts);
+    const next = selectAllAvailable(
+      visibleProducts.filter(canBatchEditSellerProduct)
+    );
     selectedProductIdsRef.current = next;
     setSelectedProductIds(next);
   }
@@ -312,6 +325,38 @@ export default function SellerPage() {
   function clearCrossPostSelection() {
     selectedProductIdsRef.current = [];
     setSelectedProductIds([]);
+  }
+
+  async function applyBulkDiscount(discountPercent: ProductDiscountPercent) {
+    const editableProducts = selectedProducts.filter(canBatchEditSellerProduct);
+    if (editableProducts.length === 0) return;
+
+    setBulkUpdating(true);
+    setActionError(null);
+    try {
+      const responses = await Promise.all(
+        editableProducts.map((product) =>
+          fetch("/api/seller/products", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              productId: product.id,
+              discountPercent,
+            }),
+          })
+        )
+      );
+      if (responses.some((response) => !response.ok)) {
+        throw new Error("Bulk update failed.");
+      }
+      clearCrossPostSelection();
+      await loadSellerData({ background: true });
+    } catch {
+      setActionError(t("seller.bulkDiscountError"));
+      await loadSellerData({ background: true });
+    } finally {
+      setBulkUpdating(false);
+    }
   }
 
   async function generateCrossPostCopy() {
@@ -445,15 +490,15 @@ export default function SellerPage() {
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
       <Header />
-      <main className="app-page">
-        <section className="app-container">
-          <div className="app-hero">
+      <main className="app-page seller-workspace-page">
+        <section className="app-container seller-workspace-container">
+          <div className="seller-workspace-hero">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="app-eyebrow">
                   {t("nav.seller")}
                 </p>
-                <Heading size="8" className="app-title">
+                <Heading size="8" className="seller-workspace-title">
                   {t("seller.title")}
                 </Heading>
                 <Text as="p" color="gray" className="app-subtitle">
@@ -461,7 +506,7 @@ export default function SellerPage() {
                 </Text>
               </div>
 
-              <div className="flex flex-wrap gap-2 lg:justify-end">
+              <div className="seller-workspace-actions">
                 <Link href="/overview">
                   <Button variant="soft" className="whitespace-nowrap">
                     <ArrowLeftIcon /> {t("nav.marketplace")}
@@ -475,30 +520,48 @@ export default function SellerPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="seller-stat-grid">
               <StatCard
-                label={t("seller.totalListings")}
-                value={activeListings}
-                icon={<Boxes className="h-5 w-5" />}
-                tone="orange"
+                label={t("seller.available")}
+                value={availableListings}
+                icon={<CheckCircle2 className="h-5 w-5" />}
+                tone="green"
+                active={productFilter === "available"}
+                onClick={() =>
+                  setProductFilter((current) =>
+                    current === "available" ? "all" : "available"
+                  )
+                }
+              />
+              <StatCard
+                label={t("seller.pending")}
+                value={pendingListings}
+                icon={<Clock3 className="h-5 w-5" />}
+                tone={pendingListings > 0 ? "amber" : "slate"}
+                active={productFilter === "pending"}
+                onClick={() =>
+                  setProductFilter((current) =>
+                    current === "pending" ? "all" : "pending"
+                  )
+                }
+              />
+              <StatCard
+                label={t("seller.sold")}
+                value={soldListings}
+                icon={<PackageCheck className="h-5 w-5" />}
+                tone="slate"
+                active={productFilter === "sold"}
+                onClick={() =>
+                  setProductFilter((current) =>
+                    current === "sold" ? "all" : "sold"
+                  )
+                }
               />
               <StatCard
                 label={t("seller.pendingRequests")}
                 value={pendingRequests}
-                icon={<Clock3 className="h-5 w-5" />}
-                tone={pendingRequests > 0 ? "amber" : "slate"}
-              />
-              <StatCard
-                label={t("seller.expiredRequests")}
-                value={expiredRequests}
                 icon={<AlertTriangle className="h-5 w-5" />}
-                tone={expiredRequests > 0 ? "red" : "slate"}
-              />
-              <StatCard
-                label={t("seller.availableUnits")}
-                value={availableUnits}
-                icon={<PackageCheck className="h-5 w-5" />}
-                tone="green"
+                tone={pendingRequests > 0 ? "red" : "slate"}
               />
             </div>
           </div>
@@ -513,9 +576,9 @@ export default function SellerPage() {
               {actionError}
             </p>
           )}
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,1fr)]">
-            <section className="app-panel">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="seller-dashboard-stack">
+            <section className="seller-product-panel">
+              <div className="seller-panel-heading">
                 <div>
                   <Heading size="5" className="text-gray-950">
                     {t("seller.myListings")}
@@ -524,8 +587,13 @@ export default function SellerPage() {
                     {t("seller.myListingsHelp")}
                   </Text>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                  <Badge color="orange">{products.length}</Badge>
+                <div className="seller-selection-actions">
+                  <Badge color="orange">
+                    {t("seller.visibleCount", {
+                      shown: visibleProducts.length,
+                      total: products.length,
+                    })}
+                  </Badge>
                   {!loading && products.length > 0 && (
                     <>
                       <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
@@ -560,6 +628,71 @@ export default function SellerPage() {
                 </div>
               </div>
 
+              <div className="seller-product-toolbar">
+                <label className="seller-search-field">
+                  <Search className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only">{t("seller.searchListings")}</span>
+                  <input
+                    value={productQuery}
+                    onChange={(event) => setProductQuery(event.target.value)}
+                    placeholder={t("seller.searchPlaceholder")}
+                  />
+                </label>
+                <div className="seller-filter-tabs" role="group" aria-label={t("seller.filterStatus")}>
+                  {(["all", "available", "pending", "sold"] as const).map(
+                    (status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        aria-pressed={productFilter === status}
+                        onClick={() => setProductFilter(status)}
+                        className={productFilter === status ? "is-active" : ""}
+                      >
+                        {status === "all"
+                          ? t("seller.filterAll")
+                          : t(`seller.${status}` as any)}
+                      </button>
+                    )
+                  )}
+                </div>
+                <label className="seller-sort-field">
+                  <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only">{t("seller.sortListings")}</span>
+                  <select
+                    value={productSort}
+                    onChange={(event) =>
+                      setProductSort(event.target.value as SellerWorkspaceSort)
+                    }
+                  >
+                    <option value="newest">{t("seller.sortNewest")}</option>
+                    <option value="priceAsc">{t("seller.sortPriceAsc")}</option>
+                    <option value="priceDesc">{t("seller.sortPriceDesc")}</option>
+                    <option value="stockDesc">{t("seller.sortStock")}</option>
+                  </select>
+                </label>
+              </div>
+
+              {selectedProductIds.length > 0 && (
+                <div className="seller-bulk-toolbar" role="region" aria-label={t("seller.bulkActions")}>
+                  <strong>
+                    {t("seller.selectedProducts", { count: selectedProductIds.length })}
+                  </strong>
+                  <span>{t("seller.applyDiscount")}</span>
+                  <div className="seller-bulk-discounts">
+                    {PRODUCT_DISCOUNT_OPTIONS.map((discount) => (
+                      <button
+                        key={discount}
+                        type="button"
+                        disabled={bulkUpdating}
+                        onClick={() => void applyBulkDiscount(discount)}
+                      >
+                        {discount === 0 ? t("seller.noDiscount") : `${discount}%`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {selectedProductIds.length > 0 && (
                 <BatchCrossPostPanel
                   t={t}
@@ -592,8 +725,25 @@ export default function SellerPage() {
                       </Link>
                     }
                   />
+                ) : visibleProducts.length === 0 ? (
+                  <EmptyState
+                    title={t("seller.noFilteredListings")}
+                    body={t("seller.noFilteredListingsHelp")}
+                    action={
+                      <Button
+                        type="button"
+                        variant="soft"
+                        onClick={() => {
+                          setProductQuery("");
+                          setProductFilter("all");
+                        }}
+                      >
+                        <X className="h-4 w-4" /> {t("common.clear")}
+                      </Button>
+                    }
+                  />
                 ) : (
-                  sortedProducts.map((product) => (
+                  visibleProducts.map((product) => (
                     <ProductRow
                       key={product.id}
                       product={product}
@@ -604,7 +754,7 @@ export default function SellerPage() {
                       t={t}
                       selected={selectedProductIds.includes(String(product.id))}
                       selectionDisabled={
-                        product.status !== "available" ||
+                        !canBatchEditSellerProduct(product) ||
                         (!selectedProductIds.includes(String(product.id)) &&
                           selectedProductIds.length >= maxCrossPostProducts)
                       }
@@ -622,7 +772,7 @@ export default function SellerPage() {
               </div>
             </section>
 
-            <section className="app-panel">
+            <section className="seller-request-panel">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <Heading size="5" className="text-gray-950">
@@ -673,6 +823,7 @@ export default function SellerPage() {
                       locale={locale}
                       t={t}
                       emptyText={t("seller.noExpiredRequests")}
+                      collapsedByDefault
                     />
                     <SellerRequestSection
                       title={t("seller.requestHistory")}
@@ -682,6 +833,7 @@ export default function SellerPage() {
                       pendingRequestId={pendingRequestId}
                       locale={locale}
                       t={t}
+                      collapsedByDefault
                     />
                   </>
                 )}
@@ -699,11 +851,15 @@ function StatCard({
   value,
   icon,
   tone,
+  active = false,
+  onClick,
 }: {
   label: string;
   value: number;
   icon: ReactNode;
   tone: "orange" | "amber" | "red" | "green" | "slate";
+  active?: boolean;
+  onClick?: () => void;
 }) {
   const toneClass = {
     orange: "border-orange-200 bg-orange-50 text-[#d73f09]",
@@ -713,8 +869,8 @@ function StatCard({
     slate: "border-slate-200 bg-slate-50 text-slate-600",
   }[tone];
 
-  return (
-    <div className="rounded-lg border border-orange-100 bg-white p-4 shadow-sm">
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div>
           <Text as="p" size="2" color="gray" className="font-medium">
@@ -726,7 +882,20 @@ function StatCard({
         </div>
         <div className={`rounded-md border p-2 ${toneClass}`}>{icon}</div>
       </div>
-    </div>
+    </>
+  );
+
+  return onClick ? (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`seller-stat-card ${active ? "is-active" : ""}`}
+    >
+      {content}
+    </button>
+  ) : (
+    <div className="seller-stat-card">{content}</div>
   );
 }
 
@@ -739,6 +908,7 @@ function SellerRequestSection({
   locale,
   t,
   emptyText,
+  collapsedByDefault = false,
 }: {
   title: string;
   body: string;
@@ -748,13 +918,46 @@ function SellerRequestSection({
   locale: ReturnType<typeof useI18n>["locale"];
   t: ReturnType<typeof useI18n>["t"];
   emptyText?: string;
+  collapsedByDefault?: boolean;
 }) {
   if (requests.length === 0 && !emptyText) {
     return null;
   }
 
+  const requestRows = requests.length === 0 ? (
+    <div className="rounded-md border border-dashed border-orange-200 bg-orange-50/50 px-3 py-3 text-sm text-gray-600">
+      {emptyText}
+    </div>
+  ) : (
+    requests.map((request) => (
+      <RequestRow
+        key={request.id}
+        request={request}
+        onUpdate={(status) => onUpdate(request.id, status)}
+        busy={pendingRequestId === request.id}
+        locale={locale}
+        t={t}
+      />
+    ))
+  );
+
+  if (collapsedByDefault) {
+    return (
+      <details className="seller-request-group">
+        <summary>
+          <div>
+            <Heading size="4" className="text-gray-950">{title}</Heading>
+            <Text as="p" color="gray" size="2" className="mt-1">{body}</Text>
+          </div>
+          <Badge color={requests.length > 0 ? "orange" : "gray"}>{requests.length}</Badge>
+        </summary>
+        <div className="seller-request-group-content">{requestRows}</div>
+      </details>
+    );
+  }
+
   return (
-    <section className="space-y-3 rounded-lg border border-orange-100 bg-white p-4 shadow-sm">
+    <section className="seller-request-group space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Heading size="4" className="text-gray-950">
@@ -769,22 +972,7 @@ function SellerRequestSection({
         </Badge>
       </div>
 
-      {requests.length === 0 ? (
-        <div className="rounded-md border border-dashed border-orange-200 bg-orange-50/50 px-3 py-3 text-sm text-gray-600">
-          {emptyText}
-        </div>
-      ) : (
-        requests.map((request) => (
-          <RequestRow
-            key={request.id}
-            request={request}
-            onUpdate={(status) => onUpdate(request.id, status)}
-            busy={pendingRequestId === request.id}
-            locale={locale}
-            t={t}
-          />
-        ))
-      )}
+      {requestRows}
     </section>
   );
 }
@@ -828,7 +1016,9 @@ function ProductRow({
   const isSold = product.status === "sold";
   const isEditLocked = isSold || Boolean(product.hasActiveRequest);
   const selectionLabel =
-    product.status !== "available"
+    product.hasActiveRequest
+      ? t("seller.editLockedActiveRequest")
+      : product.status !== "available"
       ? t("seller.crossPostUnavailable")
       : selectionLimitReached
         ? t("seller.crossPostLimitReached")
@@ -882,15 +1072,14 @@ function ProductRow({
 
   return (
     <Card
-      className={`app-card overflow-hidden ${
+      className={`seller-product-row overflow-hidden ${
         product.status === "sold" || product.status === "removed"
           ? "opacity-65"
           : ""
       }`}
     >
-      <div className="h-1 bg-gradient-to-r from-[#d73f09] via-orange-300 to-transparent" />
-      <div className="flex flex-col gap-4 p-4 sm:flex-row">
-        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-24">
+      <div className="seller-product-row-body">
+        <div className="seller-product-media">
           <label
             className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-md border px-2 text-xs font-semibold transition ${
               selected
@@ -902,6 +1091,9 @@ function ProductRow({
                 : "cursor-pointer hover:border-orange-300"
             }`}
           >
+            {product.hasActiveRequest && (
+              <LockKeyhole className="h-4 w-4 shrink-0" aria-hidden="true" />
+            )}
             <input
               type="checkbox"
               checked={selected}
@@ -915,7 +1107,7 @@ function ProductRow({
           <img
             src={product.imageUrl || "/images/Bike_0.jpg"}
             alt={displayName}
-            className="h-44 w-full rounded-md border border-orange-100 object-cover sm:h-24 sm:w-24"
+            className="seller-product-image"
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -949,7 +1141,7 @@ function ProductRow({
             <StatusBadge status={product.status} />
           </div>
 
-          <div className="mt-4 rounded-md border border-orange-100 bg-orange-50/50 p-3">
+          <div className="seller-status-controls">
             <div className="mb-2 flex items-center justify-between gap-3">
               <Text size="2" className="font-semibold text-gray-800">
                 {t("seller.statusControls")}
