@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heading, Theme } from "@radix-ui/themes";
 import {
@@ -16,6 +16,7 @@ import { useProducts } from "../hook/useProducts";
 import { useI18n } from "../i18n";
 import { pickProductName } from "../lib/productTranslations";
 import { canLoadMoreProducts } from "../lib/productPagination";
+import { BadgePercent } from "lucide-react";
 
 const categories = ["all", "electronics", "clothing", "books", "home", "general"];
 
@@ -25,6 +26,29 @@ export default function ProductListPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [priceSort, setPriceSort] = useState("none");
+  const [saleOnly, setSaleOnly] = useState(false);
+
+  useEffect(() => {
+    const syncSaleFilter = () => {
+      const params = new URLSearchParams(window.location.search);
+      setSaleOnly(params.get("sale") === "1");
+    };
+
+    syncSaleFilter();
+    window.addEventListener("popstate", syncSaleFilter);
+    return () => window.removeEventListener("popstate", syncSaleFilter);
+  }, []);
+
+  function updateSaleFilter(nextSaleOnly: boolean) {
+    setSaleOnly(nextSaleOnly);
+    const url = new URL(window.location.href);
+    if (nextSaleOnly) {
+      url.searchParams.set("sale", "1");
+    } else {
+      url.searchParams.delete("sale");
+    }
+    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
 
   const { products, loading, loadingMore, error, total, refetch, loadMore, hasMore } =
     useProducts({
@@ -32,15 +56,18 @@ export default function ProductListPage() {
       name: search,
       category: category === "all" ? undefined : category,
       sort: priceSort === "asc" || priceSort === "desc" ? priceSort : undefined,
+      discounted: saleOnly,
     });
   const canLoadMore = canLoadMoreProducts({ hasMore, loading, loadingMore });
 
-  const hasFilters = search.trim() || category !== "all" || priceSort !== "none";
+  const hasFilters =
+    search.trim() || category !== "all" || priceSort !== "none" || saleOnly;
 
   function clearFilters() {
     setSearch("");
     setCategory("all");
     setPriceSort("none");
+    updateSaleFilter(false);
   }
 
   return (
@@ -64,6 +91,15 @@ export default function ProductListPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateSaleFilter(!saleOnly)}
+                  aria-pressed={saleOnly}
+                  className={saleOnly ? "app-action-primary" : "app-action-secondary"}
+                >
+                  <BadgePercent className="h-4 w-4" />
+                  {t("marketplace.saleSection")}
+                </button>
                 <button
                   type="button"
                   onClick={() => refetch()}

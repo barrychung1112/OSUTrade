@@ -100,12 +100,14 @@ export function filterDemoProducts({
   name,
   category,
   sort,
+  discounted,
   page,
   limit,
 }: {
   name?: string | null;
   category?: string | null;
   sort?: string | null;
+  discounted?: boolean;
   page: number;
   limit: number;
 }) {
@@ -120,6 +122,12 @@ export function filterDemoProducts({
 
   if (category) {
     products = products.filter((product) => product.category === category);
+  }
+
+  if (discounted) {
+    products = products.filter(
+      (product) => Number((product as DemoProduct & { discountPercent?: number }).discountPercent) > 0
+    );
   }
 
   if (sort === "asc" || sort === "desc") {
