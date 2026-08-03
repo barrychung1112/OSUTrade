@@ -11,6 +11,10 @@ import {
   notifyTradeEvent,
 } from "@/app/lib/notifications";
 import { getProductPricing } from "@/app/lib/productDiscount";
+import {
+  hasActiveTradeRequest,
+  hasEditableProductFields,
+} from "@/app/lib/productEditLock";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 
@@ -54,7 +58,7 @@ function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | nul
   return imageUrl ? [imageUrl] : [];
 }
 
-function toProduct(row: ProductRow) {
+function toProduct(row: ProductRow, hasActiveRequest = false) {
   const imageUrls = normalizeImageUrls(row.image_urls, row.image_url);
   const pricing = getProductPricing(row);
   return {
@@ -87,6 +91,7 @@ function toProduct(row: ProductRow) {
     status: row.status ?? "available",
     quantity: row.quantity ?? 1,
     createdAt: row.created_at,
+    hasActiveRequest,
   };
 }
 
@@ -144,7 +149,38 @@ export async function GET() {
       throw error;
     }
 
-    return NextResponse.json({ data: (data ?? []).map(toProduct) });
+    const products = data ?? [];
+    const productIds = products.map((product) => product.product_id);
+    const { data: requestRows, error: requestRowsError } = productIds.length
+      ? await supabase
+          .from("trade_requests")
+          .select("product_id, status, created_at")
+          .in("product_id", productIds)
+          .in("status", ["sent", "accepted"])
+      : { data: [], error: null };
+
+    if (requestRowsError) {
+      throw requestRowsError;
+    }
+
+    const requestsByProduct = new Map<string, typeof requestRows>();
+    for (const requestRow of requestRows ?? []) {
+      const productId = String(requestRow.product_id);
+      const current = requestsByProduct.get(productId) ?? [];
+      current.push(requestRow);
+      requestsByProduct.set(productId, current);
+    }
+
+    return NextResponse.json({
+      data: products.map((product) =>
+        toProduct(
+          product,
+          hasActiveTradeRequest(
+            requestsByProduct.get(String(product.product_id)) ?? []
+          )
+        )
+      ),
+    });
   } catch (error) {
     console.error(error);
     const message =
@@ -186,6 +222,28 @@ export async function PATCH(request: Request) {
 
     if (lookupError) {
       throw lookupError;
+    }
+
+    if (hasEditableProductFields(body)) {
+      const { data: requestRows, error: requestRowsError } = await supabase
+        .from("trade_requests")
+        .select("status, created_at")
+        .eq("product_id", productId)
+        .in("status", ["sent", "accepted"]);
+
+      if (requestRowsError) {
+        throw requestRowsError;
+      }
+
+      if (hasActiveTradeRequest(requestRows ?? [])) {
+        return NextResponse.json(
+          {
+            message:
+              "This listing cannot be edited while it has an active trade request.",
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const updatedAt = new Date().toISOString();
