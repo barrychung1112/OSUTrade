@@ -1,118 +1,120 @@
-// app/components/ProductListCard.tsx
 "use client";
 
-import { Card, Heading, Text } from "@radix-ui/themes";
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, BadgePercent } from "lucide-react";
 import { useI18n } from "../i18n";
+import { HOME_SALE_PRODUCTS_URL } from "../lib/homeSaleProducts";
 import { pickProductName } from "../lib/productTranslations";
 import type { ProductListResponse } from "../lib/products";
 
 type Listing = ProductListResponse["data"][number];
 
-function currency(value: number) {
-  return new Intl.NumberFormat("en-US", {
+const currency = (value: number) =>
+  new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2,
   }).format(value);
-}
 
 export default function ProductListCard() {
   const { t, locale } = useI18n();
+  const reduceMotion = useReducedMotion();
   const [products, setProducts] = useState<Listing[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadListings() {
+    async function loadSaleListings() {
       try {
         setLoading(true);
-        setError(null);
-        const response = await fetch("/api/products?limit=5&sort=asc", {
+        setError(false);
+        const response = await fetch(HOME_SALE_PRODUCTS_URL, {
           cache: "no-store",
           signal: controller.signal,
         });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const payload = (await response.json()) as ProductListResponse;
         setProducts(payload.data ?? []);
-        setTotal(payload.total ?? 0);
       } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          setError(err instanceof Error ? err.message : "Failed to load listings.");
-        }
+        if ((err as Error).name !== "AbortError") setError(true);
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
-    loadListings();
+    void loadSaleListings();
     return () => controller.abort();
   }, []);
 
-  const subtitle = useMemo(() => {
-    if (loading) return t("home.loadingListings");
-    if (error) return t("home.listingsUnavailable");
-    if (products.length === 0) return t("home.noListings");
-    return t("home.listingsCount", { total });
-  }, [error, loading, products.length, t, total]);
-
   return (
-    <Card className="app-card p-4 backdrop-blur">
-      <div className="mb-3 flex items-start justify-between gap-3">
+    <section className="home-sale-section" aria-labelledby="sale-title">
+      <div className="home-section-heading home-section-heading-row">
         <div>
-          <Heading size="5">{t("home.onSale")}</Heading>
-          <Text size="2" color="gray">
-            {subtitle}
-          </Text>
+          <p>{t("home.saleSubtitle")}</p>
+          <h2 id="sale-title">{t("home.onSale")}</h2>
         </div>
-        <Link href="/overview" className="text-sm font-semibold text-[#d73f09]">
-          {t("home.viewAll")}
+        <Link href="/overview?sale=1">
+          {t("home.viewAll")} <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
 
-      {products.length > 0 ? (
-        <ul className="space-y-2 text-sm text-gray-700">
-          {products.map((product) => (
-            <li key={product.id}>
-              <Link
-                href={`/product/${product.id}`}
-                className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-orange-50/80 px-3 py-2 transition hover:bg-orange-100"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold text-gray-950">
-                    {pickProductName(product.name, product.nameTranslations, locale)}
-                  </span>
-                  <span className="text-xs text-gray-600">
-                    {product.quantity ?? 1} {t("home.unitsAvailable")}
-                  </span>
-                </span>
-                <span className="shrink-0 font-semibold text-[#d73f09]">
-                  {currency(product.price)}
-                  {(product.discountPercent ?? 0) > 0 && (
-                    <span className="ml-1 text-[10px] font-bold text-red-700">
-                      {product.discountPercent}% OFF
-                    </span>
-                  )}
+      {loading ? (
+        <div className="home-sale-grid" aria-label={t("home.loadingListings")}>
+          {[0, 1, 2, 3].map((item) => (
+            <div key={item} className="home-sale-skeleton" />
+          ))}
+        </div>
+      ) : products.length > 0 ? (
+        <div className="home-sale-grid">
+          {products.map((product, index) => (
+            <motion.article
+              key={product.id}
+              initial={false}
+              transition={{ duration: 0.2, delay: reduceMotion ? 0 : index * 0.03 }}
+              whileHover={reduceMotion ? undefined : { y: -5 }}
+              className="home-sale-card"
+            >
+              <Link href={`/product/${product.id}`} className="home-sale-image">
+                <Image
+                  src={product.imageUrl || "/images/Bike_0.jpg"}
+                  alt={pickProductName(product.name, product.nameTranslations, locale)}
+                  fill
+                  sizes="(max-width: 640px) 86vw, (max-width: 1024px) 44vw, 24vw"
+                />
+                <span className="home-sale-badge">
+                  <BadgePercent className="h-3.5 w-3.5" />
+                  {product.discountPercent}% OFF
                 </span>
               </Link>
-            </li>
+              <div className="home-sale-content">
+                <Link href={`/product/${product.id}`}>
+                  <h3>{pickProductName(product.name, product.nameTranslations, locale)}</h3>
+                </Link>
+                <div className="home-sale-price">
+                  <strong>{currency(product.price)}</strong>
+                  {product.originalPrice && product.originalPrice > product.price && (
+                    <span>{currency(product.originalPrice)}</span>
+                  )}
+                </div>
+                <p>{t("product.stock", { quantity: product.quantity ?? 1 })}</p>
+              </div>
+            </motion.article>
           ))}
-        </ul>
+        </div>
       ) : (
-        <div className="rounded-md bg-orange-50 px-3 py-4 text-sm text-gray-700">
-          {loading ? t("home.loadingListings") : t("home.noListingsHelp")}
+        <div className="home-sale-empty">
+          <BadgePercent className="h-6 w-6" />
+          <div>
+            <strong>{error ? t("home.listingsUnavailable") : t("home.noSaleTitle")}</strong>
+            <p>{t("home.noSaleBody")}</p>
+          </div>
         </div>
       )}
-    </Card>
+    </section>
   );
 }
