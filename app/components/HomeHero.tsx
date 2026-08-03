@@ -2,9 +2,31 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Plus, ShieldCheck } from "lucide-react";
 import { useI18n } from "../i18n";
+import { selectRandomHomeHeroProducts } from "../lib/homeHeroProducts";
+import { pickProductName } from "../lib/productTranslations";
+import { fetchProducts, type Product } from "../lib/products";
+
+const fallbackTiles = [
+  { imageUrl: "/images/DellMonitor_0.jpg" },
+  { imageUrl: "/images/Bike_0.jpg" },
+  { imageUrl: "/images/LED lamp_0.jpg" },
+];
+
+const tileClasses = [
+  "home-product-tile-monitor",
+  "home-product-tile-bike",
+  "home-product-tile-lamp",
+];
+
+const tileMotion = [
+  { initial: { opacity: 0, x: 32, rotate: 0 }, rotate: -4 },
+  { initial: { opacity: 0, y: 28, rotate: 0 }, rotate: 5 },
+  { initial: { opacity: 0, x: -18, y: 24 }, rotate: -2 },
+];
 
 export default function HomeHero({
   onSell,
@@ -13,8 +35,21 @@ export default function HomeHero({
   onSell: () => void;
   disabled: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const reduceMotion = useReducedMotion();
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchProducts({ limit: 100, signal: controller.signal })
+      .then((payload) => {
+        setProducts(selectRandomHomeHeroProducts(payload.data));
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, []);
 
   const reveal = reduceMotion
     ? {}
@@ -77,37 +112,49 @@ export default function HomeHero({
         </motion.div>
       </div>
 
-      <div className="home-product-scene" aria-hidden="true">
-        <motion.div
-          className="home-product-tile home-product-tile-monitor"
-          initial={reduceMotion ? false : { opacity: 0, x: 32, rotate: 0 }}
-          animate={{ opacity: 1, x: 0, rotate: -4 }}
-          transition={{ duration: 0.6, delay: reduceMotion ? 0 : 0.12 }}
-          whileHover={reduceMotion ? undefined : { y: -6, rotate: -2 }}
-        >
-          <Image src="/images/DellMonitor_0.jpg" alt="" fill sizes="360px" priority />
-          <span>$30</span>
-        </motion.div>
-        <motion.div
-          className="home-product-tile home-product-tile-bike"
-          initial={reduceMotion ? false : { opacity: 0, y: 28, rotate: 0 }}
-          animate={{ opacity: 1, y: 0, rotate: 5 }}
-          transition={{ duration: 0.6, delay: reduceMotion ? 0 : 0.22 }}
-          whileHover={reduceMotion ? undefined : { y: -8, rotate: 3 }}
-        >
-          <Image src="/images/Bike_0.jpg" alt="" fill sizes="280px" priority />
-          <span>$85</span>
-        </motion.div>
-        <motion.div
-          className="home-product-tile home-product-tile-lamp"
-          initial={reduceMotion ? false : { opacity: 0, x: -18, y: 24 }}
-          animate={{ opacity: 1, x: 0, y: 0, rotate: -2 }}
-          transition={{ duration: 0.6, delay: reduceMotion ? 0 : 0.32 }}
-          whileHover={reduceMotion ? undefined : { y: -6, rotate: 0 }}
-        >
-          <Image src="/images/LED lamp_0.jpg" alt="" fill sizes="220px" priority />
-          <span>$18</span>
-        </motion.div>
+      <div className="home-product-scene">
+        {(products.length > 0 ? products : fallbackTiles).map((product, index) => {
+          const liveProduct = "id" in product ? product : null;
+          const name = liveProduct
+            ? pickProductName(
+                liveProduct.name,
+                liveProduct.nameTranslations,
+                locale
+              )
+            : "";
+          const tile = (
+            <motion.div
+              className={`home-product-tile ${tileClasses[index]}`}
+              initial={reduceMotion ? false : tileMotion[index].initial}
+              animate={{ opacity: 1, x: 0, y: 0, rotate: tileMotion[index].rotate }}
+              transition={{ duration: 0.6, delay: reduceMotion ? 0 : 0.12 + index * 0.1 }}
+              whileHover={reduceMotion ? undefined : { y: -6, rotate: 0 }}
+            >
+              <Image
+                src={product.imageUrl || fallbackTiles[index].imageUrl}
+                alt={name}
+                fill
+                sizes={index === 0 ? "360px" : index === 1 ? "280px" : "220px"}
+                priority
+              />
+              {liveProduct && <span>${Number(liveProduct.price).toFixed(2)}</span>}
+            </motion.div>
+          );
+
+          return liveProduct ? (
+            <Link
+              key={liveProduct.id}
+              href={`/product/${liveProduct.id}`}
+              aria-label={`${name}, $${Number(liveProduct.price).toFixed(2)}`}
+            >
+              {tile}
+            </Link>
+          ) : (
+            <div key={product.imageUrl} aria-hidden="true">
+              {tile}
+            </div>
+          );
+        })}
       </div>
 
       <div className="home-hero-next" aria-hidden="true">

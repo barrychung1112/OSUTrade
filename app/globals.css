@@ -153,6 +153,7 @@
   font-weight: 850;
   letter-spacing: 0;
   line-height: .92;
+  white-space: nowrap;
 }
 
 .home-hero-description {
@@ -654,7 +655,8 @@
   }
 
   .home-hero-title {
-    font-size: clamp(56px, 18vw, 78px);
+    max-width: 100%;
+    font-size: clamp(44px, 16vw, 78px);
   }
 
   .home-hero-description {
