@@ -179,7 +179,10 @@ export default function SellerPage() {
 
       setProducts(nextProducts);
       setSelectedProductIds((current) => {
-        const next = reconcileCrossPostSelection(current, nextProducts);
+        const next = reconcileCrossPostSelection(
+          current,
+          nextProducts.filter(canBatchEditSellerProduct)
+        );
         return current.length === next.length &&
           current.every((id, index) => id === next[index])
           ? current
