@@ -58,6 +58,7 @@ type SellerProduct = {
   } | null;
   status: ProductStatus;
   quantity?: number | null;
+  hasActiveRequest?: boolean;
 };
 
 type ProductEditValues = {
@@ -825,6 +826,7 @@ function ProductRow({
     contactWechatId: product.sellerContact?.wechatId ?? "",
   }));
   const isSold = product.status === "sold";
+  const isEditLocked = isSold || Boolean(product.hasActiveRequest);
   const selectionLabel =
     product.status !== "available"
       ? t("seller.crossPostUnavailable")
@@ -986,7 +988,7 @@ function ProductRow({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            {!isSold ? (
+            {!isEditLocked ? (
               <Button
                 type="button"
                 size="2"
@@ -999,13 +1001,15 @@ function ProductRow({
               </Button>
             ) : (
               <Text color="gray" size="2" className="self-center">
-                {t("seller.editLockedSold")}
+                {product.hasActiveRequest
+                  ? t("seller.editLockedActiveRequest")
+                  : t("seller.editLockedSold")}
               </Text>
             )}
             <SellerContactPreview contact={product.sellerContact} t={t} />
           </div>
 
-          {editing && !isSold && (
+          {editing && !isEditLocked && (
             <form
               className="mt-4 grid gap-4 rounded-lg border border-orange-200 bg-white p-4 shadow-sm"
               onSubmit={(event) => {

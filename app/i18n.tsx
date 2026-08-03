@@ -376,6 +376,7 @@ const dictionaries = {
     "seller.noDiscount": "No discount",
     "seller.discountPreview": "Buyer price: {price}",
     "seller.editLockedSold": "Sold listings cannot change price or quantity.",
+    "seller.editLockedActiveRequest": "This listing cannot be edited or discounted while a trade request is active.",
     "seller.priceChangeWarning": "Changing the price will notify buyers with active requests. Accepted trades are unchanged.",
   },
   zh: {
@@ -742,6 +743,7 @@ const dictionaries = {
     "seller.noDiscount": "不打折",
     "seller.discountPreview": "買家價格：{price}",
     "seller.editLockedSold": "已售出的商品不能修改價格或數量。",
+    "seller.editLockedActiveRequest": "此商品有進行中的交易請求，暫時無法修改或套用折扣。",
     "seller.priceChangeWarning": "修改價格會通知尚未成交的買家；已接受的交易不受影響。",
   },
 } as const;
@@ -1114,6 +1116,7 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "seller.noDiscount": "不打折",
   "seller.discountPreview": "买家价格：{price}",
   "seller.editLockedSold": "已售出的商品不能修改价格或数量。",
+  "seller.editLockedActiveRequest": "此商品有进行中的交易请求，暂时无法修改或设置折扣。",
   "seller.priceChangeWarning": "修改价格会通知尚未成交的买家；已接受的交易不受影响。",
 };
 
