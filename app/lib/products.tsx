@@ -46,6 +46,7 @@ export type ProductListOptions = {
   name?: string;
   category?: string;
   sort?: "asc" | "desc";
+  discounted?: boolean;
   signal?: AbortSignal;
 };
 
@@ -59,6 +60,7 @@ function buildProductListUrl(options: ProductListOptions = {}) {
   if (options.sort === "asc" || options.sort === "desc") {
     params.set("sort", options.sort);
   }
+  if (options.discounted) params.set("discounted", "true");
 
   const query = params.toString();
   return query ? `/api/products?${query}` : "/api/products";

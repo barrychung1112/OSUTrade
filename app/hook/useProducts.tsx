@@ -65,7 +65,13 @@ export function useProducts(options: UseProductsOptions = {}) {
         }
       }
     },
-    [options.category, options.limit, options.name, options.sort]
+    [
+      options.category,
+      options.discounted,
+      options.limit,
+      options.name,
+      options.sort,
+    ]
   );
 
   const refetch = useCallback(() => loadPage(1, "replace"), [loadPage]);

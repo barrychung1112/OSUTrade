@@ -113,6 +113,7 @@ const dictionaries = {
     "marketplace.subtitle":
       "Browse available listings, filter by category, and add items to your request cart when you are ready to contact the seller.",
     "marketplace.listItem": "List Item",
+    "marketplace.saleSection": "Sale items",
     "marketplace.loadError": "Failed to load products: {message}",
     "marketplace.search": "Search",
     "marketplace.searchPlaceholder": "Search by item name",
@@ -524,6 +525,7 @@ const dictionaries = {
     "marketplace.subtitle":
       "瀏覽目前可交易的商品，依分類篩選，準備聯絡賣家時可先加入購買請求。",
     "marketplace.listItem": "刊登商品",
+    "marketplace.saleSection": "打折專區",
     "marketplace.loadError": "商品載入失敗：{message}",
     "marketplace.search": "搜尋",
     "marketplace.searchPlaceholder": "依商品名稱搜尋",
@@ -897,6 +899,7 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "marketplace.subtitle":
     "浏览目前可交易的商品，按分类筛选，准备联系卖家时可先加入购买请求。",
   "marketplace.listItem": "刊登商品",
+  "marketplace.saleSection": "折扣专区",
   "marketplace.loadError": "商品加载失败：{message}",
   "marketplace.search": "搜索",
   "marketplace.searchPlaceholder": "按商品名称搜索",

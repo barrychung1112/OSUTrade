@@ -159,6 +159,7 @@ export async function GET(request: NextRequest) {
     const name = searchParams.get("name");
     const category = searchParams.get("category");
     const sort = searchParams.get("sort");
+    const discounted = searchParams.get("discounted") === "true";
 
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "12", 10);
@@ -177,6 +178,10 @@ export async function GET(request: NextRequest) {
 
     if (category) {
       query = query.eq("category", category);
+    }
+
+    if (discounted) {
+      query = query.gt("discount_percent", 0);
     }
 
     query = applyProductListSort(query, sort);
@@ -215,6 +220,7 @@ export async function GET(request: NextRequest) {
           name: searchParams.get("name"),
           category: searchParams.get("category"),
           sort: searchParams.get("sort"),
+          discounted: searchParams.get("discounted") === "true",
           page,
           limit,
         }),
