@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Header from "../components/Header";
 import EmptyState from "../components/EmptyState";
+import SellerRequestCenter from "../components/SellerRequestCenter";
 import { useI18n } from "../i18n";
 import type { CrossPostCopy, CrossPostPlatform } from "../lib/crossPostCopy";
 import {
@@ -45,6 +46,7 @@ import {
   type SellerWorkspaceFilter,
   type SellerWorkspaceSort,
 } from "../lib/sellerProductWorkspace";
+import { groupSellerRequests } from "../lib/sellerRequestCenter";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
@@ -104,14 +106,6 @@ type SellerRequest = {
 const currency = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
-const requestStatusPriority: Record<RequestStatus, number> = {
-  sent: 0,
-  accepted: 1,
-  declined: 2,
-  cancelled: 3,
-  expired: 4,
-};
-
 const crossPostPlatformLabels: Record<CrossPostPlatform, string> = {
   facebook: "Facebook",
   craigslist: "Craigslist",
@@ -144,6 +138,7 @@ export default function SellerPage() {
   const [productSort, setProductSort] =
     useState<SellerWorkspaceSort>("newest");
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [requestCenterOpen, setRequestCenterOpen] = useState(false);
   const [crossPostLoading, setCrossPostLoading] = useState(false);
   const [crossPostError, setCrossPostError] = useState<string | null>(null);
   const [crossPostCopies, setCrossPostCopies] = useState<CrossPostCopy[]>([]);
@@ -205,10 +200,8 @@ export default function SellerPage() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const pendingRequests = useMemo(
-    () => requests.filter((request) => request.status === "sent").length,
-    [requests]
-  );
+  const groupedRequests = useMemo(() => groupSellerRequests(requests), [requests]);
+  const pendingRequests = groupedRequests.pendingCount;
   const availableListings = useMemo(
     () => products.filter((product) => product.status === "available").length,
     [products]
@@ -277,31 +270,6 @@ export default function SellerPage() {
     setCrossPostError(null);
     setCopiedCrossPostPlatform(null);
   }, [selectedProductIds, selectedProductsFingerprint]);
-
-  const sortedRequests = useMemo(
-    () =>
-      [...requests].sort(
-        (a, b) =>
-          requestStatusPriority[a.status] - requestStatusPriority[b.status] ||
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-    [requests]
-  );
-  const pendingRequestRows = useMemo(
-    () => sortedRequests.filter((request) => request.status === "sent"),
-    [sortedRequests]
-  );
-  const expiredRequestRows = useMemo(
-    () => sortedRequests.filter((request) => request.status === "expired"),
-    [sortedRequests]
-  );
-  const historyRequestRows = useMemo(
-    () =>
-      sortedRequests.filter(
-        (request) => request.status !== "sent" && request.status !== "expired"
-      ),
-    [sortedRequests]
-  );
 
   function updateCrossPostSelection(
     productId: string | number,
@@ -562,6 +530,8 @@ export default function SellerPage() {
                 value={pendingRequests}
                 icon={<AlertTriangle className="h-5 w-5" />}
                 tone={pendingRequests > 0 ? "red" : "slate"}
+                active={requestCenterOpen}
+                onClick={() => setRequestCenterOpen(true)}
               />
             </div>
           </div>
@@ -772,75 +742,58 @@ export default function SellerPage() {
               </div>
             </section>
 
-            <section className="seller-request-panel">
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <Heading size="5" className="text-gray-950">
-                    {t("seller.buyerRequests")}
-                  </Heading>
-                  <Text as="p" color="gray" size="2" className="mt-1">
-                    {t("seller.buyerRequestsHelp")}
-                  </Text>
-                </div>
-                <Badge color={pendingRequests > 0 ? "amber" : "gray"}>
-                  {pendingRequests}
-                </Badge>
-              </div>
-
-              <div className="space-y-3">
-                {loading ? (
-                  <Card className="p-5">{t("seller.loadingRequests")}</Card>
-                ) : requests.length === 0 ? (
-                  <EmptyState
-                    title={t("seller.noRequests")}
-                    body={t("seller.noRequestsHelp")}
-                    action={
-                      <Link href="/overview">
-                        <Button variant="soft">
-                          <ArrowLeftIcon /> {t("nav.marketplace")}
-                        </Button>
-                      </Link>
-                    }
-                  />
-                ) : (
-                  <>
-                    <SellerRequestSection
-                      title={t("seller.activeRequests")}
-                      body={t("seller.activeRequestsHelp")}
-                      requests={pendingRequestRows}
-                      onUpdate={updateRequest}
-                      pendingRequestId={pendingRequestId}
-                      locale={locale}
-                      t={t}
-                      emptyText={t("seller.noActiveRequests")}
-                    />
-                    <SellerRequestSection
-                      title={t("seller.expiredRequests")}
-                      body={t("seller.expiredRequestsHelp")}
-                      requests={expiredRequestRows}
-                      onUpdate={updateRequest}
-                      pendingRequestId={pendingRequestId}
-                      locale={locale}
-                      t={t}
-                      emptyText={t("seller.noExpiredRequests")}
-                      collapsedByDefault
-                    />
-                    <SellerRequestSection
-                      title={t("seller.requestHistory")}
-                      body={t("seller.requestHistoryHelp")}
-                      requests={historyRequestRows}
-                      onUpdate={updateRequest}
-                      pendingRequestId={pendingRequestId}
-                      locale={locale}
-                      t={t}
-                      collapsedByDefault
-                    />
-                  </>
-                )}
-              </div>
-            </section>
           </div>
         </section>
+
+        <SellerRequestCenter
+          open={requestCenterOpen}
+          onOpenChange={setRequestCenterOpen}
+          pendingCount={pendingRequests}
+          title={t("seller.requestCenter")}
+          description={t("seller.requestCenterDescription")}
+          triggerLabel={t("seller.requestCenterTrigger", { count: pendingRequests })}
+          closeLabel={t("seller.closeRequestCenter")}
+        >
+          {loading ? (
+            <Card className="p-5">{t("seller.loadingRequests")}</Card>
+          ) : requests.length === 0 ? (
+            <EmptyState title={t("seller.noRequests")} body={t("seller.noRequestsHelp")} />
+          ) : (
+            <div className="space-y-3">
+              <SellerRequestSection
+                title={t("seller.activeRequests")}
+                body={t("seller.activeRequestsHelp")}
+                requests={groupedRequests.pending}
+                onUpdate={updateRequest}
+                pendingRequestId={pendingRequestId}
+                locale={locale}
+                t={t}
+                emptyText={t("seller.noActiveRequests")}
+              />
+              <SellerRequestSection
+                title={t("seller.expiredRequests")}
+                body={t("seller.expiredRequestsHelp")}
+                requests={groupedRequests.expired}
+                onUpdate={updateRequest}
+                pendingRequestId={pendingRequestId}
+                locale={locale}
+                t={t}
+                emptyText={t("seller.noExpiredRequests")}
+                collapsedByDefault
+              />
+              <SellerRequestSection
+                title={t("seller.requestHistory")}
+                body={t("seller.requestHistoryHelp")}
+                requests={groupedRequests.history}
+                onUpdate={updateRequest}
+                pendingRequestId={pendingRequestId}
+                locale={locale}
+                t={t}
+                collapsedByDefault
+              />
+            </div>
+          )}
+        </SellerRequestCenter>
       </main>
     </Theme>
   );
