@@ -1,3 +1,5 @@
+import { isClearanceDiscoveryProduct } from "./productClearance";
+
 export type DemoProduct = {
   id: string;
   name: string;
@@ -133,9 +135,7 @@ export function filterDemoProducts({
   }
 
   if (clearance) {
-    products = products.filter(
-      (product) => Boolean((product as DemoProduct & { isClearance?: boolean }).isClearance)
-    );
+    products = products.filter(isClearanceDiscoveryProduct);
   }
 
   if (sort === "asc" || sort === "desc") {

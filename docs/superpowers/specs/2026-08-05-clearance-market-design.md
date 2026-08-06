@@ -63,6 +63,8 @@ The seller API accepts `clearancePrice` as `null`, `0`, or `1`, rejects all othe
 
 Marketplace adds a mutually composable `Clearance` filter using `?clearance=1`. The products API implements this filter with `clearance_price IS NOT NULL`.
 
+The filter also includes any available product whose server-generated `effective_price` is exactly `1`, even when the seller did not explicitly set `clearance_price`. This covers products originally listed at $1 and products whose percentage discount results in a $1 buyer price. Automatic inclusion affects discovery only: these products do not receive a clearance badge, original-price strike-through, or clearance controls unless `clearance_price` is explicitly set.
+
 Clearance cards and product details show:
 
 - Original price with a strike-through
