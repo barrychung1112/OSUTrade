@@ -60,6 +60,8 @@ type SellerProduct = {
   originalPrice?: number;
   effectivePrice?: number;
   discountPercent?: ProductDiscountPercent;
+  clearancePrice?: 0 | 1 | null;
+  isClearance?: boolean;
   category?: string | null;
   imageUrl?: string | null;
   sellerContact?: {
@@ -425,7 +427,10 @@ export default function SellerPage() {
 
   async function updateProduct(
     productId: string | number,
-    updates: Partial<ProductEditValues> & { status?: ProductStatus }
+    updates: Partial<ProductEditValues> & {
+      status?: ProductStatus;
+      clearancePrice?: 0 | 1 | null;
+    }
   ) {
     setActionError(null);
     setPendingProductId(productId);
@@ -718,6 +723,9 @@ export default function SellerPage() {
                       key={product.id}
                       product={product}
                       onStatus={(status) => updateProduct(product.id, { status })}
+                      onClearance={(clearancePrice) =>
+                        updateProduct(product.id, { clearancePrice })
+                      }
                       onSave={(values) => updateProduct(product.id, values)}
                       busy={pendingProductId === product.id}
                       locale={locale}
@@ -934,6 +942,7 @@ function ProductRow({
   product,
   onStatus,
   onSave,
+  onClearance,
   busy,
   locale,
   t,
@@ -945,6 +954,7 @@ function ProductRow({
   product: SellerProduct;
   onStatus: (status: ProductStatus) => void;
   onSave: (values: ProductEditValues) => void;
+  onClearance: (clearancePrice: 0 | 1 | null) => void;
   busy: boolean;
   locale: ReturnType<typeof useI18n>["locale"];
   t: ReturnType<typeof useI18n>["t"];
@@ -1078,9 +1088,21 @@ function ProductRow({
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 font-semibold text-slate-900">
                   <DollarSign className="h-3.5 w-3.5" />
-                  {currency(product.price)}
+                  {product.isClearance && product.clearancePrice === 0
+                    ? t("clearance.free")
+                    : currency(product.price)}
                 </span>
-                {(product.discountPercent ?? 0) > 0 && (
+                {product.isClearance && product.originalPrice !== undefined && (
+                  <span className="text-xs text-gray-500 line-through">
+                    {currency(product.originalPrice)}
+                  </span>
+                )}
+                {product.isClearance && (
+                  <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800">
+                    {t("clearance.badge")}
+                  </span>
+                )}
+                {!product.isClearance && (product.discountPercent ?? 0) > 0 && (
                   <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-bold text-red-700">
                     {product.discountPercent}% OFF
                   </span>
@@ -1130,6 +1152,49 @@ function ProductRow({
                 );
               })}
             </div>
+          </div>
+
+          <div className="mt-3 rounded-md border border-emerald-100 bg-emerald-50/50 p-3">
+            <Text size="2" className="font-semibold text-gray-800">
+              {t("clearance.sellerTitle")}
+            </Text>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {([0, 1] as const).map((clearancePrice) => (
+                <button
+                  key={clearancePrice}
+                  type="button"
+                  onClick={() => onClearance(clearancePrice)}
+                  disabled={busy || isEditLocked}
+                  aria-pressed={product.clearancePrice === clearancePrice}
+                  className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
+                    product.clearancePrice === clearancePrice
+                      ? "border-emerald-700 bg-emerald-700 text-white"
+                      : "border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-100"
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  {clearancePrice === 0
+                    ? t("clearance.freeAction")
+                    : t("clearance.oneDollarAction")}
+                </button>
+              ))}
+              {product.isClearance && (
+                <button
+                  type="button"
+                  onClick={() => onClearance(null)}
+                  disabled={busy || isEditLocked}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t("clearance.cancelAction")}
+                </button>
+              )}
+            </div>
+            {isEditLocked && (
+              <Text as="p" color="gray" size="1" className="mt-2">
+                {product.hasActiveRequest
+                  ? t("seller.editLockedActiveRequest")
+                  : t("seller.editLockedSold")}
+              </Text>
+            )}
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">

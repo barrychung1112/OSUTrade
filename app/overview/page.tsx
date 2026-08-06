@@ -16,7 +16,7 @@ import { useProducts } from "../hook/useProducts";
 import { useI18n } from "../i18n";
 import { pickProductName } from "../lib/productTranslations";
 import { canLoadMoreProducts } from "../lib/productPagination";
-import { BadgePercent } from "lucide-react";
+import { BadgePercent, Sparkles } from "lucide-react";
 
 const categories = ["all", "electronics", "clothing", "books", "home", "general"];
 
@@ -27,11 +27,13 @@ export default function ProductListPage() {
   const [category, setCategory] = useState("all");
   const [priceSort, setPriceSort] = useState("none");
   const [saleOnly, setSaleOnly] = useState(false);
+  const [clearanceOnly, setClearanceOnly] = useState(false);
 
   useEffect(() => {
     const syncSaleFilter = () => {
       const params = new URLSearchParams(window.location.search);
       setSaleOnly(params.get("sale") === "1");
+      setClearanceOnly(params.get("clearance") === "1");
     };
 
     syncSaleFilter();
@@ -41,12 +43,26 @@ export default function ProductListPage() {
 
   function updateSaleFilter(nextSaleOnly: boolean) {
     setSaleOnly(nextSaleOnly);
+    if (nextSaleOnly) setClearanceOnly(false);
     const url = new URL(window.location.href);
     if (nextSaleOnly) {
       url.searchParams.set("sale", "1");
+      url.searchParams.delete("clearance");
     } else {
       url.searchParams.delete("sale");
     }
+    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function updateClearanceFilter(next: boolean) {
+    setClearanceOnly(next);
+    if (next) setSaleOnly(false);
+    const url = new URL(window.location.href);
+    if (next) {
+      url.searchParams.set("clearance", "1");
+      url.searchParams.delete("sale");
+    }
+    else url.searchParams.delete("clearance");
     window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
@@ -57,17 +73,19 @@ export default function ProductListPage() {
       category: category === "all" ? undefined : category,
       sort: priceSort === "asc" || priceSort === "desc" ? priceSort : undefined,
       discounted: saleOnly,
+      clearance: clearanceOnly,
     });
   const canLoadMore = canLoadMoreProducts({ hasMore, loading, loadingMore });
 
   const hasFilters =
-    search.trim() || category !== "all" || priceSort !== "none" || saleOnly;
+    search.trim() || category !== "all" || priceSort !== "none" || saleOnly || clearanceOnly;
 
   function clearFilters() {
     setSearch("");
     setCategory("all");
     setPriceSort("none");
     updateSaleFilter(false);
+    updateClearanceFilter(false);
   }
 
   return (
@@ -91,6 +109,15 @@ export default function ProductListPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateClearanceFilter(!clearanceOnly)}
+                  aria-pressed={clearanceOnly}
+                  className={clearanceOnly ? "app-action-primary" : "app-action-secondary"}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {t("clearance.section")}
+                </button>
                 <button
                   type="button"
                   onClick={() => updateSaleFilter(!saleOnly)}
@@ -217,6 +244,8 @@ export default function ProductListPage() {
                   price={product.price}
                   originalPrice={product.originalPrice}
                   discountPercent={product.discountPercent}
+                  clearancePrice={product.clearancePrice}
+                  isClearance={product.isClearance}
                   category={product.category}
                   quantity={product.quantity}
                   imageUrl={

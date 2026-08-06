@@ -17,6 +17,8 @@ interface ProductCardProps {
   price: number;
   originalPrice?: number;
   discountPercent?: number;
+  clearancePrice?: 0 | 1 | null;
+  isClearance?: boolean;
   imageUrl: string;
   category?: string | null;
   quantity?: number | null;
@@ -33,6 +35,8 @@ export default function ProductCard({
   price,
   originalPrice,
   discountPercent = 0,
+  clearancePrice = null,
+  isClearance = false,
   imageUrl,
   category,
   quantity,
@@ -105,9 +109,19 @@ export default function ProductCard({
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Text size="5" weight="bold" className="text-[#d73f09]">
-            {currency(price)}
+            {isClearance && clearancePrice === 0 ? t("clearance.free") : currency(price)}
           </Text>
-          {discountPercent > 0 && originalPrice !== undefined && (
+          {isClearance && originalPrice !== undefined && (
+            <>
+              <span className="text-sm text-gray-500 line-through">
+                {currency(originalPrice)}
+              </span>
+              <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800">
+                {t("clearance.badge")}
+              </span>
+            </>
+          )}
+          {!isClearance && discountPercent > 0 && originalPrice !== undefined && (
             <>
               <span className="text-sm text-gray-500 line-through">
                 {currency(originalPrice)}

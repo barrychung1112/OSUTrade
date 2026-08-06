@@ -80,9 +80,16 @@ alter table public.products
 
 alter table public.products
   add column if not exists discount_percent integer not null default 0,
-  add column if not exists effective_price numeric
+  add column if not exists clearance_price numeric;
+
+alter table public.products drop column if exists effective_price;
+alter table public.products
+  add column effective_price numeric
     generated always as (
-      round(price::numeric * (100 - discount_percent) / 100, 2)
+      coalesce(
+        clearance_price,
+        round(price::numeric * (100 - discount_percent) / 100, 2)
+      )
     ) stored;
 
 do $$
@@ -95,6 +102,20 @@ begin
     alter table public.products
       add constraint products_discount_percent_check
       check (discount_percent in (0, 10, 20, 30, 50));
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'products_clearance_price_check'
+      and conrelid = 'public.products'::regclass
+  ) then
+    alter table public.products
+      add constraint products_clearance_price_check
+      check (clearance_price is null or clearance_price in (0, 1));
   end if;
 end
 $$;

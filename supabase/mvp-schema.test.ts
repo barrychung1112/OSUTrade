@@ -31,6 +31,18 @@ describe("product discount schema", () => {
     expect(schema).toMatch(/products_discount_percent_check[\s\S]*discount_percent in \(0, 10, 20, 30, 50\)/i);
     expect(schema).toMatch(/effective_price numeric[\s\S]*generated always as/i);
   });
+
+  test("stores clearance overrides ahead of percentage discounts", () => {
+    const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
+
+    expect(schema).toContain("clearance_price numeric");
+    expect(schema).toMatch(
+      /products_clearance_price_check[\s\S]*clearance_price is null or clearance_price in \(0, 1\)/i
+    );
+    expect(schema).toMatch(
+      /effective_price numeric[\s\S]*coalesce\([\s\S]*clearance_price[\s\S]*round\(price::numeric \* \(100 - discount_percent\) \/ 100, 2\)/i
+    );
+  });
 });
 
 describe("wanted request subscription schema", () => {

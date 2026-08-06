@@ -30,6 +30,7 @@ type ProductRow = {
   name_zh_cn?: string | null;
   price: number;
   discount_percent?: number | null;
+  clearance_price?: number | null;
   effective_price?: number | null;
   category: string | null;
   image_url: string | null;
@@ -79,6 +80,8 @@ function toProduct(row: ProductRow, hasActiveRequest = false) {
     originalPrice: pricing.originalPrice,
     effectivePrice: pricing.effectivePrice,
     discountPercent: pricing.discountPercent,
+    clearancePrice: pricing.clearancePrice,
+    isClearance: pricing.isClearance,
     category: row.category,
     imageUrl: imageUrls[0] ?? null,
     imageUrls,
@@ -309,7 +312,8 @@ export async function PATCH(request: Request) {
     const newPrice = getProductPricing(data).effectivePrice;
     const priceChanged =
       (Object.prototype.hasOwnProperty.call(body, "price") ||
-        Object.prototype.hasOwnProperty.call(body, "discountPercent")) &&
+        Object.prototype.hasOwnProperty.call(body, "discountPercent") ||
+        Object.prototype.hasOwnProperty.call(body, "clearancePrice")) &&
       Number.isFinite(oldPrice) &&
       Number.isFinite(newPrice) &&
       oldPrice !== newPrice;

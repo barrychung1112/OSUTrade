@@ -10,6 +10,7 @@ const editableProductFields = [
   "description",
   "price",
   "discountPercent",
+  "clearancePrice",
   "category",
   "quantity",
   "contactPhone",

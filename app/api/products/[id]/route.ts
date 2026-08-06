@@ -15,6 +15,7 @@ type ProductRow = {
   name_zh_cn?: string | null;
   price: number;
   discount_percent?: number | null;
+  clearance_price?: number | null;
   effective_price?: number | null;
   category: string | null;
   image_url: string | null;
@@ -53,6 +54,8 @@ function toProduct(row: ProductRow) {
     originalPrice: pricing.originalPrice,
     effectivePrice: pricing.effectivePrice,
     discountPercent: pricing.discountPercent,
+    clearancePrice: pricing.clearancePrice,
+    isClearance: pricing.isClearance,
     category: row.category,
     imageUrl: imageUrls[0] ?? null,
     imageUrls,
