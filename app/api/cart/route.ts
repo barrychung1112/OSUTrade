@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getProductPricing } from "@/app/lib/productDiscount";
+import { createClient } from "@/utils/supabase/server";
 
 type CartItem = {
   id: string;
@@ -65,7 +67,41 @@ function normalizeNameTranslations(value: any, fallbackName: string) {
 }
 
 export async function GET(request: NextRequest) {
-  return NextResponse.json({ data: readCart(request) });
+  const cart = readCart(request);
+  if (cart.length === 0) return NextResponse.json({ data: cart });
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select(
+        "product_id, price, discount_percent, clearance_price, effective_price, quantity, status"
+      )
+      .in("product_id", cart.map((item) => item.id));
+
+    if (error) throw error;
+
+    const products = new Map(
+      (data ?? []).map((product) => [String(product.product_id), product])
+    );
+    const refreshed = cart.map((item) => {
+      const product = products.get(item.id);
+      if (!product) return item;
+      const availableQuantity =
+        product.status === "available" ? Number(product.quantity ?? 0) : 0;
+      return {
+        ...item,
+        price: getProductPricing(product).effectivePrice,
+        availableQuantity,
+        quantity: normalizeQuantity(item.quantity, availableQuantity),
+      };
+    });
+
+    return writeCart(refreshed);
+  } catch (error) {
+    console.error("Failed to refresh cart pricing.", error);
+    return NextResponse.json({ data: cart });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -91,6 +127,7 @@ export async function POST(request: NextRequest) {
   const existing = cart.find((item) => item.id === id);
 
   if (existing) {
+    existing.price = price;
     existing.availableQuantity = maxQuantity;
     existing.nameTranslations = nameTranslations;
     existing.quantity = normalizeQuantity(existing.quantity + 1, maxQuantity);

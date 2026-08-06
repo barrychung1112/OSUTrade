@@ -21,9 +21,10 @@ export function parseProductDiscount(value: unknown): ProductDiscountPercent | n
 export function parseClearancePrice(
   value: unknown
 ): ProductClearancePrice | null | undefined {
-  if (value === null || value === undefined || value === "") return null;
-  const price = Number(value);
-  return price === 0 || price === 1 ? price : undefined;
+  if (value === null || value === undefined) return null;
+  if (value === 0 || value === "0") return 0;
+  if (value === 1 || value === "1") return 1;
+  return undefined;
 }
 
 export function calculateEffectivePrice(

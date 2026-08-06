@@ -33,6 +33,11 @@ describe("product discounts", () => {
     expect(parseClearancePrice(null)).toBeNull();
     expect(parseClearancePrice(0)).toBe(0);
     expect(parseClearancePrice(1)).toBe(1);
+    expect(parseClearancePrice("0")).toBe(0);
+    expect(parseClearancePrice("1")).toBe(1);
+    expect(parseClearancePrice(false)).toBeUndefined();
+    expect(parseClearancePrice(true)).toBeUndefined();
+    expect(parseClearancePrice("")).toBeUndefined();
     expect(parseClearancePrice(2)).toBeUndefined();
   });
 
