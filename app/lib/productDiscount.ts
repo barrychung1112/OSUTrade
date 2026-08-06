@@ -39,11 +39,13 @@ export function getProductPricing(row: ProductPriceRow) {
   const clearancePrice = parseClearancePrice(row.clearance_price) ?? null;
   const storedEffectivePrice = Number(row.effective_price);
   const effectivePrice =
-    row.effective_price !== null &&
-    row.effective_price !== undefined &&
-    Number.isFinite(storedEffectivePrice)
-      ? storedEffectivePrice
-      : clearancePrice ?? calculateEffectivePrice(originalPrice, discountPercent);
+    clearancePrice !== null
+      ? clearancePrice
+      : row.effective_price !== null &&
+          row.effective_price !== undefined &&
+          Number.isFinite(storedEffectivePrice)
+        ? storedEffectivePrice
+        : calculateEffectivePrice(originalPrice, discountPercent);
 
   const isClearance = clearancePrice !== null;
   return {
@@ -55,4 +57,3 @@ export function getProductPricing(row: ProductPriceRow) {
     isDiscounted: !isClearance && discountPercent > 0,
   };
 }
-

@@ -40,6 +40,9 @@ function productRow(id: string, name: string) {
     description_zh_tw: `${name} 繁中描述`,
     description_zh_cn: `${name} 简中描述`,
     price: id === "p-1" ? 10 : 20,
+    clearance_price: null,
+    discount_percent: 0,
+    effective_price: id === "p-1" ? 10 : 20,
     category: "home",
     image_url: null,
     image_urls: [],
@@ -117,6 +120,9 @@ describe("seller batch cross-post route", () => {
     expect(response.status).toBe(200);
     const selectedColumns = query.select.mock.calls[0]?.[0] as string;
     expect(selectedColumns).toContain("product_id");
+    expect(selectedColumns).toContain("clearance_price");
+    expect(selectedColumns).toContain("discount_percent");
+    expect(selectedColumns).toContain("effective_price");
     expect(selectedColumns).not.toBe("*");
     expect(selectedColumns).not.toContain("contact_");
     expect(query.in).toHaveBeenCalledWith("product_id", ["p-2", "p-1"]);
@@ -136,6 +142,28 @@ describe("seller batch cross-post route", () => {
     const generatedListings = mocks.generateCrossPostCopies.mock.calls[0]?.[0];
     expect(generatedListings[0].product).not.toHaveProperty("sellerContact");
     expect(JSON.stringify(generatedListings)).not.toContain("private-line");
+  });
+
+  test("uses clearance pricing in generated cross-post listings", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    const clearanceProduct = {
+      ...productRow("p-1", "Desk lamp"),
+      price: 10,
+      clearance_price: 1,
+      discount_percent: 20,
+      effective_price: 10,
+    };
+    mockProductQuery([clearanceProduct]);
+
+    const response = await POST(request({ productIds: ["p-1"] }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.generateCrossPostCopies).toHaveBeenCalledWith([
+      {
+        product: expect.objectContaining({ id: "p-1", price: 1 }),
+        productUrl: "https://osutrade.example/product/p-1",
+      },
+    ]);
   });
 
   test("rejects the full selection when any product is missing or stale", async () => {
