@@ -222,9 +222,21 @@ export default function ProductDetailPage() {
 
             <h1 className="text-3xl font-bold leading-tight text-gray-950">{displayName}</h1>
             <p className="mt-3 text-3xl font-bold text-[#d73f09]">
-              ${Number(product.price).toLocaleString()}
+              {product.isClearance && product.clearancePrice === 0
+                ? t("clearance.free")
+                : `$${Number(product.price).toLocaleString()}`}
             </p>
-            {(product.discountPercent ?? 0) > 0 && product.originalPrice !== undefined && (
+            {product.isClearance && product.originalPrice !== undefined && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base text-gray-500 line-through">
+                  ${Number(product.originalPrice).toLocaleString()}
+                </span>
+                <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800">
+                  {t("clearance.badge")}
+                </span>
+              </div>
+            )}
+            {!product.isClearance && (product.discountPercent ?? 0) > 0 && product.originalPrice !== undefined && (
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-base text-gray-500 line-through">
                   ${Number(product.originalPrice).toLocaleString()}

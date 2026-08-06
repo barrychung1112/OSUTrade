@@ -67,6 +67,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     },
     [
       options.category,
+      options.clearance,
       options.discounted,
       options.limit,
       options.name,

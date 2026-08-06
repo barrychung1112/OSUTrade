@@ -28,10 +28,11 @@ describe("fetchProducts", () => {
       category: "electronics",
       sort: "asc",
       discounted: true,
+      clearance: true,
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      "/api/products?page=2&limit=12&name=monitor+arm&category=electronics&sort=asc&discounted=true",
+      "/api/products?page=2&limit=12&name=monitor+arm&category=electronics&sort=asc&discounted=true&clearance=true",
       expect.objectContaining({ cache: "no-store" })
     );
     expect(result).toMatchObject({

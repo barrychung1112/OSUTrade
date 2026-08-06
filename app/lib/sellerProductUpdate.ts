@@ -1,4 +1,4 @@
-import { parseProductDiscount } from "./productDiscount";
+import { parseClearancePrice, parseProductDiscount } from "./productDiscount";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 
@@ -12,6 +12,7 @@ export type SellerProductEditInput = {
   description?: unknown;
   price?: unknown;
   discountPercent?: unknown;
+  clearancePrice?: unknown;
   category?: unknown;
   quantity?: unknown;
   contactPhone?: unknown;
@@ -40,7 +41,8 @@ export function buildSellerProductUpdate(
   const editsPriceOrQuantity =
     hasOwn(input, "price") ||
     hasOwn(input, "quantity") ||
-    hasOwn(input, "discountPercent");
+    hasOwn(input, "discountPercent") ||
+    hasOwn(input, "clearancePrice");
 
   if (existing.status === "sold" && editsPriceOrQuantity) {
     return {
@@ -73,6 +75,14 @@ export function buildSellerProductUpdate(
       return { ok: false, message: "Choose a valid discount." };
     }
     values.discount_percent = discountPercent;
+  }
+
+  if (hasOwn(input, "clearancePrice")) {
+    const clearancePrice = parseClearancePrice(input.clearancePrice);
+    if (clearancePrice === undefined) {
+      return { ok: false, message: "Choose a valid clearance price." };
+    }
+    values.clearance_price = clearancePrice;
   }
 
   if (hasOwn(input, "category")) {

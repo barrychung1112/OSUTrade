@@ -101,6 +101,7 @@ export function filterDemoProducts({
   category,
   sort,
   discounted,
+  clearance,
   page,
   limit,
 }: {
@@ -108,6 +109,7 @@ export function filterDemoProducts({
   category?: string | null;
   sort?: string | null;
   discounted?: boolean;
+  clearance?: boolean;
   page: number;
   limit: number;
 }) {
@@ -127,6 +129,12 @@ export function filterDemoProducts({
   if (discounted) {
     products = products.filter(
       (product) => Number((product as DemoProduct & { discountPercent?: number }).discountPercent) > 0
+    );
+  }
+
+  if (clearance) {
+    products = products.filter(
+      (product) => Boolean((product as DemoProduct & { isClearance?: boolean }).isClearance)
     );
   }
 

@@ -16,6 +16,8 @@ export type Product = {
   originalPrice?: number;
   effectivePrice?: number;
   discountPercent?: number;
+  clearancePrice?: 0 | 1 | null;
+  isClearance?: boolean;
   category?: string | null;
   imageUrl?: string | null;
   imageUrls?: string[] | null;
@@ -47,6 +49,7 @@ export type ProductListOptions = {
   category?: string;
   sort?: "asc" | "desc";
   discounted?: boolean;
+  clearance?: boolean;
   signal?: AbortSignal;
 };
 
@@ -61,6 +64,7 @@ function buildProductListUrl(options: ProductListOptions = {}) {
     params.set("sort", options.sort);
   }
   if (options.discounted) params.set("discounted", "true");
+  if (options.clearance) params.set("clearance", "true");
 
   const query = params.toString();
   return query ? `/api/products?${query}` : "/api/products";

@@ -96,8 +96,13 @@ export default function ProductListCard() {
                   <h3>{pickProductName(product.name, product.nameTranslations, locale)}</h3>
                 </Link>
                 <div className="home-sale-price">
-                  <strong>{currency(product.price)}</strong>
-                  {product.originalPrice && product.originalPrice > product.price && (
+                  <strong>
+                    {product.isClearance && product.clearancePrice === 0
+                      ? t("clearance.free")
+                      : currency(product.price)}
+                  </strong>
+                  {product.originalPrice !== undefined &&
+                    product.originalPrice > product.price && (
                     <span>{currency(product.originalPrice)}</span>
                   )}
                 </div>

@@ -13,6 +13,7 @@ describe("seller product edits", () => {
         description: "Warm light, works well",
         price: 18.5,
         discountPercent: 20,
+        clearancePrice: 1,
         category: "home",
         quantity: 4,
         contactPhone: "541-555-0101",
@@ -29,6 +30,7 @@ describe("seller product edits", () => {
         description: "Warm light, works well",
         price: 18.5,
         discount_percent: 20,
+        clearance_price: 1,
         category: "home",
         quantity: 4,
         contact_phone: "541-555-0101",
@@ -65,5 +67,29 @@ describe("seller product edits", () => {
     );
 
     expect(result).toEqual({ ok: false, message: "Choose a valid discount." });
+  });
+
+  test("allows sellers to cancel clearance without changing the discount", () => {
+    const result = buildSellerProductUpdate(
+      { status: "available", quantity: 1 },
+      { clearancePrice: null }
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      values: { clearance_price: null },
+    });
+  });
+
+  test("rejects unsupported clearance prices", () => {
+    const result = buildSellerProductUpdate(
+      { status: "available", quantity: 1 },
+      { clearancePrice: 2 }
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Choose a valid clearance price.",
+    });
   });
 });

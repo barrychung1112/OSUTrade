@@ -25,6 +25,7 @@ type ProductRow = {
   name_zh_cn?: string | null;
   price: number;
   discount_percent?: number | null;
+  clearance_price?: number | null;
   effective_price?: number | null;
   category: string | null;
   image_url: string | null;
@@ -80,6 +81,8 @@ function toProduct(row: ProductRow) {
     originalPrice: pricing.originalPrice,
     effectivePrice: pricing.effectivePrice,
     discountPercent: pricing.discountPercent,
+    clearancePrice: pricing.clearancePrice,
+    isClearance: pricing.isClearance,
     category: row.category,
     imageUrl: imageUrls[0] ?? null,
     imageUrls,
@@ -160,6 +163,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const sort = searchParams.get("sort");
     const discounted = searchParams.get("discounted") === "true";
+    const clearance = searchParams.get("clearance") === "true";
 
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "12", 10);
@@ -181,7 +185,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (discounted) {
-      query = query.gt("discount_percent", 0);
+      query = query.gt("discount_percent", 0).is("clearance_price", null);
+    }
+
+    if (clearance) {
+      query = query.not("clearance_price", "is", null);
     }
 
     query = applyProductListSort(query, sort);
@@ -221,6 +229,7 @@ export async function GET(request: NextRequest) {
           category: searchParams.get("category"),
           sort: searchParams.get("sort"),
           discounted: searchParams.get("discounted") === "true",
+          clearance: searchParams.get("clearance") === "true",
           page,
           limit,
         }),
