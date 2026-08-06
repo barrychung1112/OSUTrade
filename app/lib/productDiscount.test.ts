@@ -59,6 +59,17 @@ describe("product discounts", () => {
     });
   });
 
+  test("prefers the active clearance price over a stale stored effective price", () => {
+    expect(
+      getProductPricing({
+        price: 50,
+        discount_percent: 20,
+        clearance_price: 0,
+        effective_price: 40,
+      }).effectivePrice
+    ).toBe(0);
+  });
+
   test("falls back to the clearance price before calculating a discount", () => {
     expect(
       getProductPricing({
@@ -69,4 +80,3 @@ describe("product discounts", () => {
     ).toBe(1);
   });
 });
-

@@ -15,6 +15,7 @@ type ProductRow = {
   name_zh_tw?: string | null;
   name_zh_cn?: string | null;
   price: number;
+  clearance_price?: number | null;
   discount_percent?: number | null;
   effective_price?: number | null;
   category: string | null;
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("products")
       .select(
-        "product_id,name,description,description_en,description_zh_tw,description_zh_cn,name_en,name_zh_tw,name_zh_cn,price,category,image_url,image_urls,seller_id,status,quantity"
+        "product_id,name,description,description_en,description_zh_tw,description_zh_cn,name_en,name_zh_tw,name_zh_cn,price,clearance_price,discount_percent,effective_price,category,image_url,image_urls,seller_id,status,quantity"
       )
       .in("product_id", productIds)
       .eq("seller_id", session.user.id)
