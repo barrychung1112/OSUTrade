@@ -12,6 +12,7 @@ import { notifyMatchingWantedRequests } from "@/app/lib/wantedRequests";
 import { buildProductNameSearchFilter } from "@/app/lib/productSearch";
 import { applyProductListSort } from "@/app/lib/productSort";
 import { getProductPricing } from "@/app/lib/productDiscount";
+import { applyProductClearanceFilter } from "@/app/lib/productClearance";
 
 type ProductRow = {
   product_id: string | number;
@@ -189,7 +190,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (clearance) {
-      query = query.not("clearance_price", "is", null);
+      query = applyProductClearanceFilter(query);
     }
 
     query = applyProductListSort(query, sort);
