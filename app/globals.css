@@ -275,11 +275,12 @@
 }
 
 .home-product-meta strong {
+  display: -webkit-box;
   overflow: hidden;
   font-size: 14px;
   line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .home-product-meta b {
@@ -353,12 +354,19 @@
 .home-discovery-heading span,
 .home-discovery-heading > a {
   display: inline-flex;
-  min-height: 32px;
   align-items: center;
   gap: 7px;
   color: #b43305;
   font-size: 12px;
   font-weight: 750;
+}
+
+.home-discovery-heading span {
+  min-height: 32px;
+}
+
+.home-discovery-heading > a {
+  min-height: 44px;
 }
 
 .home-discovery-heading h2 {
@@ -419,11 +427,12 @@
 }
 
 .home-discovery-copy > strong {
+  display: -webkit-box;
   overflow: hidden;
   font-size: 14px;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .home-discovery-copy > span {
@@ -972,6 +981,10 @@
   .home-discovery-image img,
   .home-footer-links a {
     transition: none;
+  }
+
+  .home-discovery-card:hover img {
+    transform: none;
   }
 }
 

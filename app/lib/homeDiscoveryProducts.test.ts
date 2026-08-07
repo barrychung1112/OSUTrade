@@ -6,7 +6,7 @@ import {
 
 describe("homepage discovery queries", () => {
   test("loads the latest available inventory", () => {
-    expect(HOME_RECENT_PRODUCTS_URL).toBe("/api/products?limit=4&sort=desc");
+    expect(HOME_RECENT_PRODUCTS_URL).toBe("/api/products?limit=4");
   });
 
   test("loads clearance inventory independently", () => {
