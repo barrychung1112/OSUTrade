@@ -8,9 +8,9 @@ import { Theme } from "@radix-ui/themes";
 import { ArrowRight, Github, Heart, MessageCircle, Search, Send, Handshake } from "lucide-react";
 import Header from "./components/Header";
 import HomeHero from "./components/HomeHero";
+import HomeDiscoverySections from "./components/HomeDiscoverySections";
 import HomeMarketSignalsCard from "./components/HomeMarketSignalsCard";
 import LoginModal from "./components/LoginModal";
-import ProductListCard from "./components/ProductListCard";
 import SignUpModal from "./components/SignUpModal";
 import { useI18n } from "./i18n";
 import { getHomeCtaAction } from "./lib/homeCtaAccess";
@@ -79,7 +79,7 @@ export default function HomePage() {
         />
 
         <div className="home-content-flow">
-          <ProductListCard />
+          <HomeDiscoverySections />
           <HomeMarketSignalsCard />
 
           <section className="home-steps" aria-labelledby="how-it-works-title">

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Plus, ShieldCheck } from "lucide-react";
+import { ArrowRight, Handshake, MapPin, Plus, ShoppingBag } from "lucide-react";
 import { useI18n } from "../i18n";
 import { selectRandomHomeHeroProducts } from "../lib/homeHeroProducts";
 import { pickProductName } from "../lib/productTranslations";
@@ -27,6 +27,13 @@ const tileMotion = [
   { initial: { opacity: 0, y: 28, rotate: 0 }, rotate: 5 },
   { initial: { opacity: 0, x: -18, y: 24 }, rotate: -2 },
 ];
+
+const currency = (value: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(value);
 
 export default function HomeHero({
   onSell,
@@ -64,7 +71,7 @@ export default function HomeHero({
       <div className="home-hero-grid" aria-hidden="true" />
       <div className="home-hero-copy">
         <motion.p {...reveal} className="home-hero-kicker">
-          {t("home.heroKicker")}
+          {t("home.showcaseEyebrow")}
         </motion.p>
         <motion.h1
           {...reveal}
@@ -72,14 +79,14 @@ export default function HomeHero({
           id="home-title"
           className="home-hero-title"
         >
-          OSUTrade
+          {t("home.showcaseTitle")}
         </motion.h1>
         <motion.p
           {...reveal}
           transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.12 }}
           className="home-hero-description"
         >
-          {t("home.description")}
+          {t("home.showcaseBody")}
         </motion.p>
 
         <motion.div
@@ -98,18 +105,19 @@ export default function HomeHero({
             className="home-hero-secondary"
           >
             <Plus className="h-4 w-4" />
-            {t("marketplace.listItem")}
+            {t("home.sellItem")}
           </button>
         </motion.div>
 
-        <motion.div
+        <motion.ul
           {...reveal}
           transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.24 }}
           className="home-hero-trust"
         >
-          <ShieldCheck className="h-4 w-4" />
-          <span>{t("home.safetyNote")}</span>
-        </motion.div>
+          <li><ShoppingBag className="h-4 w-4" /><span>{t("home.freeToBrowse")}</span></li>
+          <li><MapPin className="h-4 w-4" /><span>{t("home.campusPickup")}</span></li>
+          <li><Handshake className="h-4 w-4" /><span>{t("home.directSellerContact")}</span></li>
+        </motion.ul>
       </div>
 
       <div className="home-product-scene">
@@ -137,7 +145,13 @@ export default function HomeHero({
                 sizes={index === 0 ? "360px" : index === 1 ? "280px" : "220px"}
                 priority
               />
-              {liveProduct && <span>${Number(liveProduct.price).toFixed(2)}</span>}
+              {liveProduct && (
+                <span className="home-product-meta">
+                  <strong>{name}</strong>
+                  <b>{currency(Number(liveProduct.price))}</b>
+                  <small>{t("home.available")}</small>
+                </span>
+              )}
             </motion.div>
           );
 
