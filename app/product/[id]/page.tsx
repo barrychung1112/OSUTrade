@@ -9,6 +9,7 @@ import { Theme } from "@radix-ui/themes";
 import { fetchProduct, type Product } from "@/app/lib/products";
 import { useI18n } from "@/app/i18n";
 import Header from "@/app/components/Header";
+import { shouldBypassProductImageOptimization } from "@/app/lib/productImageOptimization";
 import {
   pickProductDescription,
   pickProductName,
@@ -168,6 +169,7 @@ export default function ProductDetailPage() {
                 alt={displayName}
                 fill
                 sizes="(min-width: 768px) 55vw, 100vw"
+                unoptimized={shouldBypassProductImageOptimization(selectedImage)}
                 className="object-cover"
                 priority
               />
@@ -196,6 +198,7 @@ export default function ProductDetailPage() {
                       alt={`${displayName} thumbnail ${idx + 1}`}
                       fill
                       sizes="(min-width: 768px) 180px, 33vw"
+                      unoptimized={shouldBypassProductImageOptimization(img)}
                       className="object-cover"
                     />
                   </button>
