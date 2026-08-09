@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Card, Text, Heading, Button } from "@radix-ui/themes";
 import { MagnifyingGlassIcon, PlusIcon } from "@radix-ui/react-icons";
 import { useI18n } from "../i18n";
+import { shouldBypassProductImageOptimization } from "../lib/productImageOptimization";
 import type { ProductNameTranslations } from "../lib/productTranslations";
 
 interface ProductCardProps {
@@ -91,6 +92,7 @@ export default function ProductCard({
           alt={displayName || name}
           fill
           sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 100vw"
+          unoptimized={shouldBypassProductImageOptimization(imageUrl)}
           className="object-cover transition duration-300 group-hover:scale-[1.03]"
         />
         <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-gray-800 shadow-sm">

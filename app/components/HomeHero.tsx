@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Handshake, MapPin, Plus, ShoppingBag } from "lucide-react";
 import { useI18n } from "../i18n";
 import { selectRandomHomeHeroProducts } from "../lib/homeHeroProducts";
+import { shouldBypassProductImageOptimization } from "../lib/productImageOptimization";
 import { pickProductName } from "../lib/productTranslations";
 import { fetchProducts, type Product } from "../lib/products";
 
@@ -143,6 +144,9 @@ export default function HomeHero({
                 alt={name}
                 fill
                 sizes={index === 0 ? "360px" : index === 1 ? "280px" : "220px"}
+                unoptimized={shouldBypassProductImageOptimization(
+                  product.imageUrl || fallbackTiles[index].imageUrl
+                )}
                 priority
               />
               {liveProduct && (
