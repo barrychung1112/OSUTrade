@@ -83,6 +83,31 @@ describe("trade notifications", () => {
     expect(notification.emailText).toContain("https://osutrade.com/requests");
   });
 
+  test("tells the buyer when the seller closes an incomplete trade", () => {
+    const notification = buildTradeNotification({
+      ...baseInput,
+      type: "request_cancelled_by_seller",
+      recipientId: "buyer-1",
+      actorId: "seller-1",
+    });
+
+    expect(notification).toMatchObject({
+      type: "request_cancelled_by_seller",
+      recipientId: "buyer-1",
+      title: "Trade did not complete for Desk lamp",
+      actionHref: "/requests",
+    });
+    expect(notification.emailSubject).toBe(
+      "[OSUTrade] Trade did not complete: Desk lamp"
+    );
+    expect(notification.emailText).toContain(
+      "The seller marked this trade as not completed."
+    );
+    expect(notification.emailText).toContain(
+      "The reserved quantity has been returned to the marketplace."
+    );
+  });
+
   test("records email errors without failing the trade flow", async () => {
     const insert = vi.fn().mockResolvedValue({
       data: { notification_id: "notification-1" },

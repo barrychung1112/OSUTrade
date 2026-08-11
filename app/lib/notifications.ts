@@ -6,6 +6,7 @@ export type TradeNotificationType =
   | "request_accepted"
   | "request_declined"
   | "request_cancelled"
+  | "request_cancelled_by_seller"
   | "price_changed";
 
 export type TradeNotificationInput = {
@@ -250,6 +251,29 @@ export function buildTradeNotification(
           "No action is required unless you want to update the listing status or quantity.",
       }),
       actionHref: "/seller",
+    };
+  }
+
+  if (input.type === "request_cancelled_by_seller") {
+    return {
+      ...base,
+      title: `Trade did not complete for ${productName}`,
+      body:
+        "The seller marked this trade as not completed. The item is available again.",
+      emailSubject: `[OSUTrade] Trade did not complete: ${productName}`,
+      emailText: buildEmailText({
+        intro: "The seller marked this trade as not completed.",
+        productName,
+        quantity,
+        status: "Cancelled by seller",
+        nextStep:
+          "Open My Requests to review the update or browse the marketplace again.",
+        actionLabel: "Open My Requests",
+        actionHref: "/requests",
+        closing:
+          "The reserved quantity has been returned to the marketplace.",
+      }),
+      actionHref: "/requests",
     };
   }
 

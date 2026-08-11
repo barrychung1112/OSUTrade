@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 import { getAcceptedRequestProductStatus } from "@/app/lib/sellerRequestAcceptance";
+import { buildAcceptedRequestCancellation } from "@/app/lib/sellerRequestCancellation";
 import { notifyTradeEvent } from "@/app/lib/notifications";
 import { getProductPricing } from "@/app/lib/productDiscount";
 
@@ -21,6 +22,7 @@ type ProductRow = {
   image_url: string | null;
   image_urls?: string[] | null;
   quantity?: number | null;
+  status?: string | null;
 };
 
 type RequestRow = {
@@ -254,6 +256,22 @@ export async function PATCH(request: Request) {
 
     const updatedAt = new Date().toISOString();
     let responseProduct = product;
+    const cancellation =
+      status === "cancelled"
+        ? buildAcceptedRequestCancellation({
+            requestStatus: existing.status,
+            productStatus: product?.status ?? null,
+            currentQuantity: Number(product?.quantity ?? 0),
+            requestQuantity: existing.quantity,
+          })
+        : null;
+
+    if (cancellation?.ok === false) {
+      return NextResponse.json(
+        { message: cancellation.message },
+        { status: 409 }
+      );
+    }
 
     if (status === "accepted") {
       if (existing.status !== "sent") {
@@ -283,6 +301,8 @@ export async function PATCH(request: Request) {
 
     if (status === "accepted") {
       requestUpdateQuery.eq("status", "sent");
+    } else if (status === "cancelled") {
+      requestUpdateQuery.eq("status", "accepted");
     }
 
     const { data, error } = await requestUpdateQuery
@@ -299,10 +319,55 @@ export async function PATCH(request: Request) {
           message:
             status === "accepted"
               ? "Only sent requests can be accepted."
+              : status === "cancelled"
+                ? "Only accepted requests can be restored."
               : "Request not found.",
         },
-        { status: status === "accepted" ? 409 : 404 }
+        { status: status === "accepted" || status === "cancelled" ? 409 : 404 }
       );
+    }
+
+    if (status === "cancelled" && cancellation?.ok === true) {
+      const currentQuantity = Number(product?.quantity ?? 0);
+      const { data: updatedProduct, error: productUpdateError } = await supabase
+        .from("products")
+        .update({
+          quantity: cancellation.quantity,
+          status: cancellation.status,
+          updated_at: updatedAt,
+        })
+        .eq("product_id", data.product_id)
+        .eq("seller_id", session.user.id)
+        .eq("quantity", currentQuantity)
+        .in("status", ["available", "pending"])
+        .select("*")
+        .maybeSingle();
+
+      if (productUpdateError || !updatedProduct) {
+        const { error: revertError } = await supabase
+          .from("trade_requests")
+          .update({ status: "accepted", updated_at: updatedAt })
+          .eq("request_id", requestId)
+          .eq("status", "cancelled");
+
+        if (revertError) {
+          throw revertError;
+        }
+
+        if (productUpdateError) {
+          throw productUpdateError;
+        }
+
+        return NextResponse.json(
+          {
+            message:
+              "The listing changed before inventory could be restored. Refresh and try again.",
+          },
+          { status: 409 }
+        );
+      }
+
+      responseProduct = updatedProduct;
     }
 
     if (status === "accepted") {
@@ -427,15 +492,24 @@ export async function PATCH(request: Request) {
     const buyerEmail =
       data.status === "accepted"
         ? await getEmailByUserId(data.buyer_id)
-        : data.status === "declined"
+        : data.status === "declined" || data.status === "cancelled"
           ? await safeGetEmailByUserId(data.buyer_id)
           : null;
 
-    if (data.status === "accepted" || data.status === "declined") {
+    if (
+      data.status === "accepted" ||
+      data.status === "declined" ||
+      data.status === "cancelled"
+    ) {
       await safeNotifyTradeEvent({
         supabase,
         input: {
-          type: data.status === "accepted" ? "request_accepted" : "request_declined",
+          type:
+            data.status === "accepted"
+              ? "request_accepted"
+              : data.status === "declined"
+                ? "request_declined"
+                : "request_cancelled_by_seller",
           recipientId: data.buyer_id,
           actorId: session.user.id,
           request: {
