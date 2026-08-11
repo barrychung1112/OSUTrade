@@ -420,6 +420,9 @@ const dictionaries = {
     "seller.responseExpired": "Response window expired.",
     "seller.accept": "Accept",
     "seller.decline": "Decline",
+    "seller.restoreAccepted": "Transaction did not complete",
+    "seller.restoreAcceptedConfirm":
+      "Cancel this accepted request and return its reserved quantity to the marketplace?",
     "seller.edit": "Edit",
     "seller.cancelEdit": "Cancel",
     "seller.saveEdit": "Save changes",
@@ -838,6 +841,9 @@ const dictionaries = {
     "seller.responseExpired": "回覆期限已過。",
     "seller.accept": "接受",
     "seller.decline": "拒絕",
+    "seller.restoreAccepted": "交易未完成，恢復上架",
+    "seller.restoreAcceptedConfirm":
+      "要取消這筆已接受的需求，並將保留數量加回商品庫存嗎？",
     "seller.edit": "編輯",
     "seller.cancelEdit": "取消",
     "seller.saveEdit": "儲存變更",
@@ -1262,6 +1268,9 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "seller.responseExpired": "回复期限已过。",
   "seller.accept": "接受",
   "seller.decline": "拒绝",
+  "seller.restoreAccepted": "交易未完成，恢复上架",
+  "seller.restoreAcceptedConfirm":
+    "要取消这笔已接受的需求，并将保留数量加回商品库存吗？",
   "seller.edit": "编辑",
   "seller.cancelEdit": "取消",
   "seller.saveEdit": "保存更改",

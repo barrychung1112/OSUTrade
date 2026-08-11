@@ -415,7 +415,7 @@ export default function SellerPage() {
       setRequests((current) =>
         current.map((item) => (item.id === requestId ? payload.request : item))
       );
-      if (status === "accepted") {
+      if (status === "accepted" || status === "cancelled") {
         await loadSellerData();
       }
     } catch {
@@ -1698,6 +1698,22 @@ function RequestRow({
               <Cross2Icon /> {t("seller.decline")}
             </Button>
           </>
+        )}
+        {request.status === "accepted" && (
+          <Button
+            size="2"
+            color="orange"
+            variant="soft"
+            onClick={() => {
+              if (window.confirm(t("seller.restoreAcceptedConfirm"))) {
+                onUpdate("cancelled");
+              }
+            }}
+            disabled={busy}
+          >
+            <RefreshCw className="h-4 w-4" />
+            {t("seller.restoreAccepted")}
+          </Button>
         )}
         {busy && (
           <Text color="gray" size="2" className="self-center">
