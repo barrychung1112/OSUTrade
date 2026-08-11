@@ -5,6 +5,7 @@ const nextConfig = {
       "kigqkrmjzwqrxlpoukfb.supabase.co",
       "placehold.co",
     ],
+    minimumCacheTTL: 2_592_000,
   },
 };
 
