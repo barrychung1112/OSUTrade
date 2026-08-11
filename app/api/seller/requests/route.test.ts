@@ -76,8 +76,8 @@ describe("seller accepted request cancellation", () => {
       .fn()
       .mockReturnValueOnce(sellerProductsQuery)
       .mockReturnValueOnce(lookupQuery)
-      .mockReturnValueOnce(requestUpdateQuery)
-      .mockReturnValueOnce(productUpdateQuery);
+      .mockReturnValueOnce(productUpdateQuery)
+      .mockReturnValueOnce(requestUpdateQuery);
 
     mocks.createAdminClient.mockReturnValue({
       from,
@@ -104,6 +104,9 @@ describe("seller accepted request cancellation", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
+    expect(productUpdateQuery.update.mock.invocationCallOrder[0]).toBeLessThan(
+      requestUpdateQuery.update.mock.invocationCallOrder[0]
+    );
     expect(requestUpdateQuery.eq).toHaveBeenCalledWith("status", "accepted");
     expect(productUpdateQuery.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -128,7 +131,7 @@ describe("seller accepted request cancellation", () => {
     expect(payload.request.status).toBe("cancelled");
   });
 
-  test("returns the request to accepted when inventory restoration conflicts", async () => {
+  test("restores the product when closing the accepted request conflicts", async () => {
     const product = {
       product_id: "product-1",
       seller_id: "seller-1",
@@ -152,18 +155,16 @@ describe("seller accepted request cancellation", () => {
       eq: vi.fn().mockResolvedValue({ data: [product], error: null }),
     };
     const lookupQuery = chain({ data: acceptedRequest, error: null });
-    const requestUpdateQuery = chain({
-      data: { ...acceptedRequest, status: "cancelled" },
-      error: null,
-    });
-    const productUpdateQuery = chain({ data: null, error: null });
-    const compensationQuery = chain({ data: null, error: null });
+    const restoredProduct = { ...product, quantity: 1, status: "available" };
+    const productUpdateQuery = chain({ data: restoredProduct, error: null });
+    const requestUpdateQuery = chain({ data: null, error: null });
+    const compensationQuery = chain({ data: product, error: null });
     const from = vi
       .fn()
       .mockReturnValueOnce(sellerProductsQuery)
       .mockReturnValueOnce(lookupQuery)
-      .mockReturnValueOnce(requestUpdateQuery)
       .mockReturnValueOnce(productUpdateQuery)
+      .mockReturnValueOnce(requestUpdateQuery)
       .mockReturnValueOnce(compensationQuery);
 
     mocks.createAdminClient.mockReturnValue({ from });
@@ -181,9 +182,10 @@ describe("seller accepted request cancellation", () => {
 
     expect(response.status).toBe(409);
     expect(compensationQuery.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "accepted" })
+      expect.objectContaining({ quantity: 0, status: "pending" })
     );
-    expect(compensationQuery.eq).toHaveBeenCalledWith("status", "cancelled");
+    expect(compensationQuery.eq).toHaveBeenCalledWith("quantity", 1);
+    expect(compensationQuery.eq).toHaveBeenCalledWith("status", "available");
     expect(mocks.notifyTradeEvent).not.toHaveBeenCalled();
   });
 });

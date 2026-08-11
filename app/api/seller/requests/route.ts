@@ -294,38 +294,7 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const requestUpdateQuery = supabase
-      .from("trade_requests")
-      .update({ status, updated_at: updatedAt })
-      .eq("request_id", requestId);
-
-    if (status === "accepted") {
-      requestUpdateQuery.eq("status", "sent");
-    } else if (status === "cancelled") {
-      requestUpdateQuery.eq("status", "accepted");
-    }
-
-    const { data, error } = await requestUpdateQuery
-      .select("request_id, product_id, buyer_id, quantity, note, status, created_at")
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data) {
-      return NextResponse.json(
-        {
-          message:
-            status === "accepted"
-              ? "Only sent requests can be accepted."
-              : status === "cancelled"
-                ? "Only accepted requests can be restored."
-              : "Request not found.",
-        },
-        { status: status === "accepted" || status === "cancelled" ? 409 : 404 }
-      );
-    }
+    let data: RequestRow | null = null;
 
     if (status === "cancelled" && cancellation?.ok === true) {
       const currentQuantity = Number(product?.quantity ?? 0);
@@ -336,28 +305,18 @@ export async function PATCH(request: Request) {
           status: cancellation.status,
           updated_at: updatedAt,
         })
-        .eq("product_id", data.product_id)
+        .eq("product_id", existing.product_id)
         .eq("seller_id", session.user.id)
         .eq("quantity", currentQuantity)
         .in("status", ["available", "pending"])
         .select("*")
         .maybeSingle();
 
-      if (productUpdateError || !updatedProduct) {
-        const { error: revertError } = await supabase
-          .from("trade_requests")
-          .update({ status: "accepted", updated_at: updatedAt })
-          .eq("request_id", requestId)
-          .eq("status", "cancelled");
+      if (productUpdateError) {
+        throw productUpdateError;
+      }
 
-        if (revertError) {
-          throw revertError;
-        }
-
-        if (productUpdateError) {
-          throw productUpdateError;
-        }
-
+      if (!updatedProduct) {
         return NextResponse.json(
           {
             message:
@@ -367,7 +326,80 @@ export async function PATCH(request: Request) {
         );
       }
 
+      const { data: cancelledRequest, error: requestUpdateError } = await supabase
+        .from("trade_requests")
+        .update({ status: "cancelled", updated_at: updatedAt })
+        .eq("request_id", requestId)
+        .eq("status", "accepted")
+        .select(
+          "request_id, product_id, buyer_id, quantity, note, status, created_at"
+        )
+        .maybeSingle();
+
+      if (requestUpdateError || !cancelledRequest) {
+        const { data: revertedProduct, error: revertError } = await supabase
+          .from("products")
+          .update({
+            quantity: currentQuantity,
+            status: product?.status,
+            updated_at: updatedAt,
+          })
+          .eq("product_id", existing.product_id)
+          .eq("seller_id", session.user.id)
+          .eq("quantity", cancellation.quantity)
+          .eq("status", cancellation.status)
+          .select("*")
+          .maybeSingle();
+
+        if (revertError || !revertedProduct) {
+          throw revertError ?? new Error("Failed to restore listing state.");
+        }
+
+        if (requestUpdateError) {
+          throw requestUpdateError;
+        }
+
+        return NextResponse.json(
+          { message: "The request changed before it could be cancelled." },
+          { status: 409 }
+        );
+      }
+
+      data = cancelledRequest;
       responseProduct = updatedProduct;
+    } else {
+      const requestUpdateQuery = supabase
+        .from("trade_requests")
+        .update({ status, updated_at: updatedAt })
+        .eq("request_id", requestId);
+
+      if (status === "accepted") {
+        requestUpdateQuery.eq("status", "sent");
+      }
+
+      const { data: updatedRequest, error } = await requestUpdateQuery
+        .select(
+          "request_id, product_id, buyer_id, quantity, note, status, created_at"
+        )
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!updatedRequest) {
+        return NextResponse.json(
+          {
+            message:
+              status === "accepted"
+                ? "Only sent requests can be accepted."
+                : "Request not found.",
+          },
+          { status: status === "accepted" ? 409 : 404 }
+        );
+      }
+
+      data = updatedRequest;
     }
 
     if (status === "accepted") {
