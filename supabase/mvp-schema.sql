@@ -50,7 +50,7 @@ create table if not exists public.disposable_email_domains (
     domain = lower(domain)
     and domain !~ '^@'
     and domain !~ '\\.$'
-    and domain ~ '^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$'
+    and domain ~ '^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$'
   )
 );
 
@@ -62,10 +62,7 @@ alter table public.disposable_email_domains enable row level security;
 
 insert into public.disposable_email_domains (domain, active, reason)
 values ('hutdot.com', true, 'Disposable email provider')
-on conflict (domain) do update set
-  active = excluded.active,
-  reason = excluded.reason,
-  updated_at = now();
+on conflict (domain) do nothing;
 
 insert into storage.buckets (
   id,

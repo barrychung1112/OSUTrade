@@ -37,7 +37,7 @@ describe("disposable email domain schema", () => {
       "alter table public.disposable_email_domains enable row level security"
     );
     expect(schema).toMatch(
-      /insert into public\.disposable_email_domains[\s\S]*hutdot\.com[\s\S]*on conflict \(domain\)/i
+      /insert into public\.disposable_email_domains[\s\S]*hutdot\.com[\s\S]*on conflict \(domain\) do nothing/i
     );
   });
 });

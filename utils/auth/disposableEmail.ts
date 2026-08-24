@@ -1,22 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 
-type BlocklistRow = { domain: string };
-
-type BlocklistClient = {
-  from(table: string): {
-    select(columns: string): {
-      eq(column: string, value: boolean): {
-        in(
-          column: string,
-          values: string[]
-        ): Promise<{
-          data: BlocklistRow[] | null;
-          error: { message: string } | null;
-        }>;
-      };
-    };
-  };
-};
+type BlocklistClient = ReturnType<typeof createAdminClient>;
 
 export function getEmailDomainCandidates(email: string) {
   const normalizedEmail = String(email ?? "").trim().toLowerCase();
@@ -33,7 +17,7 @@ export function getEmailDomainCandidates(email: string) {
 
 export async function checkDisposableEmail(
   email: string,
-  admin: BlocklistClient = createAdminClient() as unknown as BlocklistClient
+  admin: BlocklistClient = createAdminClient()
 ) {
   const candidates = getEmailDomainCandidates(email);
 
@@ -41,18 +25,25 @@ export async function checkDisposableEmail(
     return { blocked: false };
   }
 
-  const { data, error } = await admin
-    .from("disposable_email_domains")
-    .select("domain")
-    .eq("active", true)
-    .in("domain", candidates);
+  try {
+    const { data, error } = await admin
+      .from("disposable_email_domains")
+      .select("domain")
+      .eq("active", true)
+      .in("domain", candidates);
 
-  if (error) {
+    if (error) {
+      console.error("Disposable email domain lookup failed.", {
+        error: error.message,
+      });
+      return { blocked: false };
+    }
+
+    return { blocked: Boolean(data?.length) };
+  } catch (error) {
     console.error("Disposable email domain lookup failed.", {
-      error: error.message,
+      error: error instanceof Error ? error.message : "Unknown lookup error",
     });
     return { blocked: false };
   }
-
-  return { blocked: Boolean(data?.length) };
 }

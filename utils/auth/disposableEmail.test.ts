@@ -40,7 +40,7 @@ describe("disposable email domain matching", () => {
     });
 
     await expect(
-      checkDisposableEmail("user@mail.hutdot.com", admin)
+      checkDisposableEmail("user@mail.hutdot.com", admin as never)
     ).resolves.toEqual({ blocked: true });
     expect(from).toHaveBeenCalledWith("disposable_email_domains");
     expect(inQuery).toHaveBeenCalledWith("domain", [
@@ -53,7 +53,7 @@ describe("disposable email domain matching", () => {
     const { admin } = createAdminResult({ data: [], error: null });
 
     await expect(
-      checkDisposableEmail("student@oregonstate.edu", admin)
+      checkDisposableEmail("student@oregonstate.edu", admin as never)
     ).resolves.toEqual({ blocked: false });
   });
 
@@ -65,11 +65,31 @@ describe("disposable email domain matching", () => {
     });
 
     await expect(
-      checkDisposableEmail("user@hutdot.com", admin)
+      checkDisposableEmail("user@hutdot.com", admin as never)
     ).resolves.toEqual({ blocked: false });
     expect(log).toHaveBeenCalledWith(
       "Disposable email domain lookup failed.",
       expect.objectContaining({ error: "database unavailable" })
+    );
+  });
+
+  it("fails open when the lookup throws", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const inQuery = vi.fn().mockRejectedValue(new Error("network unavailable"));
+    const admin = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({ in: inQuery }),
+        }),
+      }),
+    };
+
+    await expect(
+      checkDisposableEmail("user@hutdot.com", admin as never)
+    ).resolves.toEqual({ blocked: false });
+    expect(log).toHaveBeenCalledWith(
+      "Disposable email domain lookup failed.",
+      expect.objectContaining({ error: "network unavailable" })
     );
   });
 });
