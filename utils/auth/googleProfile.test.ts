@@ -44,7 +44,13 @@ function createMockAdmin({
     auth: {
       admin: {
         createUser: vi.fn(async () => createUserResult),
-        listUsers: vi.fn(async () => listUsersResults.shift()),
+        listUsers: vi.fn(
+          async () =>
+            listUsersResults.shift() ?? {
+              data: { users: [], nextPage: null },
+              error: null,
+            }
+        ),
       },
     },
     from: vi.fn(() => ({
@@ -198,6 +204,38 @@ describe("upsertGoogleUserProfile", () => {
     expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
   });
 
+  test("allows an existing Auth account from a blocked domain to restore its public profile", async () => {
+    const authId = "87654321-1234-4234-9234-123456789abc";
+    const { admin, upsertCalls } = createMockAdmin({
+      maybeSingleResults: [
+        { data: null, error: null },
+        { data: null, error: null },
+      ],
+      upsertResults: [{ error: null }],
+      listUsersResults: [
+        {
+          data: {
+            users: [{ id: authId, email: "returning@hutdot.com" }],
+            nextPage: null,
+          },
+          error: null,
+        },
+      ],
+    });
+    checkDisposableEmail.mockResolvedValue({ blocked: true });
+
+    const result = await upsertGoogleUserProfile({
+      email: "returning@hutdot.com",
+      name: "Returning User",
+      emailVerified: true,
+    });
+
+    expect(checkDisposableEmail).not.toHaveBeenCalled();
+    expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
+    expect(upsertCalls[0].payload).toMatchObject({ id: authId });
+    expect(result.id).toBe(authId);
+  });
+
   test("creates a first-time Auth user and uses its UUID for the public profile", async () => {
     const authId = "12345678-1234-4234-9234-123456789abc";
     const { admin, upsertCalls } = createMockAdmin({
@@ -227,7 +265,10 @@ describe("upsertGoogleUserProfile", () => {
         auth_provider: "google",
       },
     });
-    expect(admin.auth.admin.listUsers).not.toHaveBeenCalled();
+    expect(admin.auth.admin.listUsers).toHaveBeenCalledWith({
+      page: 1,
+      perPage: 1000,
+    });
     expect(upsertCalls[0].payload).toMatchObject({
       id: authId,
       email: "newstudent@osu.edu",
@@ -255,6 +296,10 @@ describe("upsertGoogleUserProfile", () => {
         },
       },
       listUsersResults: [
+        {
+          data: { users: [], nextPage: null },
+          error: null,
+        },
         {
           data: {
             users: [

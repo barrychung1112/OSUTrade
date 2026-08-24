@@ -250,7 +250,11 @@ export async function upsertGoogleUserProfile(
     throw lookupError;
   }
 
-  if (!existingUser) {
+  const existingAuthUserId = existingUser
+    ? existingUser.id
+    : await findAuthUserIdByEmail(admin, email);
+
+  if (!existingUser && !existingAuthUserId) {
     const { blocked } = await checkDisposableEmail(email, admin);
 
     if (blocked) {
@@ -259,7 +263,9 @@ export async function upsertGoogleUserProfile(
   }
 
   const id =
-    existingUser?.id ?? (await getOrCreateAuthUserId(admin, email, displayName));
+    existingUser?.id ??
+    existingAuthUserId ??
+    (await getOrCreateAuthUserId(admin, email, displayName));
   const name =
     existingUser?.name ??
     (await getAvailableDisplayName(admin, displayName, id));
