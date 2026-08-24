@@ -40,6 +40,30 @@ create policy "Users can update their profile"
   using (id = auth.uid())
   with check (id = auth.uid());
 
+create table if not exists public.disposable_email_domains (
+  domain text primary key,
+  active boolean not null default true,
+  reason text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint disposable_email_domains_domain_check check (
+    domain = lower(domain)
+    and domain !~ '^@'
+    and domain !~ '\.$'
+    and domain ~ '^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$'
+  )
+);
+
+create index if not exists disposable_email_domains_active_idx
+  on public.disposable_email_domains (domain)
+  where active = true;
+
+alter table public.disposable_email_domains enable row level security;
+
+insert into public.disposable_email_domains (domain, active, reason)
+values ('hutdot.com', true, 'Disposable email provider')
+on conflict (domain) do nothing;
+
 insert into storage.buckets (
   id,
   name,

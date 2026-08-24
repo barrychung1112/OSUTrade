@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Dialog, Flex, Button } from "@radix-ui/themes";
 import { useI18n } from "../i18n";
+import { getSignupErrorMessage } from "../lib/signupError";
 import GoogleAuthDialogCta from "./GoogleAuthDialogCta";
 
 type SignupResponse = {
@@ -39,7 +40,7 @@ export default function SignUpModal({ redirectTo = "/overview" }: { redirectTo?:
 
     if (!res.ok && res.status !== 202) {
       setLoading(false);
-      setError(payload.message || t("auth.signupError"));
+      setError(getSignupErrorMessage(payload, t));
       return;
     }
 

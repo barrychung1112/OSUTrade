@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkDisposableEmail } from "@/utils/auth/disposableEmail";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -30,6 +31,18 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient();
+    const { blocked } = await checkDisposableEmail(normalizedEmail, admin);
+
+    if (blocked) {
+      return NextResponse.json(
+        {
+          errorCode: "DISPOSABLE_EMAIL_NOT_ALLOWED",
+          message: "Please use an email address that you can access long term.",
+        },
+        { status: 400 }
+      );
+    }
+
     const { data: existingUser, error: userLookupError } = await admin
       .from("users")
       .select("name")
