@@ -23,6 +23,25 @@ describe("product listing idempotency schema", () => {
   });
 });
 
+describe("disposable email domain schema", () => {
+  test("stores normalized blocked domains without exposing them to clients", () => {
+    const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
+
+    expect(schema).toContain(
+      "create table if not exists public.disposable_email_domains"
+    );
+    expect(schema).toMatch(
+      /disposable_email_domains_domain_check[\s\S]*domain = lower\(domain\)[\s\S]*domain !~ '\^@'/i
+    );
+    expect(schema).toContain(
+      "alter table public.disposable_email_domains enable row level security"
+    );
+    expect(schema).toMatch(
+      /insert into public\.disposable_email_domains[\s\S]*hutdot\.com[\s\S]*on conflict \(domain\)/i
+    );
+  });
+});
+
 describe("product discount schema", () => {
   test("stores preset discounts and generates the effective price", () => {
     const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
