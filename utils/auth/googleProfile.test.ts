@@ -2,8 +2,13 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { upsertGoogleUserProfile } from "./googleProfile";
 import { createAdminClient } from "@/utils/supabase/admin";
 
+const checkDisposableEmail = vi.hoisted(() => vi.fn());
+
 vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: vi.fn(),
+}));
+vi.mock("@/utils/auth/disposableEmail", () => ({
+  checkDisposableEmail,
 }));
 
 type MaybeSingleResult = {
@@ -69,6 +74,7 @@ function createMockAdmin({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  checkDisposableEmail.mockResolvedValue({ blocked: false });
 });
 
 describe("upsertGoogleUserProfile", () => {
@@ -161,12 +167,35 @@ describe("upsertGoogleUserProfile", () => {
       pattern: "student\\_\\%@osu.edu",
     });
     expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
+    expect(checkDisposableEmail).not.toHaveBeenCalled();
     expect(upsertCalls[0].payload).toMatchObject({
       id: "existing-id",
       email: "student_%@osu.edu",
       name: "BuckeyeSeller",
       role: "admin",
     });
+  });
+
+  test("rejects a first-time Google account with a blocked domain", async () => {
+    const { admin } = createMockAdmin({
+      maybeSingleResults: [{ data: null, error: null }],
+      upsertResults: [],
+    });
+    checkDisposableEmail.mockResolvedValue({ blocked: true });
+
+    await expect(
+      upsertGoogleUserProfile({
+        email: "new-user@hutdot.com",
+        name: "New User",
+        emailVerified: true,
+      })
+    ).rejects.toThrow("DISPOSABLE_EMAIL_NOT_ALLOWED");
+
+    expect(checkDisposableEmail).toHaveBeenCalledWith(
+      "new-user@hutdot.com",
+      admin
+    );
+    expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
   });
 
   test("creates a first-time Auth user and uses its UUID for the public profile", async () => {
