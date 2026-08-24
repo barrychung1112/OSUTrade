@@ -49,7 +49,7 @@ create table if not exists public.disposable_email_domains (
   constraint disposable_email_domains_domain_check check (
     domain = lower(domain)
     and domain !~ '^@'
-    and domain !~ '\\.$'
+    and domain !~ '\.$'
     and domain ~ '^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$'
   )
 );
