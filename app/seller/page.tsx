@@ -49,7 +49,13 @@ import {
 import { groupSellerRequests } from "../lib/sellerRequestCenter";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
-type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
+type RequestStatus =
+  | "sent"
+  | "accepted"
+  | "completed"
+  | "declined"
+  | "cancelled"
+  | "expired";
 
 type SellerProduct = {
   id: string | number;
@@ -401,10 +407,25 @@ export default function SellerPage() {
     setPendingRequestId(requestId);
 
     try {
+      const action =
+        status === "accepted"
+          ? "accept"
+          : status === "declined"
+            ? "decline"
+            : status === "completed"
+              ? "complete"
+              : status === "cancelled"
+                ? "cancel"
+                : null;
+
+      if (!action) {
+        throw new Error("This request cannot be updated.");
+      }
+
       const res = await fetch("/api/seller/requests", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ requestId, status }),
+        body: JSON.stringify({ requestId, action }),
       });
 
       if (!res.ok) {
@@ -415,7 +436,11 @@ export default function SellerPage() {
       setRequests((current) =>
         current.map((item) => (item.id === requestId ? payload.request : item))
       );
-      if (status === "accepted" || status === "cancelled") {
+      if (
+        status === "accepted" ||
+        status === "completed" ||
+        status === "cancelled"
+      ) {
         await loadSellerData();
       }
     } catch {
@@ -771,7 +796,7 @@ export default function SellerPage() {
               <SellerRequestSection
                 title={t("seller.activeRequests")}
                 body={t("seller.activeRequestsHelp")}
-                requests={groupedRequests.pending}
+                requests={groupedRequests.active}
                 onUpdate={updateRequest}
                 pendingRequestId={pendingRequestId}
                 locale={locale}
@@ -1700,20 +1725,34 @@ function RequestRow({
           </>
         )}
         {request.status === "accepted" && (
-          <Button
-            size="2"
-            color="orange"
-            variant="soft"
-            onClick={() => {
-              if (window.confirm(t("seller.restoreAcceptedConfirm"))) {
-                onUpdate("cancelled");
-              }
-            }}
-            disabled={busy}
-          >
-            <RefreshCw className="h-4 w-4" />
-            {t("seller.restoreAccepted")}
-          </Button>
+          <>
+            <Button
+              size="2"
+              highContrast
+              onClick={() => {
+                if (window.confirm(t("seller.requestCompleteConfirm"))) {
+                  onUpdate("completed");
+                }
+              }}
+              disabled={busy}
+            >
+              <CheckIcon /> {t("seller.requestComplete")}
+            </Button>
+            <Button
+              size="2"
+              color="orange"
+              variant="soft"
+              onClick={() => {
+                if (window.confirm(t("seller.requestCancelConfirm"))) {
+                  onUpdate("cancelled");
+                }
+              }}
+              disabled={busy}
+            >
+              <RefreshCw className="h-4 w-4" />
+              {t("seller.requestNotCompleted")}
+            </Button>
+          </>
         )}
         {busy && (
           <Text color="gray" size="2" className="self-center">
@@ -1730,6 +1769,7 @@ function StatusBadge({ status }: { status: string }) {
   const label =
     status === "sent" ||
     status === "accepted" ||
+    status === "completed" ||
     status === "declined" ||
     status === "cancelled" ||
     status === "expired"
@@ -1738,6 +1778,9 @@ function StatusBadge({ status }: { status: string }) {
 
   if (status === "accepted" || status === "available") {
     return <Badge color="green">{label}</Badge>;
+  }
+  if (status === "completed") {
+    return <Badge color="blue">{label}</Badge>;
   }
   if (status === "declined" || status === "removed" || status === "expired") {
     return <Badge color="red">{label}</Badge>;

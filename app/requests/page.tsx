@@ -12,7 +12,13 @@ import WantedRequestsPanel from "../components/WantedRequestsPanel";
 import { useI18n } from "../i18n";
 import { pickProductName, type ProductNameTranslations } from "../lib/productTranslations";
 
-type RequestStatus = "sent" | "accepted" | "declined" | "cancelled" | "expired";
+type RequestStatus =
+  | "sent"
+  | "accepted"
+  | "completed"
+  | "declined"
+  | "cancelled"
+  | "expired";
 type RequestFilter = RequestStatus | "all";
 type RequestsPanel = "trades" | "wanted";
 
@@ -204,6 +210,7 @@ export default function RequestsPage() {
     "all",
     "sent",
     "accepted",
+    "completed",
     "declined",
     "cancelled",
     "expired",
@@ -655,6 +662,7 @@ function RequestProgress({
   t: ReturnType<typeof useI18n>["t"];
 }) {
   const terminal = status === "declined" || status === "cancelled";
+  const completed = status === "completed";
   const expired = status === "expired";
   const steps = terminal
     ? [
@@ -670,10 +678,15 @@ function RequestProgress({
         { key: "sent", label: t("requests.progress.sent") },
         { key: "accepted", label: t("requests.progress.accepted") },
         { key: "contact", label: t("requests.progress.contact") },
+        ...(completed
+          ? [{ key: "completed", label: t("requests.status.completed") }]
+          : []),
       ];
   const activeIndex = terminal || expired
     ? 1
-    : status === "accepted"
+    : completed
+      ? 3
+      : status === "accepted"
       ? 2
       : 0;
 
@@ -756,6 +769,7 @@ function StatusBadge({ status }: { status: RequestStatus }) {
   const { t } = useI18n();
 
   if (status === "accepted") return <Badge color="green">{t("requests.status.accepted")}</Badge>;
+  if (status === "completed") return <Badge color="blue">{t("requests.status.completed")}</Badge>;
   if (status === "declined" || status === "cancelled" || status === "expired") {
     return <Badge color="red">{t(`requests.status.${status}` as any)}</Badge>;
   }
