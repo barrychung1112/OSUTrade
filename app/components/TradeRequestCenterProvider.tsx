@@ -74,7 +74,7 @@ export default function TradeRequestCenterProvider({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const deferredEvent = useRef<RequestCenterEventDetail | null>(null);
+  const [deferredEvent, setDeferredEvent] = useState<RequestCenterEventDetail | null>(null);
   const visibleNotificationId = useRef<string | undefined>(undefined);
 
   const loadRequests = useCallback(async (nextAudience: RequestCenterAudience) => {
@@ -97,7 +97,7 @@ export default function TradeRequestCenterProvider({
     (detail: RequestCenterEventDetail) => {
       if (detail.notificationId && getShownEvents().has(detail.notificationId)) return;
       if (hasBlockingUi()) {
-        deferredEvent.current = detail;
+        setDeferredEvent(detail);
         return;
       }
       saveShownEvent(detail.notificationId);
@@ -119,15 +119,14 @@ export default function TradeRequestCenterProvider({
   }, [sessionStatus, showEvent]);
 
   useEffect(() => {
-    if (!deferredEvent.current) return;
+    if (!deferredEvent) return;
     const timer = window.setInterval(() => {
-      if (hasBlockingUi() || !deferredEvent.current) return;
-      const detail = deferredEvent.current;
-      deferredEvent.current = null;
-      showEvent(detail);
+      if (hasBlockingUi()) return;
+      setDeferredEvent(null);
+      showEvent(deferredEvent);
     }, 500);
     return () => window.clearInterval(timer);
-  });
+  }, [deferredEvent, showEvent]);
 
   useEffect(() => {
     if (!open || loading || !focusedRequestId) return;
