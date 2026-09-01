@@ -1108,8 +1108,9 @@ button.seller-stat-card:hover,
 .rt-DialogContent.seller-request-center-dialog,
 .seller-request-center-dialog {
   position: fixed !important;
-  inset: 72px 18px 18px auto !important;
-  width: min(460px, calc(100vw - 36px)) !important;
+  inset: 50% auto auto 50% !important;
+  width: min(760px, calc(100vw - 36px)) !important;
+  height: min(78dvh, 760px) !important;
   max-width: none !important;
   max-height: none !important;
   margin: 0 !important;
@@ -1119,7 +1120,7 @@ button.seller-stat-card:hover,
   border-radius: 8px !important;
   background: #fff !important;
   box-shadow: 0 24px 70px rgba(28, 25, 23, 0.24) !important;
-  transform: none !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 .seller-request-center-dialog[data-state="open"] {
@@ -1160,6 +1161,35 @@ button.seller-stat-card:hover,
   overscroll-behavior: contain;
   padding: 16px;
 }
+
+.app-button-primary,
+.app-button-secondary,
+.app-button-danger {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 700;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.app-button-primary {
+  background: #d73f09;
+  color: #fff;
+}
+
+.app-button-primary:hover { background: #b83207; }
+.app-button-secondary { border-color: #fdba74; background: #fff; color: #9a3412; }
+.app-button-secondary:hover { background: #fff7ed; }
+.app-button-danger { border-color: #fecaca; background: #fff; color: #b91c1c; }
+.app-button-danger:hover { background: #fef2f2; }
+.app-button-primary:disabled,
+.app-button-secondary:disabled,
+.app-button-danger:disabled { cursor: wait; opacity: 0.55; }
 
 @keyframes seller-request-center-in {
   from {
