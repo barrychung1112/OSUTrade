@@ -197,6 +197,126 @@ create table if not exists public.trade_requests (
 alter table public.trade_requests
   add column if not exists price_at_request numeric;
 
+alter table public.trade_requests
+  drop constraint if exists trade_requests_status_check;
+alter table public.trade_requests
+  add constraint trade_requests_status_check
+  check (status in ('sent', 'accepted', 'completed', 'declined', 'cancelled'));
+
+create or replace function public.transition_seller_trade_request(
+  p_request_id uuid,
+  p_seller_id uuid,
+  p_action text,
+  p_now timestamptz default now()
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_request public.trade_requests%rowtype;
+  v_product public.products%rowtype;
+  v_remaining_quantity integer;
+begin
+  if p_action not in ('accept', 'decline', 'complete', 'cancel') then
+    raise exception using errcode = 'P0001', message = 'INVALID_ACTION';
+  end if;
+
+  select *
+    into v_request
+    from public.trade_requests
+    where request_id = p_request_id
+    for update;
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'REQUEST_NOT_FOUND';
+  end if;
+
+  select *
+    into v_product
+    from public.products
+    where product_id::text = v_request.product_id
+    for update;
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'PRODUCT_NOT_FOUND';
+  end if;
+
+  if v_product.seller_id is distinct from p_seller_id then
+    raise exception using errcode = 'P0001', message = 'SELLER_NOT_AUTHORIZED';
+  end if;
+
+  if p_action in ('accept', 'decline') and v_request.status <> 'sent' then
+    raise exception using errcode = 'P0001', message = 'INVALID_TRANSITION';
+  end if;
+
+  if p_action in ('complete', 'cancel') and v_request.status <> 'accepted' then
+    raise exception using errcode = 'P0001', message = 'INVALID_TRANSITION';
+  end if;
+
+  if p_action in ('accept', 'decline')
+    and p_now > v_request.created_at + interval '48 hours' then
+    raise exception using errcode = 'P0001', message = 'REQUEST_EXPIRED';
+  end if;
+
+  if p_action = 'accept' then
+    if v_product.status <> 'available'
+      or v_product.quantity < v_request.quantity then
+      raise exception using errcode = 'P0001', message = 'INSUFFICIENT_STOCK';
+    end if;
+
+    v_remaining_quantity := v_product.quantity - v_request.quantity;
+
+    update public.products
+      set quantity = v_remaining_quantity,
+          status = case when v_remaining_quantity = 0 then 'pending' else 'available' end,
+          updated_at = p_now
+      where product_id = v_product.product_id
+      returning * into v_product;
+
+    update public.trade_requests
+      set status = 'accepted', updated_at = p_now
+      where request_id = p_request_id
+      returning * into v_request;
+  elsif p_action = 'decline' then
+    update public.trade_requests
+      set status = 'declined', updated_at = p_now
+      where request_id = p_request_id
+      returning * into v_request;
+  elsif p_action = 'complete' then
+    update public.trade_requests
+      set status = 'completed', updated_at = p_now
+      where request_id = p_request_id
+      returning * into v_request;
+  else
+    update public.products
+      set quantity = v_product.quantity + v_request.quantity,
+          status = 'available',
+          updated_at = p_now
+      where product_id = v_product.product_id
+      returning * into v_product;
+
+    update public.trade_requests
+      set status = 'cancelled', updated_at = p_now
+      where request_id = p_request_id
+      returning * into v_request;
+  end if;
+
+  return jsonb_build_object(
+    'request', to_jsonb(v_request),
+    'product', to_jsonb(v_product)
+  );
+end;
+$$;
+
+revoke all on function public.transition_seller_trade_request(
+  uuid, uuid, text, timestamptz
+) from public;
+grant execute on function public.transition_seller_trade_request(
+  uuid, uuid, text, timestamptz
+) to service_role;
+
 alter table public.trade_requests enable row level security;
 
 create policy "Buyers can create trade requests"

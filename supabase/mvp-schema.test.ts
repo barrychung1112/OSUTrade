@@ -115,3 +115,27 @@ describe("vector matching schema", () => {
     expect(schema).toContain("emails_sent integer not null default 0");
   });
 });
+
+describe("trade request lifecycle schema", () => {
+  test("updates request state and inventory in one guarded transaction", () => {
+    const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
+
+    expect(schema).toMatch(
+      /status in \('sent', 'accepted', 'completed', 'declined', 'cancelled'\)/i
+    );
+    expect(schema).toContain(
+      "create or replace function public.transition_seller_trade_request"
+    );
+    expect(schema).toMatch(/for update/i);
+    expect(schema).toContain("INVALID_TRANSITION");
+    expect(schema).toContain("INSUFFICIENT_STOCK");
+    expect(schema).toMatch(/v_request\.created_at \+ interval '48 hours'/i);
+    expect(schema).toMatch(/v_product\.quantity \+ v_request\.quantity/i);
+    expect(schema).toMatch(
+      /revoke all on function public\.transition_seller_trade_request[\s\S]*from public/i
+    );
+    expect(schema).toMatch(
+      /grant execute on function public\.transition_seller_trade_request[\s\S]*to service_role/i
+    );
+  });
+});
