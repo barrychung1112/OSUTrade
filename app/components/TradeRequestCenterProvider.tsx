@@ -132,7 +132,8 @@ export default function TradeRequestCenterProvider({
   useEffect(() => {
     if (!open || loading || !focusedRequestId) return;
     const node = document.querySelector(`[data-request-id="${focusedRequestId}"]`);
-    if (node && "scrollIntoView" in node) {
+    if (!node) return;
+    if ("scrollIntoView" in node) {
       node.scrollIntoView({ block: "center" });
     }
     window.dispatchEvent(
