@@ -189,3 +189,98 @@ describe("seller accepted request cancellation", () => {
     expect(mocks.notifyTradeEvent).not.toHaveBeenCalled();
   });
 });
+
+describe("atomic seller request actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mocks.notifyTradeEvent.mockResolvedValue({
+      notificationId: "notification-1",
+      emailSent: true,
+      emailError: null,
+    });
+  });
+
+  test("completes an accepted request through the transactional RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        request: {
+          request_id: "request-1",
+          product_id: "product-1",
+          buyer_id: "buyer-1",
+          quantity: 1,
+          note: null,
+          status: "completed",
+          created_at: "2026-08-10T12:00:00.000Z",
+        },
+        product: {
+          product_id: "product-1",
+          seller_id: "seller-1",
+          name: "Desk lamp",
+          price: 20,
+          image_url: null,
+          quantity: 0,
+          status: "pending",
+        },
+      },
+      error: null,
+    });
+    mocks.createAdminClient.mockReturnValue({
+      rpc,
+      auth: {
+        admin: {
+          getUserById: vi.fn().mockResolvedValue({
+            data: { user: { email: "buyer@example.edu" } },
+            error: null,
+          }),
+        },
+      },
+    });
+
+    const response = await PATCH(
+      new Request("https://osutrade.com/api/seller/requests", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId: "request-1", action: "complete" }),
+      })
+    );
+    const payload = await response.json();
+
+    expect(rpc).toHaveBeenCalledWith(
+      "transition_seller_trade_request",
+      expect.objectContaining({
+        p_request_id: "request-1",
+        p_seller_id: "seller-1",
+        p_action: "complete",
+        p_now: expect.any(String),
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(payload.request.status).toBe("completed");
+    expect(mocks.notifyTradeEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({ type: "request_completed" }),
+      })
+    );
+  });
+
+  test("maps an invalid atomic transition to a conflict", async () => {
+    mocks.createAdminClient.mockReturnValue({
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: "INVALID_TRANSITION" },
+      }),
+    });
+
+    const response = await PATCH(
+      new Request("https://osutrade.com/api/seller/requests", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId: "request-1", action: "complete" }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(mocks.notifyTradeEvent).not.toHaveBeenCalled();
+  });
+});

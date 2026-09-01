@@ -108,6 +108,24 @@ describe("trade notifications", () => {
     );
   });
 
+  test("tells the buyer when the seller confirms completion", () => {
+    const notification = buildTradeNotification({
+      ...baseInput,
+      type: "request_completed",
+      recipientId: "buyer-1",
+      actorId: "seller-1",
+    });
+
+    expect(notification).toMatchObject({
+      type: "request_completed",
+      title: "Trade completed for Desk lamp",
+      actionHref: "/requests",
+    });
+    expect(notification.emailText).toContain(
+      "The seller marked this trade as completed."
+    );
+  });
+
   test("records email errors without failing the trade flow", async () => {
     const insert = vi.fn().mockResolvedValue({
       data: { notification_id: "notification-1" },

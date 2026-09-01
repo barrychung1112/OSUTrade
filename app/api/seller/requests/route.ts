@@ -7,7 +7,12 @@ import { buildAcceptedRequestCancellation } from "@/app/lib/sellerRequestCancell
 import { notifyTradeEvent } from "@/app/lib/notifications";
 import { getProductPricing } from "@/app/lib/productDiscount";
 
-type RequestStatus = "sent" | "accepted" | "declined" | "cancelled";
+type RequestStatus =
+  | "sent"
+  | "accepted"
+  | "completed"
+  | "declined"
+  | "cancelled";
 type ResponseStatus = RequestStatus | "expired";
 
 type ProductRow = {
@@ -40,6 +45,15 @@ const requestStatuses = new Set<RequestStatus>([
   "accepted",
   "declined",
   "cancelled",
+]);
+
+type AtomicAction = "accept" | "decline" | "complete" | "cancel";
+
+const atomicActions = new Set<AtomicAction>([
+  "accept",
+  "decline",
+  "complete",
+  "cancel",
 ]);
 
 function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | null) {
@@ -80,6 +94,122 @@ async function safeGetEmailByUserId(userId: string | null | undefined) {
     console.error("Failed to load notification recipient email.", error);
     return null;
   }
+}
+
+function getAtomicErrorResponse(message: string) {
+  if (message.includes("REQUEST_NOT_FOUND") || message.includes("PRODUCT_NOT_FOUND")) {
+    return { status: 404, message: "Request not found." };
+  }
+  if (message.includes("SELLER_NOT_AUTHORIZED")) {
+    return { status: 403, message: "This request does not belong to this seller." };
+  }
+  if (message.includes("REQUEST_EXPIRED")) {
+    return { status: 409, message: "This request response window has expired." };
+  }
+  if (message.includes("INSUFFICIENT_STOCK")) {
+    return { status: 409, message: "The requested quantity is no longer available." };
+  }
+  if (message.includes("INVALID_TRANSITION")) {
+    return { status: 409, message: "This request changed before your action completed." };
+  }
+  return null;
+}
+
+async function runAtomicAction({
+  requestId,
+  action,
+  sellerId,
+}: {
+  requestId: string;
+  action: AtomicAction;
+  sellerId: string;
+}) {
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase.rpc(
+    "transition_seller_trade_request",
+    {
+      p_request_id: requestId,
+      p_seller_id: sellerId,
+      p_action: action,
+      p_now: now,
+    }
+  );
+
+  if (error) {
+    const mapped = getAtomicErrorResponse(error.message ?? "");
+    if (mapped) {
+      return NextResponse.json({ message: mapped.message }, { status: mapped.status });
+    }
+    throw error;
+  }
+
+  const request = data?.request as RequestRow | undefined;
+  const product = data?.product as ProductRow | undefined;
+  const autoDeclined = (data?.autoDeclined ?? []) as RequestRow[];
+
+  if (!request || !product) {
+    throw new Error("Trade transition did not return the updated request and product.");
+  }
+
+  const buyerEmail =
+    request.status === "accepted"
+      ? await getEmailByUserId(request.buyer_id)
+      : await safeGetEmailByUserId(request.buyer_id);
+  const notificationType =
+    request.status === "accepted"
+      ? "request_accepted"
+      : request.status === "completed"
+        ? "request_completed"
+        : request.status === "declined"
+          ? "request_declined"
+          : "request_cancelled_by_seller";
+
+  await safeNotifyTradeEvent({
+    supabase,
+    input: {
+      type: notificationType,
+      recipientId: request.buyer_id,
+      actorId: sellerId,
+      request: {
+        id: request.request_id,
+        quantity: request.quantity,
+        note: request.note,
+      },
+      product: {
+        id: product.product_id,
+        name: product.name,
+        price: getProductPricing(product).effectivePrice,
+      },
+    },
+    recipientEmail: buyerEmail,
+  });
+
+  for (const declinedRequest of autoDeclined) {
+    await safeNotifyTradeEvent({
+      supabase,
+      input: {
+        type: "request_declined",
+        recipientId: declinedRequest.buyer_id,
+        actorId: sellerId,
+        request: {
+          id: declinedRequest.request_id,
+          quantity: declinedRequest.quantity,
+          note: declinedRequest.note,
+        },
+        product: {
+          id: product.product_id,
+          name: product.name,
+          price: getProductPricing(product).effectivePrice,
+        },
+      },
+      recipientEmail: await safeGetEmailByUserId(declinedRequest.buyer_id),
+    });
+  }
+
+  return NextResponse.json({
+    request: toSellerRequest(request, product, buyerEmail),
+  });
 }
 
 function toSellerRequest(
@@ -207,6 +337,16 @@ export async function PATCH(request: Request) {
 
     const body = await request.json();
     const requestId = String(body.requestId ?? "").trim();
+    const action = String(body.action ?? "").trim() as AtomicAction;
+
+    if (requestId && atomicActions.has(action)) {
+      return runAtomicAction({
+        requestId,
+        action,
+        sellerId: session.user.id,
+      });
+    }
+
     const status = String(body.status ?? "").trim() as RequestStatus;
 
     if (!requestId || !requestStatuses.has(status)) {

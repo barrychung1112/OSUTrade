@@ -218,6 +218,7 @@ declare
   v_request public.trade_requests%rowtype;
   v_product public.products%rowtype;
   v_remaining_quantity integer;
+  v_auto_declined jsonb := '[]'::jsonb;
 begin
   if p_action not in ('accept', 'decline', 'complete', 'cancel') then
     raise exception using errcode = 'P0001', message = 'INVALID_ACTION';
@@ -279,6 +280,20 @@ begin
       set status = 'accepted', updated_at = p_now
       where request_id = p_request_id
       returning * into v_request;
+
+    if v_remaining_quantity = 0 then
+      with declined as (
+        update public.trade_requests
+          set status = 'declined', updated_at = p_now
+          where product_id = v_request.product_id
+            and request_id <> v_request.request_id
+            and status = 'sent'
+          returning *
+      )
+      select coalesce(jsonb_agg(to_jsonb(declined)), '[]'::jsonb)
+        into v_auto_declined
+        from declined;
+    end if;
   elsif p_action = 'decline' then
     update public.trade_requests
       set status = 'declined', updated_at = p_now
@@ -305,7 +320,8 @@ begin
 
   return jsonb_build_object(
     'request', to_jsonb(v_request),
-    'product', to_jsonb(v_product)
+    'product', to_jsonb(v_product),
+    'autoDeclined', v_auto_declined
   );
 end;
 $$;

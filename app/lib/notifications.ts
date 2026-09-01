@@ -7,6 +7,7 @@ export type TradeNotificationType =
   | "request_declined"
   | "request_cancelled"
   | "request_cancelled_by_seller"
+  | "request_completed"
   | "price_changed";
 
 export type TradeNotificationInput = {
@@ -272,6 +273,26 @@ export function buildTradeNotification(
         actionHref: "/requests",
         closing:
           "The reserved quantity has been returned to the marketplace.",
+      }),
+      actionHref: "/requests",
+    };
+  }
+
+  if (input.type === "request_completed") {
+    return {
+      ...base,
+      title: `Trade completed for ${productName}`,
+      body: "The seller marked this trade as completed.",
+      emailSubject: `[OSUTrade] Trade completed: ${productName}`,
+      emailText: buildEmailText({
+        intro: "The seller marked this trade as completed.",
+        productName,
+        quantity,
+        status: "Completed",
+        nextStep: "Open My Requests to review the completed trade.",
+        actionLabel: "Open My Requests",
+        actionHref: "/requests",
+        closing: "Thank you for using OSUTrade.",
       }),
       actionHref: "/requests",
     };
