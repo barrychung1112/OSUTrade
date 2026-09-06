@@ -32,7 +32,7 @@ The product focuses on four things:
 | Request cart | Buyers add items to a cart-like request flow, choose quantity, and leave notes for sellers. |
 | Quantity guardrails | Buyers cannot request more units than available inventory. |
 | Duplicate request protection | A buyer cannot send another active request for the same item until the previous request is declined or closed. |
-| Request lifecycle | Requests support waiting, accepted, declined, cancelled, and expired states, with a progress-style status display. |
+| Request lifecycle | Requests support waiting, accepted, completed, declined, cancelled, and expired states. Important updates open the Request Center and focus the relevant trade. |
 | Response window | Sellers have a response window for new requests. Expired requests are separated from active ones. |
 | Price snapshot | Requests preserve the price at request time and notify active buyers if a seller changes the price later. |
 | Seller dashboard | Sellers can edit listings, update status, manage quantity, and accept or decline buyer requests. |
@@ -64,6 +64,7 @@ The product focuses on four things:
 5. Use the AI pricing advisor if a price benchmark is needed.
 6. Manage inventory and incoming requests from **Seller**.
 7. Accept or decline requests before the response window expires.
+8. After acceptance, use the same Request Center card to contact the buyer and confirm completion or restore inventory when the trade does not complete.
 
 ## Tech Stack
 

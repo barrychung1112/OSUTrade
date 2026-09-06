@@ -13,6 +13,7 @@ type SellerRequestCenterProps = {
   triggerLabel: string;
   closeLabel: string;
   children: ReactNode;
+  showTrigger?: boolean;
 };
 
 export default function SellerRequestCenter({
@@ -24,10 +25,11 @@ export default function SellerRequestCenter({
   triggerLabel,
   closeLabel,
   children,
+  showTrigger = true,
 }: SellerRequestCenterProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Trigger>
+      {showTrigger && <Dialog.Trigger>
         <button
           type="button"
           className={`seller-request-center-trigger ${
@@ -41,7 +43,7 @@ export default function SellerRequestCenter({
             {pendingCount}
           </Badge>
         </button>
-      </Dialog.Trigger>
+      </Dialog.Trigger>}
 
       <Dialog.Content className="seller-request-center-dialog" aria-describedby="seller-request-center-description">
         <div className="seller-request-center-header">

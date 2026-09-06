@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BellIcon, CheckIcon } from "@radix-ui/react-icons";
-import { getUnreadIncrease } from "../lib/notificationClient";
+import {
+  getNewActionableRequestEvent,
+  getUnreadIncrease,
+} from "../lib/notificationClient";
+import {
+  openRequestCenter,
+  requestCenterVisibleEvent,
+} from "../lib/requestCenterEvents";
 import { useI18n } from "../i18n";
 
 type NotificationItem = {
@@ -14,6 +21,7 @@ type NotificationItem = {
   actionHref: string | null;
   readAt: string | null;
   createdAt: string;
+  requestId: string | null;
 };
 
 type NotificationsPayload = {
@@ -37,6 +45,7 @@ export default function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const previousUnreadCount = useRef<number | null>(null);
+  const previousNotificationIds = useRef<Set<string> | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   async function loadNotifications() {
@@ -49,14 +58,26 @@ export default function NotificationBell() {
       previousUnreadCount.current,
       nextUnreadCount
     );
+    const nextNotifications = payload.data ?? [];
+    const requestEvent = getNewActionableRequestEvent(
+      previousNotificationIds.current,
+      nextNotifications
+    );
 
     if (increase > 0) {
       setToast(t("notifications.toastNew", { count: increase }));
       window.setTimeout(() => setToast(null), 5000);
     }
 
+    if (requestEvent) {
+      openRequestCenter(requestEvent);
+    }
+
     previousUnreadCount.current = nextUnreadCount;
-    setNotifications(payload.data ?? []);
+    previousNotificationIds.current = new Set(
+      nextNotifications.map((notification) => notification.id)
+    );
+    setNotifications(nextNotifications);
     setUnreadCount(nextUnreadCount);
   }
 
@@ -76,6 +97,23 @@ export default function NotificationBell() {
     }, 60_000);
 
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const markVisibleRequestRead = (event: Event) => {
+      const notificationId = (
+        event as CustomEvent<{ notificationId?: string }>
+      ).detail?.notificationId;
+      if (!notificationId) return;
+      void fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId }),
+      }).then(() => loadNotifications());
+    };
+    window.addEventListener(requestCenterVisibleEvent, markVisibleRequestRead);
+    return () =>
+      window.removeEventListener(requestCenterVisibleEvent, markVisibleRequestRead);
   }, []);
 
   useEffect(() => {
