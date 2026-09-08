@@ -51,16 +51,16 @@ The message API returns a cursor-paginated oldest-to-newest page and `unreadCoun
 - Create: `supabase/trade-messages.sql`
 - Modify: `supabase/mvp-schema.test.ts`
 
-- [ ] Add a standalone, idempotent SQL migration for `trade_messages` and `trade_message_reads`, their check constraints, unique client-message key, and request/time indexes.
-- [ ] Add `trade_requests.accepted_at`, backfill it for currently `accepted`/`completed` requests, and update `transition_seller_trade_request` to set it only during `accept`.
-- [ ] Add a `security definer`, stable participant helper that joins `trade_requests` to `products` via `products.product_id::text = trade_requests.product_id`; it must return true only for the buyer or seller of a request with non-null `accepted_at` and a current `accepted`, `completed`, or `cancelled` state.
-- [ ] Enable RLS and revoke `anon`/`authenticated` table privileges so PostgREST cannot bypass the server routes.
-- [ ] Add private Broadcast topic policies on `realtime.messages`. The policy must permit only authenticated, eligible participants for a `trade-message:<request UUID>` topic and only the `broadcast` extension. Keep the request-id parsing safe for malformed topics.
-- [ ] Add an `after insert` database trigger that calls `realtime.send()` with only `{ requestId, messageId, senderId, createdAt }` as a private `message_created` Broadcast event. Do not use `realtime.broadcast_changes()`, because it exposes the complete inserted row. This removes the need for a Vercel function to keep a WebSocket open and prevents message text from appearing in Realtime payloads.
-- [ ] Mirror the migration in the canonical schema file so fresh environments contain the tables and policies.
-- [ ] Add schema tests asserting the accepted-origin marker, tables, participant helper, RLS/revokes, topic policy, and trigger are present.
-- [ ] Run: `npm test -- --run supabase/mvp-schema.test.ts` and confirm it fails before the assertions are implemented, then passes after implementation.
-- [ ] Commit: `feat: add secure trade message schema`
+- [x] Add a standalone, idempotent SQL migration for `trade_messages` and `trade_message_reads`, their check constraints, unique client-message key, and request/time indexes.
+- [x] Add `trade_requests.accepted_at`, backfill it for currently `accepted`/`completed` requests, and update `transition_seller_trade_request` to set it only during `accept`.
+- [x] Add a `security definer`, stable participant helper that joins `trade_requests` to `products` via `products.product_id::text = trade_requests.product_id`; it must return true only for the buyer or seller of a request with non-null `accepted_at` and a current `accepted`, `completed`, or `cancelled` state.
+- [x] Enable RLS and revoke `anon`/`authenticated` table privileges so PostgREST cannot bypass the server routes.
+- [x] Add private Broadcast topic policies on `realtime.messages`. The policy must permit only authenticated, eligible participants for a `trade-message:<request UUID>` topic and only the `broadcast` extension. Keep the request-id parsing safe for malformed topics.
+- [x] Add an `after insert` database trigger that calls `realtime.send()` with only `{ requestId, messageId, senderId, createdAt }` as a private `message_created` Broadcast event. Do not use `realtime.broadcast_changes()`, because it exposes the complete inserted row. This removes the need for a Vercel function to keep a WebSocket open and prevents message text from appearing in Realtime payloads.
+- [x] Mirror the migration in the canonical schema file so fresh environments contain the tables and policies.
+- [x] Add schema tests asserting the accepted-origin marker, tables, participant helper, RLS/revokes, topic policy, and trigger are present.
+- [x] Run: `npm test -- --run supabase/mvp-schema.test.ts` and confirm it fails before the assertions are implemented, then passes after implementation.
+- [x] Commit: `feat: add secure trade message schema`
 
 ## Task 2: Add server-side feature and participant access helpers
 

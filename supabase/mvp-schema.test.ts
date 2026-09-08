@@ -139,3 +139,24 @@ describe("trade request lifecycle schema", () => {
     );
   });
 });
+
+describe("trade messages schema", () => {
+  test("keeps message content private while authorizing eligible private topics", () => {
+    const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
+
+    expect(schema).toContain("add column if not exists accepted_at timestamptz");
+    expect(schema).toMatch(/set status = 'accepted',[\s\S]*accepted_at = p_now/i);
+    expect(schema).toContain("create table if not exists public.trade_messages");
+    expect(schema).toContain("create table if not exists public.trade_message_reads");
+    expect(schema).toMatch(/char_length\(btrim\(body\)\) between 1 and 1000/i);
+    expect(schema).toMatch(/unique \(request_id, sender_id, client_message_id\)/i);
+    expect(schema).toMatch(/revoke all on table public\.trade_messages from anon, authenticated/i);
+    expect(schema).toMatch(/revoke all on table public\.trade_message_reads from anon, authenticated/i);
+    expect(schema).toContain("create or replace function public.can_access_trade_messages");
+    expect(schema).toMatch(/products\.product_id::text = trade_requests\.product_id/i);
+    expect(schema).toMatch(/status in \('accepted', 'completed', 'cancelled'\)/i);
+    expect(schema).toMatch(/on realtime\.messages[\s\S]*for select[\s\S]*realtime\.topic\(\)/i);
+    expect(schema).toMatch(/realtime\.send\([\s\S]*message_created[\s\S]*true/i);
+    expect(schema).not.toMatch(/realtime\.broadcast_changes\([\s\S]*trade_messages/i);
+  });
+});
