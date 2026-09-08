@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { Theme } from "@radix-ui/themes";
 import { ArrowRight, Github, Heart, MessageCircle, Search, Send, Handshake } from "lucide-react";
 import Header from "./components/Header";
+import NewStudentWelcome from "./components/NewStudentWelcome";
 import HomeHero from "./components/HomeHero";
 import HomeDiscoverySections from "./components/HomeDiscoverySections";
 import HomeMarketSignalsCard from "./components/HomeMarketSignalsCard";
@@ -59,6 +60,7 @@ export default function HomePage() {
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand" radius="large">
       <Header />
+      <NewStudentWelcome />
       <main className="home-modern-page">
         {redirectPath && (
           <section className="home-redirect-notice" role="status">
