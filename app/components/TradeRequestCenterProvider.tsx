@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
-import { Check, Mail, RotateCcw, X } from "lucide-react";
+import { Check, Mail, MessageCircle, RotateCcw, X } from "lucide-react";
 import SellerRequestCenter from "./SellerRequestCenter";
+import TradeMessageConversation from "./TradeMessageConversation";
 import { useI18n } from "../i18n";
 import {
   requestCenterOpenEvent,
@@ -28,6 +29,8 @@ type RequestItem = {
   note: string;
   status: string;
   createdAt: string;
+  canMessage?: boolean;
+  messageUnreadCount?: number;
   product?: {
     name: string;
     price?: number | null;
@@ -65,12 +68,13 @@ export default function TradeRequestCenterProvider({
 }: {
   children: ReactNode;
 }) {
-  const { status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [audience, setAudience] = useState<RequestCenterAudience>("seller");
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [focusedRequestId, setFocusedRequestId] = useState<string | null>(null);
+  const [conversationRequestId, setConversationRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -104,6 +108,7 @@ export default function TradeRequestCenterProvider({
       visibleNotificationId.current = detail.notificationId;
       setAudience(detail.audience);
       setFocusedRequestId(detail.requestId ?? null);
+      setConversationRequestId(detail.openConversation ? detail.requestId ?? null : null);
       setOpen(true);
       void loadRequests(detail.audience);
     },
@@ -175,6 +180,10 @@ export default function TradeRequestCenterProvider({
       setRequests((current) =>
         current.map((item) => (item.id === requestId ? payload.request : item))
       );
+      if (action === "accept") {
+        setConversationRequestId(requestId);
+        await loadRequests(audience);
+      }
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Failed to update request.");
     } finally {
@@ -188,13 +197,28 @@ export default function TradeRequestCenterProvider({
   const history = requests.filter(
     (request) => request.status !== "sent" && request.status !== "accepted"
   );
+  const conversationRequest = requests.find(
+    (request) => request.id === conversationRequestId && request.canMessage
+  );
+  const currentUserId =
+    typeof session?.user?.id === "string" ? session.user.id : null;
+
+  function onOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (!nextOpen) setConversationRequestId(null);
+  }
+
+  function openConversation(requestId: string) {
+    setFocusedRequestId(requestId);
+    setConversationRequestId(requestId);
+  }
 
   return (
     <>
       {children}
       <SellerRequestCenter
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={onOpenChange}
         pendingCount={active.length}
         title={t("seller.requestCenter")}
         description={t("seller.requestCenterDescription")}
@@ -211,34 +235,53 @@ export default function TradeRequestCenterProvider({
         ) : requests.length === 0 ? (
           <p className="p-5 text-center text-sm text-gray-500">{t("seller.noRequests")}</p>
         ) : (
-          <div className="space-y-5">
-            <RequestGroup title={t("seller.activeRequests")}>
-              {active.map((request) => (
-                <RequestCard
-                  key={request.id}
-                  request={request}
-                  audience={audience}
-                  focused={request.id === focusedRequestId}
-                  busy={busyId === request.id}
-                  onAction={(action) => updateSellerRequest(request.id, action)}
-                  t={t}
-                />
-              ))}
-            </RequestGroup>
-            {history.length > 0 && (
-              <RequestGroup title={t("seller.requestHistory")}>
-                {history.map((request) => (
+          <div
+            className="trade-request-center-layout"
+            data-has-conversation={conversationRequest ? "true" : "false"}
+          >
+            <div className="trade-request-list space-y-5">
+              <RequestGroup title={t("seller.activeRequests")}>
+                {active.map((request) => (
                   <RequestCard
                     key={request.id}
                     request={request}
                     audience={audience}
                     focused={request.id === focusedRequestId}
-                    busy={false}
-                    onAction={() => undefined}
+                    busy={busyId === request.id}
+                    onAction={(action) => updateSellerRequest(request.id, action)}
+                    onOpenConversation={() => openConversation(request.id)}
                     t={t}
                   />
                 ))}
               </RequestGroup>
+              {history.length > 0 && (
+                <RequestGroup title={t("seller.requestHistory")}>
+                  {history.map((request) => (
+                    <RequestCard
+                      key={request.id}
+                      request={request}
+                      audience={audience}
+                      focused={request.id === focusedRequestId}
+                      busy={false}
+                      onAction={() => undefined}
+                      onOpenConversation={() => openConversation(request.id)}
+                      t={t}
+                    />
+                  ))}
+                </RequestGroup>
+              )}
+            </div>
+            {conversationRequest && currentUserId ? (
+              <TradeMessageConversation
+                request={conversationRequest}
+                currentUserId={currentUserId}
+                onBack={() => setConversationRequestId(null)}
+              />
+            ) : (
+              <aside className="trade-message-placeholder" aria-live="polite">
+                <MessageCircle className="h-6 w-6" aria-hidden="true" />
+                <p>{t("tradeMessages.selectConversation")}</p>
+              </aside>
             )}
           </div>
         )}
@@ -262,6 +305,7 @@ function RequestCard({
   focused,
   busy,
   onAction,
+  onOpenConversation,
   t,
 }: {
   request: RequestItem;
@@ -269,6 +313,7 @@ function RequestCard({
   focused: boolean;
   busy: boolean;
   onAction: (action: "accept" | "decline" | "complete" | "cancel") => void;
+  onOpenConversation: () => void;
   t: (key: any, values?: Record<string, string | number>) => string;
 }) {
   const contact = audience === "seller" ? request.buyerEmail : request.sellerContact?.email;
@@ -296,6 +341,21 @@ function RequestCard({
             {t("requests.qty", { quantity: request.quantity })}
           </p>
           {request.note && <p className="mt-2 text-sm text-gray-700">{request.note}</p>}
+          {request.canMessage && (
+            <button
+              type="button"
+              className="trade-message-entry"
+              onClick={onOpenConversation}
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              {t("tradeMessages.open")}
+              {request.messageUnreadCount ? (
+                <span className="trade-message-unread">
+                  {t("tradeMessages.unread", { count: request.messageUnreadCount })}
+                </span>
+              ) : null}
+            </button>
+          )}
         </div>
       </div>
 

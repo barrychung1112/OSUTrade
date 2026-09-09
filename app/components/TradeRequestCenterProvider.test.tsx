@@ -19,6 +19,12 @@ vi.mock("./SellerRequestCenter", () => ({
     open ? <div role="dialog">{children}</div> : null,
 }));
 
+vi.mock("./TradeMessageConversation", () => ({
+  default: ({ request }: { request: { product?: { name?: string } | null } }) => (
+    <div data-testid="trade-message-conversation">Conversation: {request.product?.name}</div>
+  ),
+}));
+
 describe("TradeRequestCenterProvider", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -71,6 +77,52 @@ describe("TradeRequestCenterProvider", () => {
       expect(fetch).toHaveBeenCalledWith("/api/seller/requests", {
         cache: "no-store",
       })
+    );
+  });
+
+  it("opens the exact conversation when a message notification requests it", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "request-2",
+              itemId: "product-2",
+              buyerId: "buyer-1",
+              quantity: 1,
+              note: "Please message me",
+              status: "accepted",
+              createdAt: "2026-08-31T12:00:00Z",
+              canMessage: true,
+              messageUnreadCount: 2,
+              product: { name: "Office chair", price: 35, imageUrl: null },
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )
+    );
+
+    render(
+      <TradeRequestCenterProvider>
+        <span>Page</span>
+      </TradeRequestCenterProvider>
+    );
+
+    fireEvent(
+      window,
+      new CustomEvent(requestCenterOpenEvent, {
+        detail: {
+          notificationId: "message-notification-1",
+          requestId: "request-2",
+          audience: "seller",
+          openConversation: true,
+        },
+      })
+    );
+
+    expect((await screen.findByTestId("trade-message-conversation")).textContent).toContain(
+      "Office chair"
     );
   });
 });

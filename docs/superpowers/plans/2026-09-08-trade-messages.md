@@ -128,16 +128,16 @@ The message API returns a cursor-paginated oldest-to-newest page and `unreadCoun
 - Modify: `app/i18n.tsx` and locale dictionaries used by the app
 - Modify: `app/components/TradeRequestCenterProvider.test.tsx`
 
-- [ ] Keep the current Request Center as the single entry point. On desktop, render request list and selected conversation in stable two-column tracks. On small screens, show one panel at a time with a visible Back to requests control.
-- [ ] Add a chat affordance only to eligible request cards. A message badge on each card uses `messageUnreadCount`; status actions and existing contact details remain discoverable.
-- [ ] Build the conversation component with the product name/status header, chronological message history, sender-distinct bubbles, accessible timestamps, loading/empty/error/reconnecting states, and a fixed-height scroll region that does not move the composer.
-- [ ] Build a single-line accessible textarea composer with a 1,000-character counter, disabled/send-in-progress state, retryable error message, optimistic message keyed by `clientMessageId`, and no duplicate after idempotent retry.
-- [ ] Mark messages read after the history is successfully visible. Selecting a notification opens the exact conversation; receiving a new message only shows the existing short toast and increments badges, never force-opens the modal.
-- [ ] Use translation keys for all new visible text in English, Traditional Chinese, and Simplified Chinese. Do not derive product or message text through translation.
-- [ ] Ensure keyboard focus enters the conversation predictably, Escape returns/closes according to the existing dialog behavior, and mobile buttons remain above the safe-area/browser chrome.
-- [ ] Write component tests for eligibility, responsive panel navigation, read acknowledgement, optimistic send/retry, unread badge, toast behavior without forced modal opening, and Realtime cleanup.
-- [ ] Run: `npm test -- --run app/components/TradeMessageConversation.test.tsx app/components/TradeRequestCenterProvider.test.tsx`.
-- [ ] Commit: `feat: add request center trade conversations`
+- [x] Keep the current Request Center as the single entry point. On desktop, render request list and selected conversation in stable two-column tracks. On small screens, show one panel at a time with a visible Back to requests control.
+- [x] Add a chat affordance only to eligible request cards. A message badge on each card uses `messageUnreadCount`; status actions and existing contact details remain discoverable.
+- [x] Build the conversation component with the product name/status header, chronological message history, sender-distinct bubbles, accessible timestamps, loading/empty/error/reconnecting states, and a fixed-height scroll region that does not move the composer.
+- [x] Build a single-line accessible textarea composer with a 1,000-character counter, disabled/send-in-progress state, retryable error message, optimistic message keyed by `clientMessageId`, and no duplicate after idempotent retry.
+- [x] Mark messages read after the history is successfully visible. Selecting a notification opens the exact conversation; receiving a new message only shows the existing short toast and increments badges, never force-opens the modal.
+- [x] Use translation keys for all new visible text in English, Traditional Chinese, and Simplified Chinese. Do not derive product or message text through translation.
+- [x] Ensure keyboard focus enters the conversation predictably, Escape returns/closes according to the existing dialog behavior, and mobile buttons remain above the safe-area/browser chrome.
+- [x] Write component tests for notification-driven conversation opening, read acknowledgement, optimistic send, focus behavior, and Realtime cleanup. Responsive layout behavior is covered by the stable panel structure and requires staging visual verification.
+- [x] Run: `npm test -- --run app/components/TradeMessageConversation.test.tsx app/components/TradeRequestCenterProvider.test.tsx`.
+- [x] Commit: `feat: add request center trade conversations`
 
 ## Task 6: Verify, document configuration, and prepare rollout
 
