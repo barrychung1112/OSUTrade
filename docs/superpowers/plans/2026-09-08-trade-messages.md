@@ -147,13 +147,13 @@ The message API returns a cursor-paginated oldest-to-newest page and `unreadCoun
 - Create: `docs/trade-messages-rollout.md`
 - Modify: relevant Playwright configuration/tests if coverage exists
 
-- [ ] Document all required non-secret environment names: `TRADE_MESSAGES_ENABLED`, `SUPABASE_REALTIME_JWT_PRIVATE_KEY`, `SUPABASE_REALTIME_JWT_KEY_ID`, `SUPABASE_REALTIME_JWT_ISSUER`, and existing public Supabase URL/anon key. Never put values, API keys, service-role keys, or private JWT material in docs or tests.
-- [ ] Document Supabase operator steps: apply `supabase/trade-messages.sql`, register the matching public key/JWKS for third-party JWT validation, then enable the Vercel feature flag only after a staging two-account test.
-- [ ] Add a rollback guide: set `TRADE_MESSAGES_ENABLED=false` first, leaving message records intact; later disable the Realtime signing key/policies only after active channels drain. Existing request actions and notifications must continue to function.
-- [ ] Run the full suite: `npm test -- --run`.
-- [ ] Run `npm run build` with feature flag off and a configuration smoke check with it on but missing keys to confirm the UI remains usable and the token API fails closed.
+- [x] Document all required non-secret environment names: `TRADE_MESSAGES_ENABLED`, `SUPABASE_REALTIME_JWT_PRIVATE_KEY`, `SUPABASE_REALTIME_JWT_KEY_ID`, `SUPABASE_REALTIME_JWT_ISSUER`, and existing public Supabase URL/anon key. Never put values, API keys, service-role keys, or private JWT material in docs or tests.
+- [x] Document Supabase operator steps: apply `supabase/trade-messages.sql`, register the matching public key/JWKS for third-party JWT validation, then enable the Vercel feature flag only after a staging two-account test.
+- [x] Add a rollback guide: set `TRADE_MESSAGES_ENABLED=false` first, leaving message records intact; later disable the Realtime signing key/policies only after active channels drain. Existing request actions and notifications must continue to function.
+- [x] Run the full suite: `npm test -- --run --maxWorkers=1 --no-file-parallelism`.
+- [x] Run `npm run build` with feature flag off and a configuration smoke check with it on but missing keys to confirm the UI remains usable and the token API fails closed.
 - [ ] Use Playwright with two authenticated test accounts to verify: seller accepts, both parties open the same Request Center conversation, sender posts once, receiver gets a badge/toast without forced modal, both can read history after completion/cancellation, a third account receives `403`, and no network payload reveals messages for an unauthorized request.
-- [ ] Commit: `docs: add trade message rollout guide`
+- [x] Commit: `docs: add trade message rollout guide`
 
 ## Deployment Sequence
 
