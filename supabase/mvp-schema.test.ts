@@ -153,6 +153,9 @@ describe("trade messages schema", () => {
     expect(schema).toMatch(/revoke all on table public\.trade_messages from anon, authenticated/i);
     expect(schema).toMatch(/revoke all on table public\.trade_message_reads from anon, authenticated/i);
     expect(schema).toContain("create or replace function public.can_access_trade_messages");
+    expect(schema).toContain(
+      "create or replace function public.get_trade_message_unread_counts"
+    );
     expect(schema).toMatch(/products\.product_id::text = trade_requests\.product_id/i);
     expect(schema).toMatch(/status in \('accepted', 'completed', 'cancelled'\)/i);
     expect(schema).toMatch(/on realtime\.messages[\s\S]*for select[\s\S]*realtime\.topic\(\)/i);

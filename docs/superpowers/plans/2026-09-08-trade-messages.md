@@ -70,14 +70,14 @@ The message API returns a cursor-paginated oldest-to-newest page and `unreadCoun
 - Modify: `app/api/requests/route.ts`
 - Modify: `app/api/seller/requests/route.ts`
 
-- [ ] Implement a small feature-flag helper that accepts only an explicit `"true"` value for `TRADE_MESSAGES_ENABLED`.
-- [ ] Implement `loadTradeMessageAccess` using the service-role client. It fetches the request, loads its product, verifies buyer/seller membership, and enforces the accepted-origin status set.
-- [ ] Define shared typed mapping for message rows, message previews, cursor encoding/decoding, and safe response error mapping (`401`, `403`, `404`, `409`, `429`).
-- [ ] Implement preview-count loading in a bounded query and add `messageUnreadCount` only when chat is enabled; keep legacy request API response fields unchanged.
-- [ ] Avoid N+1 calls by batching unread counts for the request list rather than querying one conversation per card.
-- [ ] Write unit tests for buyer/seller participation, nonparticipant rejection, `sent`/`declined` rejection, accepted-to-cancelled continuity, feature flag behavior, cursor validation, and batch unread mapping.
-- [ ] Run: `npm test -- --run app/lib/tradeMessages.test.ts app/api/requests/route.test.ts app/api/seller/requests/route.test.ts`.
-- [ ] Commit: `feat: add trade message access controls`
+- [x] Implement a small feature-flag helper that accepts only an explicit `"true"` value for `TRADE_MESSAGES_ENABLED`.
+- [x] Implement `loadTradeMessageAccess` using the service-role client. It fetches the request, loads its product, verifies buyer/seller membership, and enforces the accepted-origin status set.
+- [x] Define shared typed mapping for message rows, message previews, and safe response error mapping (`401`, `403`, `404`, `409`, `429`). Cursor handling is implemented with the message API in Task 3.
+- [x] Implement preview-count loading in a bounded query and add `messageUnreadCount` only when chat is enabled; keep legacy request API response fields unchanged.
+- [x] Avoid N+1 calls by batching unread counts for the request list rather than querying one conversation per card.
+- [x] Write unit tests for buyer/seller participation, nonparticipant rejection, `sent`/`declined` rejection, accepted-to-cancelled continuity, feature flag behavior, and batch unread mapping. Cursor validation is implemented with the message API in Task 3.
+- [x] Run: `npm test -- --run app/lib/tradeMessages.test.ts app/api/requests/route.test.ts app/api/seller/requests/route.test.ts`.
+- [x] Commit: `feat: add trade message access controls`
 
 ## Task 3: Build authenticated message APIs and durable alerts
 

@@ -6,6 +6,11 @@ import { getAcceptedRequestProductStatus } from "@/app/lib/sellerRequestAcceptan
 import { buildAcceptedRequestCancellation } from "@/app/lib/sellerRequestCancellation";
 import { notifyTradeEvent } from "@/app/lib/notifications";
 import { getProductPricing } from "@/app/lib/productDiscount";
+import {
+  getTradeMessageAccess,
+  isTradeMessagesEnabled,
+  loadTradeMessageUnreadCounts,
+} from "@/app/lib/tradeMessages";
 
 type RequestStatus =
   | "sent"
@@ -17,6 +22,7 @@ type ResponseStatus = RequestStatus | "expired";
 
 type ProductRow = {
   product_id: string | number;
+  seller_id?: string | null;
   name: string;
   name_en?: string | null;
   name_zh_tw?: string | null;
@@ -38,6 +44,7 @@ type RequestRow = {
   note: string | null;
   status: RequestStatus;
   created_at: string;
+  accepted_at?: string | null;
 };
 
 const requestStatuses = new Set<RequestStatus>([
@@ -215,7 +222,8 @@ async function runAtomicAction({
 function toSellerRequest(
   row: RequestRow,
   product?: ProductRow,
-  buyerEmail?: string | null
+  buyerEmail?: string | null,
+  messagePreview?: { canMessage: boolean; unreadCount: number }
 ) {
   const status: ResponseStatus = isExpiredSentRequest(row) ? "expired" : row.status;
   const imageUrls = product
@@ -231,6 +239,12 @@ function toSellerRequest(
     note: row.note ?? "",
     status,
     createdAt: row.created_at,
+    ...(messagePreview
+      ? {
+          canMessage: messagePreview.canMessage,
+          messageUnreadCount: messagePreview.unreadCount,
+        }
+      : {}),
     product: product
       ? {
           id: product.product_id,
@@ -282,9 +296,13 @@ export async function GET() {
     }
 
     const supabase = createAdminClient();
+    const tradeMessagesEnabled = isTradeMessagesEnabled();
+    const requestFields = tradeMessagesEnabled
+      ? "request_id, product_id, buyer_id, quantity, note, status, created_at, accepted_at"
+      : "request_id, product_id, buyer_id, quantity, note, status, created_at";
     const { data, error } = await supabase
       .from("trade_requests")
-      .select("request_id, product_id, buyer_id, quantity, note, status, created_at")
+      .select(requestFields)
       .in("product_id", productIds)
       .order("created_at", { ascending: false });
 
@@ -307,13 +325,43 @@ export async function GET() {
       }
     }
 
+    const unreadCounts = tradeMessagesEnabled
+      ? await loadTradeMessageUnreadCounts({
+          supabase,
+          requestIds: (data ?? []).map((request) => request.request_id),
+          userId: session.user.id,
+        })
+      : new Map<string, number>();
+
     return NextResponse.json({
       data: (data ?? []).map((item) =>
-        toSellerRequest(
-          item,
-          productsById.get(String(item.product_id)),
-          buyerEmailById.get(item.buyer_id)
-        )
+        (() => {
+          const product = productsById.get(String(item.product_id));
+          const messageAccess = tradeMessagesEnabled
+            ? getTradeMessageAccess({
+                request: {
+                  requestId: item.request_id,
+                  buyerId: item.buyer_id,
+                  status: item.status,
+                  acceptedAt: item.accepted_at,
+                },
+                sellerId: product?.seller_id,
+                userId: session.user.id,
+              })
+            : null;
+
+          return toSellerRequest(
+            item,
+            product,
+            buyerEmailById.get(item.buyer_id),
+            messageAccess
+              ? {
+                  canMessage: messageAccess.allowed,
+                  unreadCount: unreadCounts.get(item.request_id) ?? 0,
+                }
+              : undefined
+          );
+        })()
       ),
     });
   } catch (error) {

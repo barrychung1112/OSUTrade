@@ -696,12 +696,36 @@ as $$
   end;
 $$;
 
+create or replace function public.get_trade_message_unread_counts(
+  p_request_ids uuid[],
+  p_user_id uuid
+)
+returns table (request_id uuid, unread_count bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select messages.request_id, count(*)::bigint as unread_count
+  from public.trade_messages as messages
+  left join public.trade_message_reads as reads
+    on reads.request_id = messages.request_id
+    and reads.user_id = p_user_id
+  where messages.request_id = any(p_request_ids)
+    and messages.sender_id <> p_user_id
+    and (reads.last_read_at is null or messages.created_at > reads.last_read_at)
+  group by messages.request_id;
+$$;
+
 revoke all on function public.can_access_trade_messages(uuid, uuid) from public;
 grant execute on function public.can_access_trade_messages(uuid, uuid)
   to authenticated, service_role;
 revoke all on function public.can_access_trade_message_topic(text, uuid) from public;
 grant execute on function public.can_access_trade_message_topic(text, uuid)
   to authenticated, service_role;
+revoke all on function public.get_trade_message_unread_counts(uuid[], uuid) from public;
+grant execute on function public.get_trade_message_unread_counts(uuid[], uuid)
+  to service_role;
 
 alter table public.trade_messages enable row level security;
 alter table public.trade_message_reads enable row level security;
