@@ -233,7 +233,7 @@ export async function GET() {
       throw error;
     }
 
-    const requests = data ?? [];
+    const requests = ((data ?? []) as unknown) as RequestRow[];
     const productIds = requests.map((item) => String(item.product_id));
     const { data: products, error: productError } = productIds.length
       ? await supabase

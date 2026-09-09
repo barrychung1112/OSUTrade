@@ -108,14 +108,14 @@ The message API returns a cursor-paginated oldest-to-newest page and `unreadCoun
 - Create: `app/lib/tradeMessageRealtime.ts`
 - Create: `app/lib/tradeMessageRealtime.test.ts`
 
-- [ ] Add a server endpoint that requires Auth.js identity and the feature flag, then signs a five-minute asymmetric JWT with `sub`, `role: "authenticated"`, `iat`, `exp`, configured `iss`, `aud: "authenticated"`, and `kid`.
-- [ ] Fail closed with a clear `503` when the Supabase Realtime signing-key environment values are absent or malformed; never serialize the private key to the browser.
-- [ ] Create a browser subscription helper using the public Supabase URL/anon key plus `accessToken` retrieval. Join a private `trade-message:<requestId>` channel only after a user opens that conversation.
-- [ ] On the metadata-only Broadcast event, invoke a supplied refetch callback. Ignore echo events from the current user, duplicate message IDs, malformed payloads, and events for other request IDs.
-- [ ] Renew the token before expiry and clean up channels on conversation switch, Request Center close, sign-out, and unmount. If Realtime fails, retain the normal API load path and surface a non-blocking reconnect state.
-- [ ] Test token claims and expiry, configuration failure, topic selection, refetch-on-event, no data leakage in payload handling, and unsubscribe cleanup with mocked Supabase client methods.
-- [ ] Run: `npm test -- --run app/api/realtime/trade-messages-token/route.test.ts app/lib/tradeMessageRealtime.test.ts`.
-- [ ] Commit: `feat: add secure trade message realtime`
+- [x] Add a server endpoint that requires Auth.js identity and the feature flag, then signs a five-minute asymmetric JWT with `sub`, `role: "authenticated"`, `iat`, `exp`, configured `iss`, `aud: "authenticated"`, and `kid`.
+- [x] Fail closed with a clear `503` when the Supabase Realtime signing-key environment values are absent or malformed; never serialize the private key to the browser.
+- [x] Create a browser subscription helper using the public Supabase URL/anon key plus `accessToken` retrieval. Join a private `trade-message:<requestId>` channel only after a user opens that conversation.
+- [x] On the metadata-only Broadcast event, invoke a supplied refetch callback. Ignore echo events from the current user, duplicate message IDs, malformed payloads, and events for other request IDs.
+- [x] Renew the token before expiry and clean up channels on conversation switch, Request Center close, sign-out, and unmount. If Realtime fails, retain the normal API load path and surface a non-blocking reconnect state.
+- [x] Test token claims and expiry, configuration failure, topic selection, refetch-on-event, no data leakage in payload handling, and unsubscribe cleanup with mocked Supabase client methods.
+- [x] Run: `npm test -- --run app/api/realtime/trade-messages-token/route.test.ts app/lib/tradeMessageRealtime.test.ts`.
+- [x] Commit: `feat: add secure trade message realtime`
 
 ## Task 5: Add the Request Center conversation experience
 

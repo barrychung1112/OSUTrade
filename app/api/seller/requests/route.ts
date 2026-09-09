@@ -315,7 +315,9 @@ export async function GET() {
     );
     const buyerEmailById = new Map<string, string | null>();
 
-    for (const request of data ?? []) {
+    const requestRows = ((data ?? []) as unknown) as RequestRow[];
+
+    for (const request of requestRows) {
       if (request.status !== "accepted") continue;
       if (!buyerEmailById.has(request.buyer_id)) {
         buyerEmailById.set(
@@ -328,13 +330,13 @@ export async function GET() {
     const unreadCounts = tradeMessagesEnabled
       ? await loadTradeMessageUnreadCounts({
           supabase,
-          requestIds: (data ?? []).map((request) => request.request_id),
+          requestIds: requestRows.map((request) => request.request_id),
           userId: session.user.id,
         })
       : new Map<string, number>();
 
     return NextResponse.json({
-      data: (data ?? []).map((item) =>
+      data: requestRows.map((item) =>
         (() => {
           const product = productsById.get(String(item.product_id));
           const messageAccess = tradeMessagesEnabled
