@@ -8,6 +8,7 @@ import {
   getUnreadIncrease,
 } from "../lib/notificationClient";
 import {
+  getRequestCenterNotificationEvent,
   openRequestCenter,
   requestCenterVisibleEvent,
 } from "../lib/requestCenterEvents";
@@ -22,6 +23,7 @@ type NotificationItem = {
   readAt: string | null;
   createdAt: string;
   requestId: string | null;
+  payload?: Record<string, unknown> | null;
 };
 
 type NotificationsPayload = {
@@ -182,6 +184,7 @@ export default function NotificationBell() {
               </p>
             ) : (
               recentNotifications.map((item) => {
+                const requestCenterEvent = getRequestCenterNotificationEvent(item);
                 const content = (
                   <div
                     className={`rounded-md px-2 py-2 transition hover:bg-orange-50 ${
@@ -203,7 +206,20 @@ export default function NotificationBell() {
                   </div>
                 );
 
-                return item.actionHref ? (
+                return requestCenterEvent ? (
+                  <button
+                    role="menuitem"
+                    type="button"
+                    key={item.id}
+                    onClick={() => {
+                      setOpen(false);
+                      openRequestCenter(requestCenterEvent);
+                    }}
+                    className="block w-full text-left"
+                  >
+                    {content}
+                  </button>
+                ) : item.actionHref ? (
                   <Link
                     role="menuitem"
                     key={item.id}

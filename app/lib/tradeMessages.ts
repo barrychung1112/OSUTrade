@@ -7,9 +7,19 @@ export type TradeMessageRequestStatus =
 
 type TradeMessageRequest = {
   requestId: string;
+  productId?: string;
   buyerId: string;
+  quantity?: number;
+  note?: string | null;
   status: string;
   acceptedAt?: string | null;
+};
+
+type TradeMessageProduct = {
+  id: string;
+  sellerId: string | null;
+  name: string;
+  price: number | string | null;
 };
 
 type TradeMessageAccessInput = {
@@ -40,7 +50,7 @@ type TradeMessageAccessClient = {
 };
 
 type TradeMessageUnreadCountClient = {
-  rpc: (name: string, args: Record<string, unknown>) => Promise<{
+  rpc: (name: string, args: Record<string, unknown>) => PromiseLike<{
     data: Array<{ request_id: string; unread_count: number | string }> | null;
     error: unknown;
   }>;
@@ -48,6 +58,7 @@ type TradeMessageUnreadCountClient = {
 
 type LoadedTradeMessageAccess = TradeMessageAccess & {
   request?: TradeMessageRequest;
+  product?: TradeMessageProduct;
 };
 
 const chatStatuses = new Set<TradeMessageRequestStatus>([
@@ -120,7 +131,7 @@ export async function loadTradeMessageAccess({
 }): Promise<LoadedTradeMessageAccess> {
   const { data: requestRow, error: requestError } = await supabase
     .from("trade_requests")
-    .select("request_id, product_id, buyer_id, status, accepted_at")
+    .select("request_id, product_id, buyer_id, quantity, note, status, accepted_at")
     .eq("request_id", requestId)
     .maybeSingle();
 
@@ -129,25 +140,34 @@ export async function loadTradeMessageAccess({
 
   const request: TradeMessageRequest = {
     requestId: requestRow.request_id,
+    productId: requestRow.product_id,
     buyerId: requestRow.buyer_id,
+    quantity: requestRow.quantity,
+    note: requestRow.note,
     status: requestRow.status,
     acceptedAt: requestRow.accepted_at,
   };
   const { data: productRow, error: productError } = await supabase
     .from("products")
-    .select("seller_id")
+    .select("product_id, seller_id, name, price")
     .eq("product_id", requestRow.product_id)
     .maybeSingle();
 
   if (productError) throw productError;
 
+  const product = productRow
+    ? {
+        id: String(productRow.product_id),
+        sellerId: productRow.seller_id ?? null,
+        name: productRow.name ?? "your listing",
+        price: productRow.price ?? null,
+      }
+    : undefined;
+
   return {
-    ...getTradeMessageAccess({
-      request,
-      sellerId: productRow?.seller_id,
-      userId,
-    }),
+    ...getTradeMessageAccess({ request, sellerId: product?.sellerId, userId }),
     request,
+    product,
   };
 }
 

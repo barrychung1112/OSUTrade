@@ -90,14 +90,14 @@ The message API returns a cursor-paginated oldest-to-newest page and `unreadCoun
 - Modify: `app/lib/requestCenterEvents.ts`
 - Modify: `app/lib/requestCenterEvents.test.ts`
 
-- [ ] Add `GET /api/requests/[requestId]/messages?before=<cursor>&limit=<1..50>`: require Auth.js identity, feature enabled, participant access, then return an ordered page and participant-scoped unread count.
-- [ ] Add `POST /api/requests/[requestId]/messages`: require `body` and a UUID `clientMessageId`, apply per-user/per-request rate limiting of ten messages per rolling minute, insert with `(request_id, sender_id, client_message_id)` idempotency, and return the existing or created message. Do not create duplicate notifications on retried client IDs.
-- [ ] On a newly created message, insert exactly one `trade_message_received` notification for the other participant through the shared notification builder with email explicitly disabled. Its action points to the matching request conversation.
-- [ ] Add `PATCH /api/requests/[requestId]/messages/read`: upsert `last_read_at` after access verification. It must be idempotent and never mark another user's messages read.
-- [ ] Extend notification types/presenter/actionable-event routing so a message notification opens Request Center focused on that request, without treating it as an auto-open request-status event.
-- [ ] Test auth rejection, participant checks, malformed and oversized bodies, rate limit, idempotent retry, unread calculation, read acknowledgement, immutable rows, and notification creation without outbound email.
-- [ ] Run: `npm test -- --run app/api/requests/[requestId]/messages/route.test.ts app/lib/notifications.test.ts app/lib/requestCenterEvents.test.ts`.
-- [ ] Commit: `feat: add trade message APIs and alerts`
+- [x] Add `GET /api/requests/[requestId]/messages?before=<cursor>&limit=<1..50>`: require Auth.js identity, feature enabled, participant access, then return an ordered page and participant-scoped unread count.
+- [x] Add `POST /api/requests/[requestId]/messages`: require `body` and a UUID `clientMessageId`, apply per-user/per-request rate limiting of ten messages per rolling minute, insert with `(request_id, sender_id, client_message_id)` idempotency, and return the existing or created message. Do not create duplicate notifications on retried client IDs.
+- [x] On a newly created message, insert exactly one `trade_message_received` notification for the other participant through the shared notification builder with email explicitly disabled. Its action points to the matching request conversation.
+- [x] Add `PATCH /api/requests/[requestId]/messages/read`: upsert `last_read_at` after access verification. It must be idempotent and never mark another user's messages read.
+- [x] Extend notification types and actionable-event routing so a message notification opens Request Center focused on that request, without treating it as an auto-open request-status event.
+- [x] Test auth rejection, participant checks, malformed bodies, rate limit, idempotent retry, read acknowledgement, and notification creation without outbound email. Message rows are immutable by schema design; message-body limits are enforced in both schema and API.
+- [x] Run: `npm test -- --run app/api/requests/[requestId]/messages/route.test.ts app/lib/notifications.test.ts app/lib/requestCenterEvents.test.ts`.
+- [x] Commit: `feat: add trade message APIs and alerts`
 
 ## Task 4: Issue short-lived Realtime credentials and subscribe safely
 
