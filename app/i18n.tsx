@@ -56,6 +56,7 @@ const dictionaries = {
     "auth.loggingIn": "Logging in...",
     "auth.creating": "Creating account...",
     "auth.loginError": "The email or password is incorrect.",
+    "auth.loginUnavailable": "Login is temporarily unavailable. Please try again later.",
     "auth.signupError": "Sign up failed. Check your email and password.",
     "auth.disposableEmailNotAllowed":
       "Please use an email address that you can access long term.",
@@ -529,6 +530,7 @@ const dictionaries = {
     "auth.loggingIn": "登入中...",
     "auth.creating": "建立帳號中...",
     "auth.loginError": "Email 或密碼不正確。",
+    "auth.loginUnavailable": "登入暫時無法使用，請稍後再試。",
     "auth.signupError": "註冊失敗，請確認 email 與密碼。",
     "auth.disposableEmailNotAllowed": "請使用可長期接收郵件的信箱。",
     "auth.confirmEmail": "請查看信箱並完成帳號驗證。",
@@ -963,6 +965,7 @@ const zhCnDictionary: Record<TranslationKey, string> = {
   "auth.loggingIn": "登录中...",
   "auth.creating": "创建账号中...",
   "auth.loginError": "Email 或密码不正确。",
+  "auth.loginUnavailable": "登录暂时无法使用，请稍后再试。",
   "auth.signupError": "注册失败，请确认 email 与密码。",
   "auth.disposableEmailNotAllowed": "请使用可长期接收邮件的邮箱。",
   "auth.confirmEmail": "请查看邮箱并完成账号验证。",

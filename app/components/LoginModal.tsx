@@ -50,7 +50,11 @@ export default function LoginModal({
     setLoading(false);
 
     if (result?.error) {
-      setError(t("auth.loginError"));
+      setError(
+        result.code === "login_unavailable"
+          ? t("auth.loginUnavailable")
+          : t("auth.loginError")
+      );
       return;
     }
 

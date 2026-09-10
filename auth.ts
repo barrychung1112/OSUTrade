@@ -1,8 +1,9 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import type { AppAuthUser } from "@/utils/auth/googleProfile";
 import { getGoogleAuthConfig } from "@/utils/auth/googleConfig";
+import { AuthLoginError } from "@/utils/auth/passwordLogin";
 
 type User = AppAuthUser;
 
@@ -13,6 +14,10 @@ type GoogleProfile = {
 };
 
 const googleAuthConfig = getGoogleAuthConfig();
+
+class LoginUnavailableCredentialsError extends CredentialsSignin {
+  code = "login_unavailable";
+}
 
 function getBaseUrl() {
   const baseUrl =
@@ -54,7 +59,11 @@ export const { auth, handlers } = NextAuth({
 
         try {
           return await authenticateWithPassword(email, password);
-        } catch {
+        } catch (error) {
+          if (error instanceof AuthLoginError && error.status === 503) {
+            throw new LoginUnavailableCredentialsError();
+          }
+
           return null;
         }
       },
