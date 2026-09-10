@@ -14,6 +14,8 @@ import {
   type RequestCenterEventDetail,
 } from "../lib/requestCenterEvents";
 
+const requestPollingIntervalMs = 30_000;
+
 type RequestItem = {
   id: string;
   itemId: string;
@@ -81,9 +83,14 @@ export default function TradeRequestCenterProvider({
   const [deferredEvent, setDeferredEvent] = useState<RequestCenterEventDetail | null>(null);
   const visibleNotificationId = useRef<string | undefined>(undefined);
 
-  const loadRequests = useCallback(async (nextAudience: RequestCenterAudience) => {
-    setLoading(true);
-    setError(null);
+  const loadRequests = useCallback(async (
+    nextAudience: RequestCenterAudience,
+    { background = false }: { background?: boolean } = {}
+  ) => {
+    if (!background) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const endpoint = nextAudience === "seller" ? "/api/seller/requests" : "/api/requests";
       const response = await fetch(endpoint, { cache: "no-store" });
@@ -91,9 +98,11 @@ export default function TradeRequestCenterProvider({
       if (!response.ok) throw new Error(payload.message || "Failed to load requests.");
       setRequests(payload.data ?? []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load requests.");
+      if (!background) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to load requests.");
+      }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, []);
 
@@ -132,6 +141,16 @@ export default function TradeRequestCenterProvider({
     }, 500);
     return () => window.clearInterval(timer);
   }, [deferredEvent, showEvent]);
+
+  useEffect(() => {
+    if (!open || sessionStatus !== "authenticated") return;
+
+    const poller = window.setInterval(() => {
+      void loadRequests(audience, { background: true });
+    }, requestPollingIntervalMs);
+
+    return () => window.clearInterval(poller);
+  }, [audience, loadRequests, open, sessionStatus]);
 
   useEffect(() => {
     if (!open || loading || !focusedRequestId) return;

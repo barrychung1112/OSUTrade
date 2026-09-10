@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { requestCenterOpenEvent } from "../lib/requestCenterEvents";
 import TradeRequestCenterProvider from "./TradeRequestCenterProvider";
 
@@ -26,6 +26,11 @@ vi.mock("./TradeMessageConversation", () => ({
 }));
 
 describe("TradeRequestCenterProvider", () => {
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     window.sessionStorage.clear();
@@ -124,5 +129,38 @@ describe("TradeRequestCenterProvider", () => {
     expect((await screen.findByTestId("trade-message-conversation")).textContent).toContain(
       "Office chair"
     );
+  });
+
+  it("refreshes request summaries every thirty seconds while the panel is open", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({ data: [] }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )
+    );
+
+    render(
+      <TradeRequestCenterProvider>
+        <span>Page</span>
+      </TradeRequestCenterProvider>
+    );
+
+    fireEvent(
+      window,
+      new CustomEvent(requestCenterOpenEvent, {
+        detail: { audience: "seller" },
+      })
+    );
+    await act(async () => {});
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/seller/requests", {
+      cache: "no-store",
+    });
   });
 });
