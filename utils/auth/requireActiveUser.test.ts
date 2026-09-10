@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { auth } from "@/auth";
-import { checkDisposableEmail } from "@/utils/auth/disposableEmail";
+import { checkDisposableEmailStrict } from "@/utils/auth/disposableEmail";
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
   AccountAccessError,
@@ -15,7 +15,7 @@ vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: vi.fn(),
 }));
 vi.mock("@/utils/auth/disposableEmail", () => ({
-  checkDisposableEmail: vi.fn(),
+  checkDisposableEmailStrict: vi.fn(),
 }));
 
 const session = {
@@ -55,7 +55,7 @@ function mockAuthUser({
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(auth).mockResolvedValue(session as never);
-  vi.mocked(checkDisposableEmail).mockResolvedValue({ blocked: false });
+  vi.mocked(checkDisposableEmailStrict).mockResolvedValue({ blocked: false });
 });
 
 describe("requireActiveUser", () => {
@@ -86,12 +86,12 @@ describe("requireActiveUser", () => {
     } satisfies Partial<AccountAccessError>);
 
     expect(admin.auth.admin.getUserById).toHaveBeenCalledWith("session-user-id");
-    expect(checkDisposableEmail).not.toHaveBeenCalled();
+    expect(checkDisposableEmailStrict).not.toHaveBeenCalled();
   });
 
   test("rejects an account whose authoritative email is blocklisted", async () => {
     const admin = mockAuthUser();
-    vi.mocked(checkDisposableEmail).mockResolvedValue({ blocked: true });
+    vi.mocked(checkDisposableEmailStrict).mockResolvedValue({ blocked: true });
 
     await expect(requireActiveUser()).rejects.toMatchObject({
       name: "AccountAccessError",
@@ -99,7 +99,7 @@ describe("requireActiveUser", () => {
       code: "EMAIL_BLOCKED",
     } satisfies Partial<AccountAccessError>);
 
-    expect(checkDisposableEmail).toHaveBeenCalledWith(
+    expect(checkDisposableEmailStrict).toHaveBeenCalledWith(
       "student@oregonstate.edu",
       admin
     );
@@ -122,6 +122,31 @@ describe("requireActiveUser", () => {
     await expect(requireActiveUser()).resolves.toBe(session);
   });
 
+  test("rejects an unavailable blocklist lookup", async () => {
+    mockAuthUser();
+    vi.mocked(checkDisposableEmailStrict).mockRejectedValue(
+      new Error("Blocklist unavailable")
+    );
+
+    await expect(requireActiveUser()).rejects.toMatchObject({
+      name: "AccountAccessError",
+      status: 503,
+      code: "AUTH_LOOKUP_UNAVAILABLE",
+    } satisfies Partial<AccountAccessError>);
+  });
+
+  test("rejects when the admin client cannot be created", async () => {
+    vi.mocked(createAdminClient).mockImplementation(() => {
+      throw new Error("Admin credentials unavailable");
+    });
+
+    await expect(requireActiveUser()).rejects.toMatchObject({
+      name: "AccountAccessError",
+      status: 503,
+      code: "AUTH_LOOKUP_UNAVAILABLE",
+    } satisfies Partial<AccountAccessError>);
+  });
+
   test("rejects an unavailable authoritative Auth lookup", async () => {
     mockAuthUser({ error: { message: "Supabase unavailable" } });
 
@@ -131,6 +156,6 @@ describe("requireActiveUser", () => {
       code: "AUTH_LOOKUP_UNAVAILABLE",
     } satisfies Partial<AccountAccessError>);
 
-    expect(checkDisposableEmail).not.toHaveBeenCalled();
+    expect(checkDisposableEmailStrict).not.toHaveBeenCalled();
   });
 });

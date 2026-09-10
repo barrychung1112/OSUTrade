@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   checkDisposableEmail,
+  checkDisposableEmailStrict,
   getEmailDomainCandidates,
 } from "./disposableEmail";
 
@@ -91,5 +92,16 @@ describe("disposable email domain matching", () => {
       "Disposable email domain lookup failed.",
       expect.objectContaining({ error: "network unavailable" })
     );
+  });
+
+  it("throws when strict blocklist verification cannot query the database", async () => {
+    const { admin } = createAdminResult({
+      data: null,
+      error: { message: "database unavailable" },
+    });
+
+    await expect(
+      checkDisposableEmailStrict("user@hutdot.com", admin as never)
+    ).rejects.toThrow("database unavailable");
   });
 });

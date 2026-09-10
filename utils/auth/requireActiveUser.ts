@@ -1,6 +1,6 @@
 import "server-only";
 import { auth } from "@/auth";
-import { checkDisposableEmail } from "@/utils/auth/disposableEmail";
+import { checkDisposableEmailStrict } from "@/utils/auth/disposableEmail";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 export type AccountAccessErrorCode =
@@ -38,10 +38,11 @@ export async function requireActiveUser() {
     );
   }
 
-  const admin = createAdminClient();
+  let admin: ReturnType<typeof createAdminClient>;
   let authUser: { email?: string | null; banned_until?: string | null } | null;
 
   try {
+    admin = createAdminClient();
     const { data, error } = await admin.auth.admin.getUserById(session.user.id);
 
     if (error || !data.user) {
@@ -73,7 +74,17 @@ export async function requireActiveUser() {
     );
   }
 
-  const { blocked } = await checkDisposableEmail(authUser.email, admin);
+  let blocked: boolean;
+  try {
+    ({ blocked } = await checkDisposableEmailStrict(authUser.email, admin));
+  } catch {
+    throw new AccountAccessError(
+      503,
+      "AUTH_LOOKUP_UNAVAILABLE",
+      "Unable to verify your account. Please try again."
+    );
+  }
+
   if (blocked) {
     throw new AccountAccessError(
       403,

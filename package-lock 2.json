@@ -21,6 +21,7 @@
         "postcss": "^8.5.3",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
+        "server-only": "^0.0.1",
         "swagger-ui": "^5.27.1",
         "swagger-ui-react": "^5.27.1",
         "tailwind-merge": "^3.1.0",
@@ -7928,6 +7929,11 @@
       "funding": {
         "url": "https://github.com/sponsors/sindresorhus"
       }
+    },
+    "node_modules/server-only": {
+      "version": "0.0.1",
+      "resolved": "https://registry.npmjs.org/server-only/-/server-only-0.0.1.tgz",
+      "integrity": "sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA=="
     },
     "node_modules/set-function-length": {
       "version": "1.2.2",
