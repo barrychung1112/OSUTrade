@@ -8,7 +8,8 @@ import {
   useState,
 } from "react";
 import { useI18n } from "../i18n";
-import { subscribeToTradeMessages } from "../lib/tradeMessageRealtime";
+
+const messagePollingIntervalMs = 8_000;
 
 type TradeMessage = {
   id: string;
@@ -58,13 +59,16 @@ export default function TradeMessageConversation({
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [realtimeStatus, setRealtimeStatus] = useState<string | null>(null);
+  const [pollingError, setPollingError] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLHeadingElement | null>(null);
 
   const loadMessages = useCallback(
-    async ({ acknowledgeRead = true }: { acknowledgeRead?: boolean } = {}) => {
-      setError(null);
+    async ({
+      acknowledgeRead = true,
+      background = false,
+    }: { acknowledgeRead?: boolean; background?: boolean } = {}) => {
+      if (!background) setError(null);
       try {
         const response = await fetch(`/api/requests/${request.id}/messages?limit=50`, {
           cache: "no-store",
@@ -78,6 +82,7 @@ export default function TradeMessageConversation({
         }
 
         setMessages(payload?.data ?? []);
+        setPollingError(false);
         if (acknowledgeRead) {
           void fetch(`/api/requests/${request.id}/messages/read`, {
             method: "PATCH",
@@ -86,7 +91,11 @@ export default function TradeMessageConversation({
           });
         }
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : t("tradeMessages.loadError"));
+        if (background) {
+          setPollingError(true);
+        } else {
+          setError(loadError instanceof Error ? loadError.message : t("tradeMessages.loadError"));
+        }
       } finally {
         setLoading(false);
       }
@@ -98,25 +107,17 @@ export default function TradeMessageConversation({
     setMessages([]);
     setDraft("");
     setLoading(true);
-    setRealtimeStatus(null);
+    setPollingError(false);
     void loadMessages();
   }, [loadMessages]);
 
   useEffect(() => {
-    try {
-      return subscribeToTradeMessages({
-        requestId: request.id,
-        currentUserId,
-        onMessage: () => void loadMessages(),
-        onStatus: (status) => {
-          setRealtimeStatus(status === "SUBSCRIBED" ? null : status);
-        },
-      });
-    } catch {
-      setRealtimeStatus("TOKEN_ERROR");
-      return undefined;
-    }
-  }, [currentUserId, loadMessages, request.id]);
+    const poller = window.setInterval(() => {
+      void loadMessages({ background: true });
+    }, messagePollingIntervalMs);
+
+    return () => window.clearInterval(poller);
+  }, [loadMessages]);
 
   useEffect(() => {
     const list = listRef.current;
@@ -216,7 +217,7 @@ export default function TradeMessageConversation({
         <MessageCircle className="h-5 w-5 shrink-0 text-[#d73f09]" aria-hidden="true" />
       </header>
 
-      {realtimeStatus && (
+      {pollingError && (
         <p className="trade-message-reconnect" role="status">
           <RefreshCw className="h-4 w-4" aria-hidden="true" /> {t("tradeMessages.reconnecting")}
         </p>

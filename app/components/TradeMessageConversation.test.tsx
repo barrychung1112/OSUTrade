@@ -1,9 +1,8 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import TradeMessageConversation from "./TradeMessageConversation";
 
 const mocks = vi.hoisted(() => ({
-  subscribe: vi.fn(),
   t: (key: string, values?: Record<string, string | number>) =>
     key === "tradeMessages.characters" ? `${values?.count}/1000` : key,
 }));
@@ -13,10 +12,6 @@ vi.mock("../i18n", () => ({
     t: mocks.t,
   }),
 }));
-vi.mock("../lib/tradeMessageRealtime", () => ({
-  subscribeToTradeMessages: mocks.subscribe,
-}));
-
 describe("TradeMessageConversation", () => {
   afterEach(() => {
     cleanup();
@@ -25,7 +20,6 @@ describe("TradeMessageConversation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.subscribe.mockReturnValue(vi.fn());
     vi.stubGlobal("crypto", { randomUUID: () => "11111111-1111-4111-8111-111111111111" });
   });
 
@@ -96,5 +90,40 @@ describe("TradeMessageConversation", () => {
         expect.objectContaining({ method: "POST" })
       )
     );
+  });
+
+  test("refreshes the visible conversation every eight seconds", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input).includes("/messages?limit=50")) {
+        return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+      }
+
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <TradeMessageConversation
+        request={{ id: "request-1", status: "accepted", product: { name: "Desk lamp" } }}
+        currentUserId="buyer-1"
+        onBack={vi.fn()}
+      />
+    );
+
+    await act(async () => {});
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/requests/request-1/messages?limit=50",
+      { cache: "no-store" }
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+
+    const messageLoads = fetchMock.mock.calls.filter(([input]) =>
+      String(input).includes("/messages?limit=50")
+    );
+    expect(messageLoads).toHaveLength(2);
   });
 });
