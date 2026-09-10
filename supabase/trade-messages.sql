@@ -173,23 +173,6 @@ as $$
   );
 $$;
 
-create or replace function public.can_access_trade_message_topic(
-  p_topic text,
-  p_user_id uuid default auth.uid()
-)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select case
-    when p_topic ~ '^trade-message:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-      then public.can_access_trade_messages(substring(p_topic from 15)::uuid, p_user_id)
-    else false
-  end;
-$$;
-
 create or replace function public.get_trade_message_unread_counts(
   p_request_ids uuid[],
   p_user_id uuid
@@ -214,9 +197,6 @@ $$;
 revoke all on function public.can_access_trade_messages(uuid, uuid) from public;
 grant execute on function public.can_access_trade_messages(uuid, uuid)
   to authenticated, service_role;
-revoke all on function public.can_access_trade_message_topic(text, uuid) from public;
-grant execute on function public.can_access_trade_message_topic(text, uuid)
-  to authenticated, service_role;
 revoke all on function public.get_trade_message_unread_counts(uuid[], uuid) from public;
 grant execute on function public.get_trade_message_unread_counts(uuid[], uuid)
   to service_role;
@@ -227,41 +207,6 @@ revoke all on table public.trade_messages from anon, authenticated;
 revoke all on table public.trade_message_reads from anon, authenticated;
 
 drop policy if exists "Trade message participants can receive broadcasts" on realtime.messages;
-create policy "Trade message participants can receive broadcasts"
-  on realtime.messages
-  for select
-  to authenticated
-  using (
-    realtime.messages.extension = 'broadcast'
-    and public.can_access_trade_message_topic(realtime.topic(), auth.uid())
-  );
-
-create or replace function public.broadcast_trade_message_created()
-returns trigger
-language plpgsql
-security definer
-set search_path = pg_catalog, public
-as $$
-begin
-  perform realtime.send(
-    jsonb_build_object(
-      'requestId', new.request_id,
-      'messageId', new.message_id,
-      'senderId', new.sender_id,
-      'createdAt', new.created_at
-    ),
-    'message_created',
-    'trade-message:' || new.request_id::text,
-    true
-  );
-  return new;
-end;
-$$;
-
-revoke all on function public.broadcast_trade_message_created() from public;
-
 drop trigger if exists trade_message_created_broadcast on public.trade_messages;
-create trigger trade_message_created_broadcast
-  after insert on public.trade_messages
-  for each row
-  execute function public.broadcast_trade_message_created();
+drop function if exists public.broadcast_trade_message_created();
+drop function if exists public.can_access_trade_message_topic(text, uuid);

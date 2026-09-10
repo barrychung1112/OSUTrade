@@ -33,7 +33,7 @@ The product focuses on four things:
 | Quantity guardrails | Buyers cannot request more units than available inventory. |
 | Duplicate request protection | A buyer cannot send another active request for the same item until the previous request is declined or closed. |
 | Request lifecycle | Requests support waiting, accepted, completed, declined, cancelled, and expired states. Important updates open the Request Center and focus the relevant trade. |
-| Trade messages | After a seller accepts, buyers and sellers can exchange plain-text messages in Request Center. The feature is deployed behind an operator-controlled Realtime flag. |
+| Trade messages | After a seller accepts, buyers and sellers can exchange plain-text messages in Request Center. The feature is deployed behind an operator-controlled feature flag. |
 | Response window | Sellers have a response window for new requests. Expired requests are separated from active ones. |
 | Price snapshot | Requests preserve the price at request time and notify active buyers if a seller changes the price later. |
 | Seller dashboard | Sellers can edit listings, update status, manage quantity, and accept or decline buyer requests. |
@@ -119,9 +119,6 @@ FUNDING_RAISED_USD="0"
 FUNDING_CURRENCY="USD"
 FUNDING_SUPPORT_URL="https://buymeacoffee.com/osutrade"
 TRADE_MESSAGES_ENABLED="false"
-SUPABASE_REALTIME_JWT_PRIVATE_KEY=""
-SUPABASE_REALTIME_JWT_KEY_ID=""
-SUPABASE_REALTIME_JWT_ISSUER=""
 ```
 
 Notes:
@@ -146,7 +143,7 @@ Run the schema SQL in:
 supabase/mvp-schema.sql
 ```
 
-For the additive trade-message tables, Realtime policy, and trigger, run the separate migration in the rollout guide before enabling chat.
+For the additive trade-message tables and access rules, run the separate migration in the rollout guide before enabling chat.
 
 This creates or updates the core tables and policies for:
 

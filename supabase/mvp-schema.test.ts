@@ -141,7 +141,7 @@ describe("trade request lifecycle schema", () => {
 });
 
 describe("trade messages schema", () => {
-  test("keeps message content private while authorizing eligible private topics", () => {
+  test("keeps message content private without browser Realtime authorization", () => {
     const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
 
     expect(schema).toContain("add column if not exists accepted_at timestamptz");
@@ -158,8 +158,13 @@ describe("trade messages schema", () => {
     );
     expect(schema).toMatch(/products\.product_id::text = trade_requests\.product_id/i);
     expect(schema).toMatch(/status in \('accepted', 'completed', 'cancelled'\)/i);
-    expect(schema).toMatch(/on realtime\.messages[\s\S]*for select[\s\S]*realtime\.topic\(\)/i);
-    expect(schema).toMatch(/realtime\.send\([\s\S]*message_created[\s\S]*true/i);
-    expect(schema).not.toMatch(/realtime\.broadcast_changes\([\s\S]*trade_messages/i);
+    expect(schema).not.toMatch(
+      /create or replace function public\.can_access_trade_message_topic/i
+    );
+    expect(schema).not.toMatch(
+      /create policy "Trade message participants can receive broadcasts"/i
+    );
+    expect(schema).not.toMatch(/realtime\.send\([\s\S]*message_created/i);
+    expect(schema).not.toMatch(/create trigger trade_message_created_broadcast/i);
   });
 });

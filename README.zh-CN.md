@@ -33,7 +33,7 @@ OSUTrade 是一个为校园与本地社区设计的 full-stack marketplace。用
 | 数量限制 | 买家不能发送超过可售库存的请求数量。 |
 | 重复请求防护 | 同一买家不能对同一商品重复发送 active request，必须等原请求被拒绝或结束后才能再次发送。 |
 | Request 流程 | 支持等待、已接受、已完成、已拒绝、已取消、已逾期等状态；重要更新会主动打开 Request Center 并定位到对应交易。 |
-| 站内消息 | 卖家接受后，买卖双方可以在 Request Center 内发送纯文字消息；功能受管理员控制的 Realtime 开关保护。 |
+| 站内消息 | 卖家接受后，买卖双方可以在 Request Center 内发送纯文字消息；功能受管理员控制的功能开关保护。 |
 | 回复期限 | 卖家需要在期限内回复新请求；已逾期请求会和未逾期请求分开显示。 |
 | 价格快照 | 请求会保留发送当下的价格；如果卖家后续改价，active buyer 会收到提示。 |
 | 卖家 Dashboard | 卖家可以编辑商品、更新状态、管理库存、接受或拒绝买家请求。 |
@@ -119,9 +119,6 @@ FUNDING_RAISED_USD="0"
 FUNDING_CURRENCY="USD"
 FUNDING_SUPPORT_URL="https://buymeacoffee.com/osutrade"
 TRADE_MESSAGES_ENABLED="false"
-SUPABASE_REALTIME_JWT_PRIVATE_KEY=""
-SUPABASE_REALTIME_JWT_KEY_ID=""
-SUPABASE_REALTIME_JWT_ISSUER=""
 ```
 
 注意事项：
@@ -146,7 +143,7 @@ Google OAuth redirect URI：
 supabase/mvp-schema.sql
 ```
 
-站内消息的新增数据表、Realtime policy 与 trigger 请依上线指南执行独立 migration，完成前不要打开 chat。
+站内消息的新增数据表与权限规则请依上线指南执行独立 migration，完成前不要打开 chat。
 
 这份 SQL 会创建或更新：
 
