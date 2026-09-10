@@ -60,5 +60,5 @@
 
 - [x] Run focused polling, API, request-center, and schema tests.
 - [x] Run TypeScript and a production build.
-- [ ] Review the diff for removed private material and stale Realtime references.
-- [ ] Commit, push, and update PR #142.
+- [x] Review the diff for removed private material and stale Realtime references.
+- [x] Commit, push, and update PR #142.
