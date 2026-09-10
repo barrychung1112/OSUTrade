@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 type ComparablePrice = {
@@ -262,14 +263,7 @@ async function openAiPricingAdvisor(input: {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to get pricing advice." },
-        { status: 401 }
-      );
-    }
+    await requireActiveUser();
 
     const body = await request.json();
     const name = String(body.name ?? "").trim();
@@ -306,6 +300,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json(advice);
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(
+      error,
+      "You must be logged in to get pricing advice."
+    );
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to generate pricing advice.";

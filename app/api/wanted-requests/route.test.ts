@@ -3,9 +3,19 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   createAdminClient: vi.fn(),
+  requireActiveUser: vi.fn(),
+  AccountAccessError: class AccountAccessError extends Error {
+    constructor(public readonly status: number, message: string) {
+      super(message);
+    }
+  },
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/utils/auth/requireActiveUser", () => ({
+  requireActiveUser: mocks.requireActiveUser,
+  AccountAccessError: mocks.AccountAccessError,
+}));
 vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
 }));
@@ -50,10 +60,13 @@ describe("wanted requests API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.auth.mockResolvedValue({ user: { id: "buyer-1" } });
+    mocks.requireActiveUser.mockResolvedValue({ user: { id: "buyer-1" } });
   });
 
   test("requires login", async () => {
-    mocks.auth.mockResolvedValue(null);
+    mocks.requireActiveUser.mockRejectedValue(
+      new mocks.AccountAccessError(401, "You must be logged in.")
+    );
 
     const response = await GET();
 

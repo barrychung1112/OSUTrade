@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 import { getAcceptedRequestProductStatus } from "@/app/lib/sellerRequestAcceptance";
@@ -265,14 +266,7 @@ async function getSellerProducts(sellerId: string) {
 
 export async function GET() {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to view seller requests." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const products = await getSellerProducts(session.user.id);
     const productIds = products.map((product) => String(product.product_id));
@@ -317,6 +311,9 @@ export async function GET() {
       ),
     });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to view seller requests.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to load seller requests.";
@@ -326,14 +323,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to update seller requests." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const body = await request.json();
     const requestId = String(body.requestId ?? "").trim();
@@ -703,6 +693,9 @@ export async function PATCH(request: Request) {
       request: toSellerRequest(data, responseProduct, buyerEmail),
     });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to update seller requests.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to update seller request.";

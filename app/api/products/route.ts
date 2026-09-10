@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 import { createHash } from "node:crypto";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { canUseDemoProducts, filterDemoProducts } from "@/app/lib/demoProducts";
@@ -243,14 +244,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to list an item." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const supabase = createAdminClient();
     const idempotencyKey = request.headers.get("idempotency-key")?.trim() ?? "";
@@ -456,6 +450,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(toProduct(data), { status: 201 });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(
+      error,
+      "You must be logged in to list an item."
+    );
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";

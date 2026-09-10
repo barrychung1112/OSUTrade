@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { getUnreadCount, toNotification } from "@/app/lib/notificationPresenter";
 
 export async function GET() {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to view notifications." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const supabase = createAdminClient();
     const { data, error } = await supabase
@@ -35,6 +29,9 @@ export async function GET() {
       unreadCount: getUnreadCount(rows),
     });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to view notifications.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to load notifications.";
@@ -44,14 +41,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to update notifications." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const body = await request.json();
     const notificationId = String(body.notificationId ?? "").trim();
@@ -83,6 +73,9 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to update notifications.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to update notifications.";

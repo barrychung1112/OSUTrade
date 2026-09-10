@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { generateCrossPostCopies } from "@/app/lib/crossPostCopy";
 import { getProductPricing } from "@/app/lib/productDiscount";
@@ -77,14 +78,7 @@ function normalizeProductIds(value: unknown) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to generate cross-post copy." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const body = await request.json().catch(() => ({}));
     const productIds = normalizeProductIds(body?.productIds);
@@ -129,6 +123,12 @@ export async function POST(request: NextRequest) {
     const result = await generateCrossPostCopies(listings);
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(
+      error,
+      "You must be logged in to generate cross-post copy."
+    );
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     return NextResponse.json(
       { message: "Failed to generate cross-post copy." },

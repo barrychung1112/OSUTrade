@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 const bucketName = "product-images";
@@ -36,13 +37,7 @@ function isFileMetadata(value: unknown): value is FileMetadata {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to upload product images." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const body = (await request.json().catch(() => null)) as {
       files?: unknown;
@@ -93,6 +88,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ uploads }, { status: 200 });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(
+      error,
+      "You must be logged in to upload product images."
+    );
+    if (accessResponse) return accessResponse;
+
     console.error("Failed to sign product image upload", error);
     return NextResponse.json(
       { message: "Failed to prepare image upload. Please try again." },

@@ -5,9 +5,19 @@ import { crossPostPlatforms, platformLanguage } from "@/app/lib/crossPostCopy";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   generateCrossPostPreview: vi.fn(),
+  requireActiveUser: vi.fn(),
+  AccountAccessError: class AccountAccessError extends Error {
+    constructor(public readonly status: number, message: string) {
+      super(message);
+    }
+  },
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/utils/auth/requireActiveUser", () => ({
+  requireActiveUser: mocks.requireActiveUser,
+  AccountAccessError: mocks.AccountAccessError,
+}));
 vi.mock("@/app/lib/crossPostPreview", async () => {
   const actual = await vi.importActual<typeof import("@/app/lib/crossPostPreview")>(
     "@/app/lib/crossPostPreview"
@@ -48,6 +58,7 @@ function request(body: unknown) {
 describe("cross-post preview route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.requireActiveUser.mockResolvedValue({ user: { id: "seller-1" } });
     mocks.generateCrossPostPreview.mockResolvedValue({
       source: "fallback",
       copies: fiveCopies,
@@ -59,7 +70,9 @@ describe("cross-post preview route", () => {
   });
 
   test("requires authentication before generating a preview", async () => {
-    mocks.auth.mockResolvedValue(null);
+    mocks.requireActiveUser.mockRejectedValue(
+      new mocks.AccountAccessError(401, "You must be logged in.")
+    );
 
     const response = await POST(request({ items: [validItem] }));
 

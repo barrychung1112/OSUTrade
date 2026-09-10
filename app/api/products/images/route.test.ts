@@ -4,14 +4,28 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   createAdminClient: vi.fn(),
+  requireActiveUser: vi.fn(),
+  AccountAccessError: class AccountAccessError extends Error {
+    constructor(
+      public readonly status: number,
+      public readonly code: string,
+      message: string
+    ) {
+      super(message);
+    }
+  },
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/utils/auth/requireActiveUser", () => ({
+  requireActiveUser: mocks.requireActiveUser,
+  AccountAccessError: mocks.AccountAccessError,
+}));
 vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
 }));
 
-import { DELETE } from "./route";
+import { DELETE, POST } from "./route";
 
 function request(paths: unknown) {
   return new NextRequest("https://osutrade.example/api/products/images", {
@@ -21,13 +35,49 @@ function request(paths: unknown) {
   });
 }
 
+function uploadRequest() {
+  const formData = new FormData();
+  formData.append(
+    "image",
+    new File(["image bytes"], "desk-lamp.jpg", { type: "image/jpeg" })
+  );
+  return {
+    formData: vi.fn().mockResolvedValue(formData),
+  } as unknown as Request;
+}
+
 describe("product image cleanup route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mocks.requireActiveUser.mockResolvedValue({ user: { id: "seller-1" } });
+  });
+
+  test("rejects a banned seller before writing image storage", async () => {
+    mocks.requireActiveUser.mockRejectedValue(
+      new mocks.AccountAccessError(
+        403,
+        "ACCOUNT_BANNED",
+        "This account is banned."
+      )
+    );
+
+    const response = await POST(uploadRequest());
+    const payload = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(payload).toEqual({ message: "This account is banned." });
+    expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 
   test("rejects unauthenticated cleanup", async () => {
-    mocks.auth.mockResolvedValue(null);
+    mocks.requireActiveUser.mockRejectedValue(
+      new mocks.AccountAccessError(
+        401,
+        "UNAUTHENTICATED",
+        "You must be logged in."
+      )
+    );
 
     const response = await DELETE(request(["seller-1/image.jpg"]));
 
