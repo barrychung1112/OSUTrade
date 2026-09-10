@@ -33,6 +33,7 @@ The product focuses on four things:
 | Quantity guardrails | Buyers cannot request more units than available inventory. |
 | Duplicate request protection | A buyer cannot send another active request for the same item until the previous request is declined or closed. |
 | Request lifecycle | Requests support waiting, accepted, completed, declined, cancelled, and expired states. Important updates open the Request Center and focus the relevant trade. |
+| Trade messages | After a seller accepts, buyers and sellers can exchange plain-text messages in Request Center. The feature is deployed behind an operator-controlled feature flag. |
 | Response window | Sellers have a response window for new requests. Expired requests are separated from active ones. |
 | Price snapshot | Requests preserve the price at request time and notify active buyers if a seller changes the price later. |
 | Seller dashboard | Sellers can edit listings, update status, manage quantity, and accept or decline buyer requests. |
@@ -53,7 +54,8 @@ The product focuses on four things:
 4. Choose quantity, add a note, and submit the request.
 5. Track request status from **Requests**.
 6. If accepted, view the seller contact details and arrange pickup.
-7. Optionally create a **Wanted Item** subscription for things you want to buy later.
+7. Use **Messages** in Request Center to coordinate the trade with the seller.
+8. Optionally create a **Wanted Item** subscription for things you want to buy later.
 
 ### Seller
 
@@ -64,7 +66,7 @@ The product focuses on four things:
 5. Use the AI pricing advisor if a price benchmark is needed.
 6. Manage inventory and incoming requests from **Seller**.
 7. Accept or decline requests before the response window expires.
-8. After acceptance, use the same Request Center card to contact the buyer and confirm completion or restore inventory when the trade does not complete.
+8. After acceptance, use **Messages** in Request Center to coordinate with the buyer, then confirm completion or restore inventory when the trade does not complete.
 
 ## Tech Stack
 
@@ -116,6 +118,7 @@ FUNDING_GOAL_USD="2000"
 FUNDING_RAISED_USD="0"
 FUNDING_CURRENCY="USD"
 FUNDING_SUPPORT_URL="https://buymeacoffee.com/osutrade"
+TRADE_MESSAGES_ENABLED="false"
 ```
 
 Notes:
@@ -125,6 +128,7 @@ Notes:
 - `EMAIL_PROVIDER=console` keeps email output in logs. Use `EMAIL_PROVIDER=resend` with `RESEND_API_KEY` and `EMAIL_FROM` to send real emails.
 - `AUTH_SECRET` and `NEXTAUTH_SECRET` should match if both are configured in a deployment environment.
 - Never commit real secrets to the repository.
+- Trade messages are off by default. Follow [the rollout guide](docs/trade-messages-rollout.md) before enabling them in Vercel.
 
 Google OAuth redirect URIs:
 
@@ -138,6 +142,8 @@ Run the schema SQL in:
 ```text
 supabase/mvp-schema.sql
 ```
+
+For the additive trade-message tables and access rules, run the separate migration in the rollout guide before enabling chat.
 
 This creates or updates the core tables and policies for:
 

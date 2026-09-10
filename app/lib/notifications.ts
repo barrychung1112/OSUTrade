@@ -8,7 +8,8 @@ export type TradeNotificationType =
   | "request_cancelled"
   | "request_cancelled_by_seller"
   | "request_completed"
-  | "price_changed";
+  | "price_changed"
+  | "trade_message_received";
 
 export type TradeNotificationInput = {
   type: TradeNotificationType;
@@ -29,6 +30,8 @@ export type TradeNotificationInput = {
     oldPrice: number;
     newPrice: number;
   };
+  messageRecipientAudience?: "buyer" | "seller";
+  messagePreview?: string;
 };
 
 export type BuiltNotification = {
@@ -154,6 +157,12 @@ export function buildTradeNotification(
   if (input.priceChange) {
     payload.oldPrice = input.priceChange.oldPrice;
     payload.newPrice = input.priceChange.newPrice;
+  }
+
+  if (input.type === "trade_message_received") {
+    payload.requestCenterAudience =
+      input.messageRecipientAudience === "seller" ? "seller" : "buyer";
+    payload.messagePreview = (input.messagePreview ?? "").trim().slice(0, 160);
   }
 
   const base = {
@@ -298,6 +307,21 @@ export function buildTradeNotification(
     };
   }
 
+  if (input.type === "trade_message_received") {
+    const audience =
+      input.messageRecipientAudience === "seller" ? "seller" : "buyer";
+    const preview = (input.messagePreview ?? "").trim().slice(0, 160);
+
+    return {
+      ...base,
+      title: `New message about ${productName}`,
+      body: preview || "You received a new message about this trade request.",
+      emailSubject: "",
+      emailText: "",
+      actionHref: audience === "seller" ? "/seller" : "/requests",
+    };
+  }
+
   const oldPrice = input.priceChange?.oldPrice ?? 0;
   const newPrice = input.priceChange?.newPrice ?? 0;
 
@@ -359,7 +383,11 @@ export async function notifyTradeEvent({
 
   const notificationId = data?.notification_id as string | undefined;
 
-  if (!recipientEmail || !notificationId) {
+  if (
+    notification.type === "trade_message_received" ||
+    !recipientEmail ||
+    !notificationId
+  ) {
     return { notificationId, emailSent: false, emailError: null };
   }
 

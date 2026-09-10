@@ -126,6 +126,31 @@ describe("trade notifications", () => {
     );
   });
 
+  test("builds an in-app-only alert for a new trade message", () => {
+    const notification = buildTradeNotification({
+      ...baseInput,
+      type: "trade_message_received",
+      recipientId: "buyer-1",
+      actorId: "seller-1",
+      messageRecipientAudience: "buyer",
+      messagePreview: "Can you meet near the library?",
+    });
+
+    expect(notification).toMatchObject({
+      type: "trade_message_received",
+      recipientId: "buyer-1",
+      title: "New message about Desk lamp",
+      actionHref: "/requests",
+      requestId: "request-1",
+    });
+    expect(notification.emailSubject).toBe("");
+    expect(notification.emailText).toBe("");
+    expect(notification.payload).toMatchObject({
+      requestCenterAudience: "buyer",
+      messagePreview: "Can you meet near the library?",
+    });
+  });
+
   test("records email errors without failing the trade flow", async () => {
     const insert = vi.fn().mockResolvedValue({
       data: { notification_id: "notification-1" },

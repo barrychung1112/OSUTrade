@@ -11,6 +11,11 @@ import {
   stripPriceAtRequest,
 } from "@/app/lib/requestSchema";
 import { getProductPricing } from "@/app/lib/productDiscount";
+import {
+  getTradeMessageAccess,
+  isTradeMessagesEnabled,
+  loadTradeMessageUnreadCounts,
+} from "@/app/lib/tradeMessages";
 
 type RequestRow = {
   request_id: string;
@@ -20,6 +25,7 @@ type RequestRow = {
   note: string | null;
   status: string;
   created_at: string;
+  accepted_at?: string | null;
   price_at_request?: number | string | null;
 };
 
@@ -50,7 +56,12 @@ function normalizeImageUrls(imageUrls?: string[] | null, imageUrl?: string | nul
   return imageUrl ? [imageUrl] : [];
 }
 
-function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) {
+function toRequest(
+  row: RequestRow,
+  product?: ProductRow,
+  sellerEmail?: string,
+  messagePreview?: { canMessage: boolean; unreadCount: number }
+) {
   const status = isExpiredSentRequest(row) ? "expired" : row.status;
   const imageUrls = product
     ? normalizeImageUrls(product.image_urls, product.image_url)
@@ -69,6 +80,12 @@ function toRequest(row: RequestRow, product?: ProductRow, sellerEmail?: string) 
     priceAtRequest: priceChange.priceAtRequest,
     currentPrice: priceChange.currentPrice,
     priceChanged: priceChange.changed,
+    ...(messagePreview
+      ? {
+          canMessage: messagePreview.canMessage,
+          messageUnreadCount: messagePreview.unreadCount,
+        }
+      : {}),
     sellerEmail: status === "accepted" ? sellerEmail ?? null : null,
     sellerContact:
       status === "accepted"
@@ -131,11 +148,18 @@ async function safeGetEmailByUserId(userId: string | null | undefined) {
 
 async function loadBuyerRequests(
   supabase: ReturnType<typeof createAdminClient>,
-  buyerId: string
+  buyerId: string,
+  includeTradeMessageFields: boolean
 ) {
+  const fields = includeTradeMessageFields
+    ? `${requestSelectFields}, accepted_at`
+    : requestSelectFields;
+  const fallbackFields = includeTradeMessageFields
+    ? `${requestSelectFieldsWithoutPrice}, accepted_at`
+    : requestSelectFieldsWithoutPrice;
   const { data, error } = await supabase
     .from("trade_requests")
-    .select(requestSelectFields)
+    .select(fields)
     .eq("buyer_id", buyerId)
     .order("created_at", { ascending: false });
 
@@ -149,7 +173,7 @@ async function loadBuyerRequests(
 
   return supabase
     .from("trade_requests")
-    .select(requestSelectFieldsWithoutPrice)
+    .select(fallbackFields)
     .eq("buyer_id", buyerId)
     .order("created_at", { ascending: false });
 }
@@ -198,13 +222,18 @@ export async function GET() {
     }
 
     const supabase = createAdminClient();
-    const { data, error } = await loadBuyerRequests(supabase, session.user.id);
+    const tradeMessagesEnabled = isTradeMessagesEnabled();
+    const { data, error } = await loadBuyerRequests(
+      supabase,
+      session.user.id,
+      tradeMessagesEnabled
+    );
 
     if (error) {
       throw error;
     }
 
-    const requests = data ?? [];
+    const requests = ((data ?? []) as unknown) as RequestRow[];
     const productIds = requests.map((item) => String(item.product_id));
     const { data: products, error: productError } = productIds.length
       ? await supabase
@@ -233,6 +262,14 @@ export async function GET() {
       }
     }
 
+    const unreadCounts = tradeMessagesEnabled
+      ? await loadTradeMessageUnreadCounts({
+          supabase,
+          requestIds: requests.map((request) => request.request_id),
+          userId: session.user.id,
+        })
+      : new Map<string, number>();
+
     return NextResponse.json({
       data: requests.map((request) => {
         const product = productsById.get(String(request.product_id));
@@ -240,7 +277,30 @@ export async function GET() {
           ? sellerEmailById.get(product.seller_id)
           : null;
 
-        return toRequest(request, product, sellerEmail ?? undefined);
+        const messageAccess = tradeMessagesEnabled
+          ? getTradeMessageAccess({
+              request: {
+                requestId: request.request_id,
+                buyerId: request.buyer_id,
+                status: request.status,
+                acceptedAt: request.accepted_at,
+              },
+              sellerId: product?.seller_id,
+              userId: session.user.id,
+            })
+          : null;
+
+        return toRequest(
+          request,
+          product,
+          sellerEmail ?? undefined,
+          messageAccess
+            ? {
+                canMessage: messageAccess.allowed,
+                unreadCount: unreadCounts.get(request.request_id) ?? 0,
+              }
+            : undefined
+        );
       }),
     });
   } catch (error) {

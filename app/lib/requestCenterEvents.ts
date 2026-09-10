@@ -8,6 +8,7 @@ export type RequestCenterEventDetail = {
   notificationId?: string;
   requestId?: string;
   audience: RequestCenterAudience;
+  openConversation?: boolean;
 };
 
 type RequestNotification = {
@@ -15,6 +16,7 @@ type RequestNotification = {
   type: string;
   requestId: string | null;
   readAt: string | null;
+  payload?: Record<string, unknown> | null;
 };
 
 const sellerEventTypes = new Set(["request_created", "request_cancelled"]);
@@ -42,6 +44,31 @@ export function getActionableRequestEvent(
     notificationId: notification.id,
     requestId: notification.requestId,
     audience,
+  };
+}
+
+export function getRequestCenterNotificationEvent(
+  notification: RequestNotification
+): RequestCenterEventDetail | null {
+  if (
+    notification.readAt ||
+    notification.type !== "trade_message_received" ||
+    !notification.requestId
+  ) {
+    return null;
+  }
+
+  const audience =
+    notification.payload?.requestCenterAudience === "seller" ? "seller" :
+    notification.payload?.requestCenterAudience === "buyer" ? "buyer" : null;
+
+  if (!audience) return null;
+
+  return {
+    notificationId: notification.id,
+    requestId: notification.requestId,
+    audience,
+    openConversation: true,
   };
 }
 

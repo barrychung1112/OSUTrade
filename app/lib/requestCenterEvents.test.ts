@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getActionableRequestEvent,
+  getRequestCenterNotificationEvent,
   shouldAutoOpenRequestCenter,
 } from "./requestCenterEvents";
 
@@ -70,5 +71,22 @@ describe("request center events", () => {
     expect(
       shouldAutoOpenRequestCenter({ alreadyShown: false, blockingUi: true })
     ).toBe(false);
+  });
+
+  it("opens the matching conversation only when a message notification is clicked", () => {
+    expect(
+      getRequestCenterNotificationEvent({
+        id: "message-notification",
+        type: "trade_message_received",
+        requestId: "request-4",
+        readAt: null,
+        payload: { requestCenterAudience: "seller" },
+      })
+    ).toEqual({
+      notificationId: "message-notification",
+      requestId: "request-4",
+      audience: "seller",
+      openConversation: true,
+    });
   });
 });

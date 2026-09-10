@@ -33,6 +33,7 @@ OSUTrade 是一个为校园与本地社区设计的 full-stack marketplace。用
 | 数量限制 | 买家不能发送超过可售库存的请求数量。 |
 | 重复请求防护 | 同一买家不能对同一商品重复发送 active request，必须等原请求被拒绝或结束后才能再次发送。 |
 | Request 流程 | 支持等待、已接受、已完成、已拒绝、已取消、已逾期等状态；重要更新会主动打开 Request Center 并定位到对应交易。 |
+| 站内消息 | 卖家接受后，买卖双方可以在 Request Center 内发送纯文字消息；功能受管理员控制的功能开关保护。 |
 | 回复期限 | 卖家需要在期限内回复新请求；已逾期请求会和未逾期请求分开显示。 |
 | 价格快照 | 请求会保留发送当下的价格；如果卖家后续改价，active buyer 会收到提示。 |
 | 卖家 Dashboard | 卖家可以编辑商品、更新状态、管理库存、接受或拒绝买家请求。 |
@@ -53,7 +54,8 @@ OSUTrade 是一个为校园与本地社区设计的 full-stack marketplace。用
 4. 选择数量、填写备注并发送 request。
 5. 在 **需求** 页跟踪 request 状态。
 6. 若卖家接受，查看卖家联系方式并安排取货。
-7. 也可以创建 **想买清单**，让系统在有相关新商品时通知你。
+7. 在 Request Center 使用 **消息** 与卖家协调交易。
+8. 也可以创建 **想买清单**，让系统在有相关新商品时通知你。
 
 ### 卖家
 
@@ -64,7 +66,7 @@ OSUTrade 是一个为校园与本地社区设计的 full-stack marketplace。用
 5. 需要价格参考时，可使用 AI 建议价格。
 6. 在 **卖家** 页管理商品库存与买家请求。
 7. 在回复期限内接受或拒绝 request。
-8. 接受后在同一张 Request Center 卡片联系买家并确认完成；如果交易未完成，系统会恢复库存。
+8. 接受后在 Request Center 的 **消息** 中与买家协调，并确认完成；如果交易未完成，系统会恢复库存。
 
 ## 技术架构
 
@@ -116,6 +118,7 @@ FUNDING_GOAL_USD="2000"
 FUNDING_RAISED_USD="0"
 FUNDING_CURRENCY="USD"
 FUNDING_SUPPORT_URL="https://buymeacoffee.com/osutrade"
+TRADE_MESSAGES_ENABLED="false"
 ```
 
 注意事项：
@@ -125,6 +128,7 @@ FUNDING_SUPPORT_URL="https://buymeacoffee.com/osutrade"
 - `EMAIL_PROVIDER=console` 会把 email 输出留在 log；若要真的寄信，请改用 `EMAIL_PROVIDER=resend`，并设置 `RESEND_API_KEY` 与 `EMAIL_FROM`。
 - 如果部署环境同时设置 `AUTH_SECRET` 与 `NEXTAUTH_SECRET`，两者应保持一致。
 - 不要把真实 secret commit 到 repository。
+- 站内消息默认关闭；在 Vercel 启用前，请先依照[上线指南](docs/trade-messages-rollout.md)完成设置。
 
 Google OAuth redirect URI：
 
@@ -138,6 +142,8 @@ Google OAuth redirect URI：
 ```text
 supabase/mvp-schema.sql
 ```
+
+站内消息的新增数据表与权限规则请依上线指南执行独立 migration，完成前不要打开 chat。
 
 这份 SQL 会创建或更新：
 
