@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isOwnedProductImagePath } from "@/app/lib/productImagePath";
 
@@ -30,14 +31,7 @@ function extensionFor(file: File) {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to upload product images." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const formData = await request.formData();
     const images = formData
@@ -111,6 +105,12 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(
+      error,
+      "You must be logged in to upload product images."
+    );
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to upload product image.";
@@ -120,14 +120,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to remove product images." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const body = (await request.json().catch(() => null)) as {
       paths?: unknown;
@@ -198,6 +191,12 @@ export async function DELETE(request: Request) {
       { status: 200 }
     );
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(
+      error,
+      "You must be logged in to remove product images."
+    );
+    if (accessResponse) return accessResponse;
+
     console.error("Failed to remove product images", error);
     return NextResponse.json(
       { message: "Failed to remove product images. Please try again." },

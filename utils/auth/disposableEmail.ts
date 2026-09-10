@@ -15,7 +15,7 @@ export function getEmailDomainCandidates(email: string) {
   return labels.slice(0, -1).map((_, index) => labels.slice(index).join("."));
 }
 
-export async function checkDisposableEmail(
+export async function checkDisposableEmailStrict(
   email: string,
   admin: BlocklistClient = createAdminClient()
 ) {
@@ -25,21 +25,25 @@ export async function checkDisposableEmail(
     return { blocked: false };
   }
 
+  const { data, error } = await admin
+    .from("disposable_email_domains")
+    .select("domain")
+    .eq("active", true)
+    .in("domain", candidates);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return { blocked: Boolean(data?.length) };
+}
+
+export async function checkDisposableEmail(
+  email: string,
+  admin: BlocklistClient = createAdminClient()
+) {
   try {
-    const { data, error } = await admin
-      .from("disposable_email_domains")
-      .select("domain")
-      .eq("active", true)
-      .in("domain", candidates);
-
-    if (error) {
-      console.error("Disposable email domain lookup failed.", {
-        error: error.message,
-      });
-      return { blocked: false };
-    }
-
-    return { blocked: Boolean(data?.length) };
+    return await checkDisposableEmailStrict(email, admin);
   } catch (error) {
     console.error("Disposable email domain lookup failed.", {
       error: error instanceof Error ? error.message : "Unknown lookup error",

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isExpiredSentRequest, requestResponseWindowMs } from "@/app/lib/requestExpiry";
 import { getRequestPriceChange } from "@/app/lib/requestPricing";
@@ -212,14 +213,7 @@ async function insertTradeRequest(
 
 export async function GET() {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to view your requests." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const supabase = createAdminClient();
     const tradeMessagesEnabled = isTradeMessagesEnabled();
@@ -304,6 +298,9 @@ export async function GET() {
       }),
     });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to view your requests.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to load requests.";
@@ -313,14 +310,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to update your requests." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const body = await request.json();
     const requestId = String(body.requestId ?? "").trim();
@@ -401,6 +391,9 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ request: toRequest(updatedRequest) });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to update your requests.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to update request.";
@@ -410,14 +403,7 @@ export async function PATCH(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to send a request." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const body = await request.json();
     const itemId = String(body.itemId ?? "").trim();
@@ -541,6 +527,9 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to send a request.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to send request.";

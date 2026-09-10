@@ -4,9 +4,19 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   createAdminClient: vi.fn(),
+  requireActiveUser: vi.fn(),
+  AccountAccessError: class AccountAccessError extends Error {
+    constructor(public readonly status: number, message: string) {
+      super(message);
+    }
+  },
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/utils/auth/requireActiveUser", () => ({
+  requireActiveUser: mocks.requireActiveUser,
+  AccountAccessError: mocks.AccountAccessError,
+}));
 vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
 }));
@@ -59,6 +69,7 @@ function aiResponse() {
 describe("bulk draft route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.requireActiveUser.mockResolvedValue({ user: { id: "seller-1" } });
     process.env.OPENAI_API_KEY = "test-key";
   });
 

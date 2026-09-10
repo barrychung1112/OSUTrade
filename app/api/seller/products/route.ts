@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { buildSellerProductUpdate } from "@/app/lib/sellerProductUpdate";
 import {
@@ -132,14 +133,7 @@ async function safeGetEmailByUserId(userId: string | null | undefined) {
 
 export async function GET() {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to view seller products." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const supabase = createAdminClient();
     const { data, error } = await supabase
@@ -185,6 +179,9 @@ export async function GET() {
       ),
     });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to view seller products.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to load seller products.";
@@ -194,14 +191,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to update seller products." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const body = await request.json();
     const productId = String(body.productId ?? "").trim();
@@ -372,6 +362,9 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ product: toProduct(data) });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to update seller products.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to update seller product.";

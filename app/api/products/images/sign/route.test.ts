@@ -4,9 +4,19 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   createAdminClient: vi.fn(),
+  requireActiveUser: vi.fn(),
+  AccountAccessError: class AccountAccessError extends Error {
+    constructor(public readonly status: number, message: string) {
+      super(message);
+    }
+  },
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/utils/auth/requireActiveUser", () => ({
+  requireActiveUser: mocks.requireActiveUser,
+  AccountAccessError: mocks.AccountAccessError,
+}));
 vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
 }));
@@ -47,10 +57,13 @@ function mockStorage() {
 describe("signed product image upload route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.requireActiveUser.mockResolvedValue({ user: { id: "seller-1" } });
   });
 
   test("rejects unauthenticated requests", async () => {
-    mocks.auth.mockResolvedValue(null);
+    mocks.requireActiveUser.mockRejectedValue(
+      new mocks.AccountAccessError(401, "You must be logged in.")
+    );
 
     const response = await POST(request([validFile()]));
 

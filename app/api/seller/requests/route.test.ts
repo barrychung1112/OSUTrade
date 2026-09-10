@@ -4,9 +4,19 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   createAdminClient: vi.fn(),
   notifyTradeEvent: vi.fn(),
+  requireActiveUser: vi.fn(),
+  AccountAccessError: class AccountAccessError extends Error {
+    constructor(public readonly status: number, message: string) {
+      super(message);
+    }
+  },
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/utils/auth/requireActiveUser", () => ({
+  requireActiveUser: mocks.requireActiveUser,
+  AccountAccessError: mocks.AccountAccessError,
+}));
 vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
 }));
@@ -36,6 +46,7 @@ describe("seller accepted request cancellation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mocks.requireActiveUser.mockResolvedValue({ user: { id: "seller-1" } });
     mocks.notifyTradeEvent.mockResolvedValue({
       notificationId: "notification-1",
       emailSent: true,
@@ -194,6 +205,7 @@ describe("atomic seller request actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mocks.requireActiveUser.mockResolvedValue({ user: { id: "seller-1" } });
     mocks.notifyTradeEvent.mockResolvedValue({
       notificationId: "notification-1",
       emailSent: true,

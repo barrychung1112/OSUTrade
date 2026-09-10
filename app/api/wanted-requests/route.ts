@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
   normalizeWantedRequestInput,
@@ -29,20 +30,12 @@ function toWantedRequest(row: WantedRequestRow) {
 }
 
 async function requireUser() {
-  const session = await auth();
-  return session?.user?.id ?? null;
+  return (await requireActiveUser()).user.id!;
 }
 
 export async function GET() {
   try {
     const userId = await requireUser();
-    if (!userId) {
-      return NextResponse.json(
-        { message: "You must be logged in to view wanted items." },
-        { status: 401 }
-      );
-    }
-
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("wanted_requests")
@@ -58,6 +51,9 @@ export async function GET() {
         .map(toWantedRequest),
     });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to view wanted items.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to load wanted items.";
@@ -68,13 +64,6 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const userId = await requireUser();
-    if (!userId) {
-      return NextResponse.json(
-        { message: "You must be logged in to create wanted items." },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const normalized = normalizeWantedRequestInput(body);
     if (normalized.ok === false) {
@@ -96,6 +85,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ data: toWantedRequest(data) }, { status: 201 });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to create wanted items.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to create wanted item.";
@@ -106,13 +98,6 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const userId = await requireUser();
-    if (!userId) {
-      return NextResponse.json(
-        { message: "You must be logged in to update wanted items." },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const id = String(body.id ?? "").trim();
     if (!id) {
@@ -161,6 +146,9 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ data: toWantedRequest(data) });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to update wanted items.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to update wanted item.";
@@ -171,13 +159,6 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const userId = await requireUser();
-    if (!userId) {
-      return NextResponse.json(
-        { message: "You must be logged in to delete wanted items." },
-        { status: 401 }
-      );
-    }
-
     const url = new URL(request.url);
     const id = String(url.searchParams.get("id") ?? "").trim();
     if (!id) {
@@ -200,6 +181,9 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ data: toWantedRequest(data) });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(error, "You must be logged in to delete wanted items.");
+    if (accessResponse) return accessResponse;
+
     console.error(error);
     const message =
       error instanceof Error ? error.message : "Failed to delete wanted item.";

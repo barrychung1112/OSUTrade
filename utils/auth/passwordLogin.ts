@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { checkDisposableEmailStrict } from "@/utils/auth/disposableEmail";
+import { createAdminClient } from "@/utils/supabase/admin";
 import type { AppAuthUser } from "./googleProfile";
 
 type LoginErrorCode =
@@ -70,6 +72,29 @@ export async function authenticateWithPassword(
       "MISSING_CREDENTIALS",
       "Email and password are required.",
       400
+    );
+  }
+
+  let blocked: boolean;
+
+  try {
+    ({ blocked } = await checkDisposableEmailStrict(
+      email,
+      createAdminClient()
+    ));
+  } catch {
+    throw new AuthLoginError(
+      "LOGIN_FAILED",
+      "Login is temporarily unavailable. Please try again later.",
+      503
+    );
+  }
+
+  if (blocked) {
+    throw new AuthLoginError(
+      "LOGIN_FAILED",
+      "The email or password you entered is incorrect.",
+      401
     );
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireActiveUser } from "@/utils/auth/requireActiveUser";
+import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessResponse";
 import {
   type AiDraftLocale,
   createBulkDraftResponseFormat,
@@ -145,14 +146,7 @@ async function generateAiDrafts(
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "You must be logged in to generate listing drafts." },
-        { status: 401 }
-      );
-    }
+    const session = await requireActiveUser();
 
     const body = (await request.json().catch(() => null)) as {
       imagePaths?: unknown;
@@ -212,6 +206,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ drafts: aiDrafts }, { status: 200 });
   } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(
+      error,
+      "You must be logged in to generate listing drafts."
+    );
+    if (accessResponse) return accessResponse;
+
     if (error instanceof AiConfigurationError) {
       console.error("OpenAI bulk draft configuration error", error.message);
       return NextResponse.json(
