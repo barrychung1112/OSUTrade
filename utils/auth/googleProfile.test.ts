@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { upsertGoogleUserProfile } from "./googleProfile";
 import { createAdminClient } from "@/utils/supabase/admin";
 
-const checkDisposableEmail = vi.hoisted(() => vi.fn());
+const checkDisposableEmailStrict = vi.hoisted(() => vi.fn());
 
 vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: vi.fn(),
 }));
 vi.mock("@/utils/auth/disposableEmail", () => ({
-  checkDisposableEmail,
+  checkDisposableEmailStrict,
 }));
 
 type MaybeSingleResult = {
@@ -80,7 +80,7 @@ function createMockAdmin({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  checkDisposableEmail.mockResolvedValue({ blocked: false });
+  checkDisposableEmailStrict.mockResolvedValue({ blocked: false });
 });
 
 describe("upsertGoogleUserProfile", () => {
@@ -173,7 +173,10 @@ describe("upsertGoogleUserProfile", () => {
       pattern: "student\\_\\%@osu.edu",
     });
     expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
-    expect(checkDisposableEmail).not.toHaveBeenCalled();
+    expect(checkDisposableEmailStrict).toHaveBeenCalledWith(
+      "student_%@osu.edu",
+      admin
+    );
     expect(upsertCalls[0].payload).toMatchObject({
       id: "existing-id",
       email: "student_%@osu.edu",
@@ -187,7 +190,7 @@ describe("upsertGoogleUserProfile", () => {
       maybeSingleResults: [{ data: null, error: null }],
       upsertResults: [],
     });
-    checkDisposableEmail.mockResolvedValue({ blocked: true });
+    checkDisposableEmailStrict.mockResolvedValue({ blocked: true });
 
     await expect(
       upsertGoogleUserProfile({
@@ -197,14 +200,14 @@ describe("upsertGoogleUserProfile", () => {
       })
     ).rejects.toThrow("DISPOSABLE_EMAIL_NOT_ALLOWED");
 
-    expect(checkDisposableEmail).toHaveBeenCalledWith(
+    expect(checkDisposableEmailStrict).toHaveBeenCalledWith(
       "new-user@hutdot.com",
       admin
     );
     expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
   });
 
-  test("allows an existing Auth account from a blocked domain to restore its public profile", async () => {
+  test("rejects an existing Auth account from a blocked domain before restoring its public profile", async () => {
     const authId = "87654321-1234-4234-9234-123456789abc";
     const { admin, upsertCalls } = createMockAdmin({
       maybeSingleResults: [
@@ -222,18 +225,56 @@ describe("upsertGoogleUserProfile", () => {
         },
       ],
     });
-    checkDisposableEmail.mockResolvedValue({ blocked: true });
+    checkDisposableEmailStrict.mockResolvedValue({ blocked: true });
 
-    const result = await upsertGoogleUserProfile({
-      email: "returning@hutdot.com",
-      name: "Returning User",
-      emailVerified: true,
-    });
+    await expect(
+      upsertGoogleUserProfile({
+        email: "returning@hutdot.com",
+        name: "Returning User",
+        emailVerified: true,
+      })
+    ).rejects.toThrow("DISPOSABLE_EMAIL_NOT_ALLOWED");
 
-    expect(checkDisposableEmail).not.toHaveBeenCalled();
+    expect(checkDisposableEmailStrict).toHaveBeenCalledWith(
+      "returning@hutdot.com",
+      admin
+    );
     expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
-    expect(upsertCalls[0].payload).toMatchObject({ id: authId });
-    expect(result.id).toBe(authId);
+    expect(admin.auth.admin.listUsers).not.toHaveBeenCalled();
+    expect(upsertCalls).toHaveLength(0);
+  });
+
+  test("rejects an existing public account from a blocked domain before returning it", async () => {
+    const { admin, upsertCalls } = createMockAdmin({
+      maybeSingleResults: [
+        {
+          data: {
+            id: "existing-id",
+            email: "returning@hutdot.com",
+            name: "Returning User",
+            role: "user",
+          },
+          error: null,
+        },
+      ],
+      upsertResults: [],
+    });
+    checkDisposableEmailStrict.mockResolvedValue({ blocked: true });
+
+    await expect(
+      upsertGoogleUserProfile({
+        email: "returning@hutdot.com",
+        name: "Returning User",
+        emailVerified: true,
+      })
+    ).rejects.toThrow("DISPOSABLE_EMAIL_NOT_ALLOWED");
+
+    expect(checkDisposableEmailStrict).toHaveBeenCalledWith(
+      "returning@hutdot.com",
+      admin
+    );
+    expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
+    expect(upsertCalls).toHaveLength(0);
   });
 
   test("creates a first-time Auth user and uses its UUID for the public profile", async () => {

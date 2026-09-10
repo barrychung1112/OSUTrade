@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { createClient } from "@supabase/supabase-js";
 import { authenticateWithPassword, AuthLoginError } from "./passwordLogin";
+import { createAdminClient } from "@/utils/supabase/admin";
+import { checkDisposableEmailStrict } from "@/utils/auth/disposableEmail";
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(),
+}));
+vi.mock("@/utils/supabase/admin", () => ({
+  createAdminClient: vi.fn(),
+}));
+vi.mock("@/utils/auth/disposableEmail", () => ({
+  checkDisposableEmailStrict: vi.fn(),
 }));
 
 const signInWithPassword = vi.fn();
@@ -17,6 +25,8 @@ beforeEach(() => {
       signInWithPassword,
     },
   } as never);
+  vi.mocked(createAdminClient).mockReturnValue({} as never);
+  vi.mocked(checkDisposableEmailStrict).mockResolvedValue({ blocked: false });
 });
 
 describe("authenticateWithPassword", () => {
@@ -47,6 +57,40 @@ describe("authenticateWithPassword", () => {
       email: "student@example.com",
       password: "password",
     });
+  });
+
+  test("rejects a blocklisted email before sending credentials to Supabase", async () => {
+    vi.mocked(checkDisposableEmailStrict).mockResolvedValue({ blocked: true });
+
+    await expect(
+      authenticateWithPassword("returning@hutdot.com", "password")
+    ).rejects.toMatchObject({
+      code: "LOGIN_FAILED",
+      status: 401,
+      message: "The email or password you entered is incorrect.",
+    });
+
+    expect(checkDisposableEmailStrict).toHaveBeenCalledWith(
+      "returning@hutdot.com",
+      expect.anything()
+    );
+    expect(signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  test("does not authenticate when strict blocklist verification is unavailable", async () => {
+    vi.mocked(checkDisposableEmailStrict).mockRejectedValue(
+      new Error("blocklist unavailable")
+    );
+
+    await expect(
+      authenticateWithPassword("student@example.com", "password")
+    ).rejects.toMatchObject({
+      code: "LOGIN_FAILED",
+      status: 503,
+      message: "Login is temporarily unavailable. Please try again later.",
+    });
+
+    expect(signInWithPassword).not.toHaveBeenCalled();
   });
 
   test("maps invalid credentials to a typed login error", async () => {

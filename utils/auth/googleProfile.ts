@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/utils/supabase/admin";
-import { checkDisposableEmail } from "@/utils/auth/disposableEmail";
+import { checkDisposableEmailStrict } from "@/utils/auth/disposableEmail";
 import type { AuthUser } from "@supabase/supabase-js";
 
 export type AppAuthUser = {
@@ -238,6 +238,12 @@ export async function upsertGoogleUserProfile(
   }
 
   const admin = createAdminClient();
+  const { blocked } = await checkDisposableEmailStrict(email, admin);
+
+  if (blocked) {
+    throw new Error("DISPOSABLE_EMAIL_NOT_ALLOWED");
+  }
+
   const displayName = getDisplayName(email, profile.name);
 
   const { data: existingUser, error: lookupError } = await admin
@@ -253,14 +259,6 @@ export async function upsertGoogleUserProfile(
   const existingAuthUserId = existingUser
     ? existingUser.id
     : await findAuthUserIdByEmail(admin, email);
-
-  if (!existingUser && !existingAuthUserId) {
-    const { blocked } = await checkDisposableEmail(email, admin);
-
-    if (blocked) {
-      throw new Error("DISPOSABLE_EMAIL_NOT_ALLOWED");
-    }
-  }
 
   const id =
     existingUser?.id ??
