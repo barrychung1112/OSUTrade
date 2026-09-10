@@ -16,6 +16,7 @@
     "postcss": "^8.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "server-only": "^0.0.1",
     "swagger-ui": "^5.27.1",
     "swagger-ui-react": "^5.27.1",
     "tailwind-merge": "^3.1.0",

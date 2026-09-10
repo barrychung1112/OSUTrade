@@ -1,3 +1,4 @@
+import "server-only";
 import { auth } from "@/auth";
 import { checkDisposableEmail } from "@/utils/auth/disposableEmail";
 import { createAdminClient } from "@/utils/supabase/admin";
