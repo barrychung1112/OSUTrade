@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -5,6 +6,7 @@ import { ArrowLeft, CheckCircle2, Store } from "lucide-react";
 import { Theme } from "@radix-ui/themes";
 
 import Header from "@/app/components/Header";
+import { buildLocalizedProductMetadata } from "@/app/lib/productMetadata";
 import { shouldBypassProductImageOptimization } from "@/app/lib/productImageOptimization";
 import { getPublicProduct, localizedProduct } from "@/app/lib/publicProduct";
 import {
@@ -19,6 +21,15 @@ const fallbackImage = "https://placehold.co/1000x750/f9fafb/d73f09?text=OSUTrade
 type PageProps = {
   params: Promise<{ locale: string; id: string }>;
 };
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { locale: segment, id } = await params;
+  const locale = publicLocaleFromSegment(segment);
+  if (!locale) return {};
+
+  const product = await getPublicProduct(id);
+  return product ? buildLocalizedProductMetadata(product, locale) : {};
+}
 
 const copyByLocale = {
   en: {
@@ -64,10 +75,27 @@ export default async function LocalizedProductPage({ params }: PageProps) {
   const primaryImage = images[0] || fallbackImage;
   const quantity = product.quantity ?? 0;
   const category = product.category || "general";
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: item.name,
+    description: item.description,
+    image: images,
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "USD",
+      price: product.price,
+      availability: "https://schema.org/InStock",
+    },
+  };
 
   return (
     <Theme appearance="light" accentColor="orange" grayColor="sand">
       <Header />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
       <main className="app-page" lang={localeInfo(locale).documentLang}>
         <div className="mx-auto max-w-6xl">
           <Link href="/overview" className="app-action-secondary mb-6 h-10">

@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 
+import { localizedProduct } from "./publicProduct";
+import {
+  localeInfo,
+  productPath,
+  publicLocales,
+  type PublicLocale,
+} from "./publicLocale";
 import type { Product } from "./products";
 
 export const SITE_URL = new URL("https://osutrade.com");
@@ -69,6 +76,49 @@ export function buildProductMetadata(product: Product | null): Metadata {
     title,
     description,
     alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "OSUTrade",
+      type: "website",
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
+
+export function buildLocalizedProductMetadata(
+  product: Product,
+  locale: PublicLocale
+): Metadata {
+  const copy = localizedProduct(product, locale);
+  const title = `${copy.name} · ${formatPrice(product.price)} | OSUTrade`;
+  const description = shareDescription(copy.description);
+  const url = productPath(locale, product.id);
+  const image = firstProductImage(product);
+  const languages = Object.fromEntries(
+    publicLocales.map((alternateLocale) => [
+      localeInfo(alternateLocale).hreflang,
+      productPath(alternateLocale, product.id),
+    ])
+  );
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: url,
+      languages: {
+        ...languages,
+        "x-default": productPath("en", product.id),
+      },
+    },
     openGraph: {
       title,
       description,

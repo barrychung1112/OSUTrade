@@ -26,7 +26,7 @@ vi.mock("./ProductRequestActions", () => ({
   default: () => <button>Add to request cart</button>,
 }));
 
-import LocalizedProductPage from "./page";
+import LocalizedProductPage, { generateMetadata } from "./page";
 
 const product = {
   id: "p-1",
@@ -54,5 +54,23 @@ describe("localized product page", () => {
     expect(html).toContain("<h1");
     expect(html).toContain("書桌");
     expect(html).toContain("一張書桌");
+    expect(html).toContain('application/ld+json');
+    expect(html).toContain('"@type":"Product"');
+    expect(html).toContain('"name":"書桌"');
+  });
+
+  test("generates a localized canonical and alternate links", async () => {
+    mocks.getPublicProduct.mockResolvedValue(product);
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ locale: "zh-tw", id: "p-1" }),
+    });
+
+    expect(metadata).toMatchObject({
+      alternates: {
+        canonical: "/zh-tw/product/p-1",
+        languages: { en: "/en/product/p-1", "zh-TW": "/zh-tw/product/p-1" },
+      },
+    });
   });
 });
