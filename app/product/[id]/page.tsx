@@ -14,6 +14,7 @@ import {
   pickProductDescription,
   pickProductName,
 } from "@/app/lib/productTranslations";
+import { getMarketplaceReturnPath } from "@/app/lib/marketplaceUrlState";
 
 const fallbackImage = "https://placehold.co/1000x750/f9fafb/d73f09?text=OSUTrade";
 
@@ -31,6 +32,12 @@ export default function ProductDetailPage() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [returnTo, setReturnTo] = useState("/overview");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setReturnTo(getMarketplaceReturnPath(params.get("returnTo")));
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -103,6 +110,15 @@ export default function ProductDetailPage() {
     }
   }
 
+  function restoreMarketplaceScroll() {
+    const savedScrollY = Number(
+      window.sessionStorage.getItem(`marketplace-scroll:${returnTo}`)
+    );
+    if (!Number.isFinite(savedScrollY) || savedScrollY <= 0) return;
+
+    window.setTimeout(() => window.scrollTo(0, savedScrollY), 180);
+  }
+
   if (loading) {
     return (
       <Theme appearance="light" accentColor="orange" grayColor="sand">
@@ -125,7 +141,8 @@ export default function ProductDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900">{t("product.unavailable")}</h1>
             <p className="mt-2 text-gray-600">{error || t("product.notFound")}</p>
             <Link
-              href="/overview"
+              href={returnTo}
+              onClick={restoreMarketplaceScroll}
               className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#d73f09] px-4 py-2 text-sm font-semibold text-white"
             >
               <ArrowLeft size={16} /> {t("product.backMarketplace")}
@@ -155,7 +172,8 @@ export default function ProductDetailPage() {
       <main className="app-page">
         <div className="mx-auto max-w-6xl">
           <Link
-            href="/overview"
+            href={returnTo}
+            onClick={restoreMarketplaceScroll}
             className="app-action-secondary mb-6 h-10"
           >
             <ArrowLeft size={16} /> {t("product.backMarketplace")}

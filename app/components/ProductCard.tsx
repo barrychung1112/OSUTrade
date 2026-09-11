@@ -23,6 +23,7 @@ interface ProductCardProps {
   imageUrl: string;
   category?: string | null;
   quantity?: number | null;
+  returnTo?: string;
 }
 
 const currency = (value: number) =>
@@ -41,6 +42,7 @@ export default function ProductCard({
   imageUrl,
   category,
   quantity,
+  returnTo,
 }: ProductCardProps) {
   const { t } = useI18n();
   const [adding, setAdding] = useState(false);
@@ -83,10 +85,26 @@ export default function ProductCard({
   }
 
   const categoryLabel = t(`common.category.${category || "general"}` as any);
+  const productHref = returnTo
+    ? `/product/${productId}?returnTo=${encodeURIComponent(returnTo)}`
+    : `/product/${productId}`;
+
+  function saveMarketplaceScroll() {
+    if (!returnTo) return;
+    window.sessionStorage.setItem(
+      `marketplace-scroll:${returnTo}`,
+      String(window.scrollY)
+    );
+  }
 
   return (
     <Card className="app-card group flex min-h-[430px] flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md">
-      <Link href={`/product/${productId}`} className="relative block aspect-[4/3] w-full bg-gray-100">
+      <Link
+        href={productHref}
+        prefetch={false}
+        onClick={saveMarketplaceScroll}
+        className="relative block aspect-[4/3] w-full bg-gray-100"
+      >
         <Image
           src={imageUrl}
           alt={displayName || name}
@@ -103,7 +121,12 @@ export default function ProductCard({
         </span>
       </Link>
       <div className="flex flex-1 flex-col p-4">
-        <Link href={`/product/${productId}`} className="min-w-0">
+        <Link
+          href={productHref}
+          prefetch={false}
+          onClick={saveMarketplaceScroll}
+          className="min-w-0"
+        >
           <Heading size="4" weight="bold" className="line-clamp-2 min-h-[48px] text-gray-950 transition hover:text-[#d73f09]">
             {displayName || name}
           </Heading>
@@ -142,7 +165,9 @@ export default function ProductCard({
 
         <div className="mt-auto grid gap-2 pt-4">
           <Link
-            href={`/product/${productId}`}
+            href={productHref}
+            prefetch={false}
+            onClick={saveMarketplaceScroll}
             className="app-action-secondary w-full"
           >
             <MagnifyingGlassIcon /> {t("product.details")}
