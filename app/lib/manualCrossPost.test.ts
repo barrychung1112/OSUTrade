@@ -73,7 +73,7 @@ describe("manual cross-post flow helpers", () => {
       clientId: "manual-1",
       productId: "product / 1",
       name: "Desk Lamp",
-      productUrl: "https://osutrade.example/product/product%20%2F%201",
+      productUrl: "https://osutrade.example/en/product/product%20%2F%201",
     });
   });
 

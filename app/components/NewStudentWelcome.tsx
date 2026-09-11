@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Dialog } from "@radix-ui/themes";
 import { ArrowRightIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { LanguageToggle, useI18n } from "../i18n";
+import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
 import { newStudentCopy } from "./newStudentCopy";
 import styles from "./NewStudentWelcome.module.css";
 
@@ -20,6 +21,13 @@ export default function NewStudentWelcome() {
   }, []);
 
   const items = housing === "dorm" ? copy.dormItems : copy.apartmentItems;
+  const localizeProductLink = (link: string | undefined) => {
+    if (!link) return undefined;
+    const match = link.match(/^\/product\/(.+)$/);
+    return match
+      ? productPath(publicLocaleFromClientLocale(locale), match[1])
+      : link;
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -78,7 +86,7 @@ export default function NewStudentWelcome() {
                     <h3>{item.title}</h3>
                     <p>{item.detail}</p>
                     {item.link && (
-                      <Link href={item.link} onClick={() => setOpen(false)} className={styles.productLink}>
+                      <Link href={localizeProductLink(item.link)!} onClick={() => setOpen(false)} className={styles.productLink}>
                         {item.linkLabel}<ArrowRightIcon />
                       </Link>
                     )}
@@ -90,7 +98,7 @@ export default function NewStudentWelcome() {
               <h3>{copy.recommended}</h3>
               <div>
                 {copy.recommendations.map((item) => (
-                  <Link key={item.link} href={item.link} onClick={() => setOpen(false)}>
+                  <Link key={item.link} href={localizeProductLink(item.link)!} onClick={() => setOpen(false)}>
                     {item.label}<ArrowRightIcon aria-hidden="true" />
                   </Link>
                 ))}

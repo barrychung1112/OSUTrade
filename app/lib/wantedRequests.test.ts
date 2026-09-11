@@ -134,7 +134,7 @@ describe("wanted request email", () => {
       wantedQuery: "monitor under $40",
       productName: "Acer Computer Monitor",
       productPrice: 30,
-      productUrl: "https://osutrade.com/product/product-1",
+      productUrl: "https://osutrade.com/en/product/product-1",
     });
 
     expect(email.subject).toBe(
@@ -143,7 +143,7 @@ describe("wanted request email", () => {
     expect(email.text).toContain("Wanted item: monitor under $40");
     expect(email.text).toContain("Matched listing: Acer Computer Monitor");
     expect(email.text).toContain("Price: $30.00");
-    expect(email.text).toContain("https://osutrade.com/product/product-1");
+    expect(email.text).toContain("https://osutrade.com/en/product/product-1");
   });
 });
 

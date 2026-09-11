@@ -15,6 +15,7 @@ import {
 import LoginModal from "./LoginModal";
 import NotificationBell from "./NotificationBell";
 import { LanguageToggle, useI18n } from "../i18n";
+import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
 
 type HeaderUser = {
   name?: string | null;
@@ -153,6 +154,18 @@ export default function Header() {
     router.refresh();
   }
 
+  function handleLocaleChange(locale: "en" | "zh" | "zhCn") {
+    const productMatch = pathname.match(/^\/(?:en|zh-tw|zh-cn)\/product\/(.+)$/);
+    if (!productMatch) return;
+
+    router.push(
+      productPath(
+        publicLocaleFromClientLocale(locale),
+        decodeURIComponent(productMatch[1])
+      )
+    );
+  }
+
   function renderAuthControl() {
     if (status === "loading") return null;
     if (!user) return <LoginModal />;
@@ -197,7 +210,7 @@ export default function Header() {
         </nav>
 
         <div className="flex min-w-max shrink-0 items-center justify-end gap-2">
-          <LanguageToggle />
+          <LanguageToggle onLocaleChange={handleLocaleChange} />
           {user && <NotificationBell />}
           <div className="hidden sm:block lg:hidden">{renderAuthControl()}</div>
           <button

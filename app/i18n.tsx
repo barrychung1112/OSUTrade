@@ -8,12 +8,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
-
-import {
-  productPath,
-  publicLocaleFromClientLocale,
-} from "./lib/publicLocale";
 
 const dictionaries = {
   en: {
@@ -1437,23 +1431,16 @@ export function useI18n() {
   return context;
 }
 
-export function LanguageToggle() {
+export function LanguageToggle({
+  onLocaleChange,
+}: {
+  onLocaleChange?: (locale: Locale) => void;
+}) {
   const { locale, setLocale, t } = useI18n();
-  const pathname = usePathname();
-  const router = useRouter();
-  const productMatch = pathname.match(/^\/(?:en|zh-tw|zh-cn)\/product\/(.+)$/);
 
   function changeLocale(nextLocale: Locale) {
     setLocale(nextLocale);
-
-    if (productMatch) {
-      router.push(
-        productPath(
-          publicLocaleFromClientLocale(nextLocale),
-          decodeURIComponent(productMatch[1])
-        )
-      );
-    }
+    onLocaleChange?.(nextLocale);
   }
 
   return (
