@@ -8,6 +8,10 @@ import { Card, Text, Heading, Button } from "@radix-ui/themes";
 import { MagnifyingGlassIcon, PlusIcon } from "@radix-ui/react-icons";
 import { useI18n } from "../i18n";
 import { shouldBypassProductImageOptimization } from "../lib/productImageOptimization";
+import {
+  productPath,
+  publicLocaleFromClientLocale,
+} from "../lib/publicLocale";
 import type { ProductNameTranslations } from "../lib/productTranslations";
 
 interface ProductCardProps {
@@ -44,7 +48,7 @@ export default function ProductCard({
   quantity,
   returnTo,
 }: ProductCardProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [adding, setAdding] = useState(false);
   const [feedback, setFeedback] = useState<{
     tone: "success" | "error";
@@ -85,9 +89,13 @@ export default function ProductCard({
   }
 
   const categoryLabel = t(`common.category.${category || "general"}` as any);
+  const localizedProductPath = productPath(
+    publicLocaleFromClientLocale(locale),
+    productId
+  );
   const productHref = returnTo
-    ? `/product/${productId}?returnTo=${encodeURIComponent(returnTo)}`
-    : `/product/${productId}`;
+    ? `${localizedProductPath}?returnTo=${encodeURIComponent(returnTo)}`
+    : localizedProductPath;
 
   function saveMarketplaceScroll() {
     if (!returnTo) return;

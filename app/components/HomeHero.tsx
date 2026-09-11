@@ -9,6 +9,7 @@ import { useI18n } from "../i18n";
 import { selectRandomHomeHeroProducts } from "../lib/homeHeroProducts";
 import { shouldBypassProductImageOptimization } from "../lib/productImageOptimization";
 import { pickProductName } from "../lib/productTranslations";
+import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
 import { fetchProducts, type Product } from "../lib/products";
 
 const fallbackTiles = [
@@ -162,7 +163,7 @@ export default function HomeHero({
           return liveProduct ? (
             <Link
               key={liveProduct.id}
-              href={`/product/${liveProduct.id}`}
+              href={productPath(publicLocaleFromClientLocale(locale), liveProduct.id)}
               aria-label={`${name}, $${Number(liveProduct.price).toFixed(2)}`}
             >
               {tile}

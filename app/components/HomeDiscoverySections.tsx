@@ -10,6 +10,7 @@ import {
   HOME_RECENT_PRODUCTS_URL,
 } from "../lib/homeDiscoveryProducts";
 import { pickProductName } from "../lib/productTranslations";
+import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
 import type { Product, ProductListResponse } from "../lib/products";
 
 type FeedState = {
@@ -68,7 +69,7 @@ function DiscoverySection({
           {state.products.map((product) => {
             const name = pickProductName(product.name, product.nameTranslations, locale);
             return (
-              <Link key={product.id} href={`/product/${product.id}`} className="home-discovery-card">
+              <Link key={product.id} href={productPath(publicLocaleFromClientLocale(locale), product.id)} className="home-discovery-card">
                 <span className="home-discovery-image">
                   <Image
                     src={product.imageUrl || "/images/Bike_0.jpg"}

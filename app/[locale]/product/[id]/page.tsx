@@ -13,6 +13,7 @@ import {
   localeInfo,
   publicLocaleFromSegment,
 } from "@/app/lib/publicLocale";
+import { getMarketplaceReturnPath } from "@/app/lib/marketplaceUrlState";
 
 import ProductRequestActions from "./ProductRequestActions";
 
@@ -20,6 +21,7 @@ const fallbackImage = "https://placehold.co/1000x750/f9fafb/d73f09?text=OSUTrade
 
 type PageProps = {
   params: Promise<{ locale: string; id: string }>;
+  searchParams?: Promise<{ returnTo?: string | string[] }>;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -59,8 +61,9 @@ function displayPrice(price: number, locale: string) {
   }).format(price);
 }
 
-export default async function LocalizedProductPage({ params }: PageProps) {
+export default async function LocalizedProductPage({ params, searchParams }: PageProps) {
   const { locale: segment, id } = await params;
+  const query = await searchParams;
   const locale = publicLocaleFromSegment(segment);
   if (!locale) notFound();
 
@@ -68,6 +71,9 @@ export default async function LocalizedProductPage({ params }: PageProps) {
   if (!product) notFound();
 
   const item = localizedProduct(product, locale);
+  const returnTo = getMarketplaceReturnPath(
+    Array.isArray(query?.returnTo) ? query.returnTo[0] ?? null : query?.returnTo ?? null
+  );
   const pageCopy = copyByLocale[locale];
   const images = product.imageUrls?.length
     ? product.imageUrls
@@ -98,7 +104,7 @@ export default async function LocalizedProductPage({ params }: PageProps) {
       />
       <main className="app-page" lang={localeInfo(locale).documentLang}>
         <div className="mx-auto max-w-6xl">
-          <Link href="/overview" className="app-action-secondary mb-6 h-10">
+          <Link href={returnTo} className="app-action-secondary mb-6 h-10">
             <ArrowLeft size={16} /> {pageCopy.back}
           </Link>
 
