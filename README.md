@@ -25,7 +25,7 @@ The product focuses on four things:
 | --- | --- |
 | Public marketplace | Browse `/overview` and product detail pages without logging in. Login is required only for sending requests, listing items, seller tools, and personal request data. |
 | Product listings | Create listings with name, description, category, price, quantity, status, and 1 to 3 photos. |
-| Listing localization | Product names and descriptions can be translated into English, Traditional Chinese, and Simplified Chinese, then displayed according to the selected language. |
+| Listing localization and indexing | Every eligible product has separately requestable English, Traditional Chinese, and Simplified Chinese URLs (`/en/product/:id`, `/zh-tw/product/:id`, `/zh-cn/product/:id`). Each page is server-rendered, self-canonical, and connected with `hreflang`; unavailable or out-of-stock listings are excluded from the sitemap. |
 | AI bulk listing | Upload photos, generate AI listing drafts, edit fields, select drafts, and publish multiple listings from the Sell page. |
 | AI pricing advisor | Suggest a secondhand price using OSUTrade comparable listings, item details, and new-price context. |
 | Cross-platform copy | Generate social post copy for external promotion from listing drafts. |
