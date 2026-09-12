@@ -79,22 +79,28 @@ export async function getPublicProduct(id: string | number) {
   )();
 }
 
+async function queryPublicProducts() {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("status", "available")
+    .gt("quantity", 0);
+
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter(isPublicProduct)
+    .map((product) => toProductRecord(product as ProductRow));
+}
+
+export async function listLivePublicProducts() {
+  return queryPublicProducts();
+}
+
 export async function listPublicProducts() {
   return unstable_cache(
-    async () => {
-      const supabase = createPublicClient();
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("status", "available")
-        .gt("quantity", 0);
-
-      if (error) throw error;
-
-      return (data ?? [])
-        .filter(isPublicProduct)
-        .map((product) => toProductRecord(product as ProductRow));
-    },
+    queryPublicProducts,
     ["public-products"],
     { tags: [publicProductsCacheTag], revalidate: 300 }
   )();
