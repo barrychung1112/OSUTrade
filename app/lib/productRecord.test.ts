@@ -15,6 +15,15 @@ const baseRow: ProductRow = {
 };
 
 describe("product record normalization", () => {
+  it("preserves the creation timestamp used by marketplace newest-first sorting", () => {
+    expect(
+      toProductRecord({
+        ...baseRow,
+        created_at: "2026-09-12T12:00:00.000Z",
+      })
+    ).toMatchObject({ createdAt: "2026-09-12T12:00:00.000Z" });
+  });
+
   it("uses effective discount pricing and preserves image order", () => {
     expect(
       toProductRecord({
