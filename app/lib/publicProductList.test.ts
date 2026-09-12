@@ -68,6 +68,13 @@ describe("public product list parameters", () => {
     });
   });
 
+  test("uses the existing marketplace q parameter for server-rendered search", () => {
+    expect(parsePublicProductListParams({ q: "desk lamp" })).toMatchObject({
+      limit: 20,
+      name: "desk lamp",
+    });
+  });
+
   test("filters, sorts, and pages public products", () => {
     expect(
       getPublicProductList(products, {

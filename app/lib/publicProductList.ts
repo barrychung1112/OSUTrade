@@ -2,7 +2,7 @@ import { isClearanceDiscoveryProduct } from "./productClearance";
 import type { Product, ProductListResponse } from "./products";
 
 const categories = new Set(["electronics", "clothing", "books", "home", "general"]);
-const defaultLimit = 12;
+const defaultLimit = 20;
 const maximumLimit = 48;
 
 export type PublicProductListParams = {
@@ -28,7 +28,9 @@ function positiveInteger(value: string | undefined, fallback: number, maximum: n
 }
 
 export function parsePublicProductListParams(searchParams: SearchParams): PublicProductListParams {
-  const name = firstValue(searchParams.name)?.trim() || undefined;
+  const name =
+    (firstValue(searchParams.q) ?? firstValue(searchParams.name))?.trim() ||
+    undefined;
   const categoryValue = firstValue(searchParams.category)?.trim();
   const sortValue = firstValue(searchParams.sort);
   const discounted =

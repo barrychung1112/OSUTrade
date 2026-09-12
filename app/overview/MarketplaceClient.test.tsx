@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const productState = vi.hoisted(() => ({
   value: {
     products: [], loading: false, loadingMore: false, error: null,
-    total: 0, page: 1, limit: 12, refetch: vi.fn(), loadMore: vi.fn(), hasMore: false,
+    total: 0, page: 1, limit: 20, refetch: vi.fn(), hasMore: false,
   },
 }));
 
@@ -23,11 +23,16 @@ import MarketplaceClient from "./MarketplaceClient";
 import { I18nProvider } from "../i18n";
 
 describe("MarketplaceClient", () => {
+  beforeEach(() => {
+    vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+  });
+
   afterEach(() => {
+    vi.restoreAllMocks();
     cleanup();
     productState.value = {
       products: [], loading: false, loadingMore: false, error: null,
-      total: 0, page: 1, limit: 12, refetch: vi.fn(), loadMore: vi.fn(), hasMore: false,
+      total: 0, page: 1, limit: 20, refetch: vi.fn(), hasMore: false,
     };
     window.history.replaceState({}, "", "/overview");
   });
@@ -36,9 +41,9 @@ describe("MarketplaceClient", () => {
     render(
       <I18nProvider>
         <MarketplaceClient
-          initialResponse={{ data: [], total: 0, page: 1, limit: 12 }}
+          initialResponse={{ data: [], total: 0, page: 1, limit: 20 }}
           initialParams={{
-            page: 1, limit: 12, name: undefined, category: undefined,
+            page: 1, limit: 20, name: undefined, category: undefined,
             sort: undefined, discounted: false, clearance: false,
           }}
         />
@@ -57,9 +62,9 @@ describe("MarketplaceClient", () => {
     render(
       <I18nProvider>
         <MarketplaceClient
-          initialResponse={{ data: [], total: 0, page: 2, limit: 12 }}
+          initialResponse={{ data: [], total: 0, page: 2, limit: 20 }}
           initialParams={{
-            page: 2, limit: 12, name: undefined, category: undefined,
+            page: 2, limit: 20, name: undefined, category: undefined,
             sort: undefined, discounted: false, clearance: false,
           }}
         />
@@ -72,7 +77,7 @@ describe("MarketplaceClient", () => {
     await waitFor(() => {
       const url = new URL(window.location.href);
       expect(url.searchParams.get("page")).toBeNull();
-      expect(url.searchParams.get("name")).toBe("desk");
+      expect(url.searchParams.get("q")).toBe("desk");
     });
   });
 });

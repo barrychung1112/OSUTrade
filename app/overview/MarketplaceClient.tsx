@@ -26,7 +26,6 @@ import type { PublicProductListParams } from "../lib/publicProductList";
 import type { ProductListResponse } from "../lib/products";
 
 const categories = ["all", "electronics", "clothing", "books", "home", "general"];
-const pageSize = 20;
 
 type NavigateOptions = {
   replace?: boolean;
@@ -56,7 +55,7 @@ function MarketplaceContent({
     hasMore,
   } = useProducts({
     page: urlState.page,
-    limit: pageSize,
+    limit: initialResponse.limit,
     name: urlState.name,
     category: urlState.category === "all" ? undefined : urlState.category,
     sort: urlState.sort === "asc" || urlState.sort === "desc" ? urlState.sort : undefined,
