@@ -1,5 +1,5 @@
 import MarketplaceClient from "./MarketplaceClient";
-import { listPublicProducts } from "../lib/publicProduct";
+import { listLivePublicProducts } from "../lib/publicProduct";
 import {
   getPublicProductList,
   parsePublicProductListParams,
@@ -13,7 +13,7 @@ type PageProps = {
 
 export default async function ProductListPage({ searchParams }: PageProps) {
   const params = parsePublicProductListParams(await searchParams);
-  const products = await listPublicProducts();
+  const products = await listLivePublicProducts();
   const initialResponse = getPublicProductList(products, params);
 
   return <MarketplaceClient initialParams={params} initialResponse={initialResponse} />;
