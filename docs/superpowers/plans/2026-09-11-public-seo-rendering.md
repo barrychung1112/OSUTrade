@@ -117,3 +117,20 @@ The localized layout validates locale segments and sets the route language wrapp
 - [ ] **Step 2: Run all focused SEO tests, then `npm test -- --run` and record the known `server-only` Vitest resolution suites separately.**
 - [ ] **Step 3: Run `npm run build`, then inspect a local production response for marketplace H1, product H1, sitemap, robots, and a private-page robots directive.**
 - [ ] **Step 4: Commit `docs: document public SEO rendering`.**
+
+## Execution record
+
+- [x] Task 1 completed in `0274c42`: public reads use a cookie-free client,
+  collection and per-product tags, and create/seller mutations invalidate
+  localized product routes and the sitemap.
+- [x] Task 2 completed in `9fd5ed4`: `/overview` has a server page that
+  supplies normalized first-page results to a client interaction boundary.
+- [x] Task 3 completed in `270a03a`: the home page supplies its listing
+  discovery and market-signal components from one server-side public query.
+- [x] Task 4 completed in `2454146`: private route layouts provide shared
+  `noindex, nofollow` metadata. Localized product content keeps its explicit
+  route URL and its existing content-level `lang` attribute; the root HTML
+  element remains static to avoid introducing request-bound locale state.
+- [x] Public discovery pages and the sitemap are explicitly request-time
+  rendered in `f46b430`, so local builds do not require production Supabase
+  credentials and mutable inventory is never baked into a deployment.
