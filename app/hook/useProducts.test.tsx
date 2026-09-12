@@ -41,4 +41,23 @@ describe("useProducts", () => {
     );
     expect(result.current.page).toBe(3);
   });
+
+  test("uses a server-provided listing page without fetching again on mount", () => {
+    const { result } = renderHook(() =>
+      useProducts(
+        { page: 2, limit: 20 },
+        {
+          data: [{ id: "product-21", name: "Desk", price: 10 }],
+          total: 82,
+          page: 2,
+          limit: 20,
+        }
+      )
+    );
+
+    expect(result.current.products).toEqual([
+      expect.objectContaining({ id: "product-21" }),
+    ]);
+    expect(mocks.fetchProducts).not.toHaveBeenCalled();
+  });
 });
