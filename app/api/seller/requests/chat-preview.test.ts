@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  auth: vi.fn(),
   createAdminClient: vi.fn(),
+  requireActiveUser: vi.fn(),
 }));
 
-vi.mock("@/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/utils/auth/requireActiveUser", () => ({
+  requireActiveUser: mocks.requireActiveUser,
+}));
 vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
 }));
@@ -33,7 +35,7 @@ describe("GET /api/seller/requests chat preview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.TRADE_MESSAGES_ENABLED = "true";
-    mocks.auth.mockResolvedValue({ user: { id: "seller-1" } });
+    mocks.requireActiveUser.mockResolvedValue({ user: { id: "seller-1" } });
   });
 
   afterEach(() => {
