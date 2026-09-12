@@ -6,9 +6,13 @@ vi.mock("@/app/lib/publicProduct", () => ({
   listPublicProducts: mocks.listPublicProducts,
 }));
 
-import sitemap from "./sitemap";
+import sitemap, { dynamic } from "./sitemap";
 
 describe("sitemap", () => {
+  test("reads current public inventory at request time", () => {
+    expect(dynamic).toBe("force-dynamic");
+  });
+
   test("publishes exactly three localized URLs per public product", async () => {
     mocks.listPublicProducts.mockResolvedValue([
       { id: "p-1", status: "available", quantity: 1 },

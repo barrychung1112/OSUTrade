@@ -1,6 +1,8 @@
 import HomePageClient from "./HomePageClient";
 import { listPublicProducts } from "./lib/publicProduct";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   try {
     const products = await listPublicProducts();
