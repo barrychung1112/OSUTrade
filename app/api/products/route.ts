@@ -14,6 +14,7 @@ import { buildProductNameSearchFilter } from "@/app/lib/productSearch";
 import { applyProductListSort } from "@/app/lib/productSort";
 import { getProductPricing } from "@/app/lib/productDiscount";
 import { applyProductClearanceFilter } from "@/app/lib/productClearance";
+import { revalidatePublicProduct } from "@/app/lib/publicProductCache";
 
 type ProductRow = {
   product_id: string | number;
@@ -443,6 +444,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     if (data) {
+      revalidatePublicProduct(data.product_id);
       after(() =>
         safeNotifyMatchingWantedRequests({ supabase, product: data })
       );

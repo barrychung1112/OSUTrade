@@ -1,5 +1,8 @@
-import { createClient } from "@/utils/supabase/server";
+import { unstable_cache } from "next/cache";
 
+import { createPublicClient } from "@/utils/supabase/public";
+
+import { productCacheTag, publicProductsCacheTag } from "./publicProductCache";
 import { toProductRecord, type ProductRow } from "./productRecord";
 import type { Product } from "./products";
 import type { PublicLocale } from "./publicLocale";
@@ -56,30 +59,43 @@ export function localizedProduct(product: LocalizableProduct, locale: PublicLoca
 }
 
 export async function getPublicProduct(id: string | number) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("product_id", id)
-    .maybeSingle();
+  const productId = String(id);
+  return unstable_cache(
+    async () => {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("product_id", productId)
+        .maybeSingle();
 
-  if (error) throw error;
-  if (!data || !isPublicProduct(data)) return null;
+      if (error) throw error;
+      if (!data || !isPublicProduct(data)) return null;
 
-  return toProductRecord(data as ProductRow);
+      return toProductRecord(data as ProductRow);
+    },
+    ["public-product", productId],
+    { tags: [publicProductsCacheTag, productCacheTag(productId)], revalidate: 300 }
+  )();
 }
 
 export async function listPublicProducts() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("status", "available")
-    .gt("quantity", 0);
+  return unstable_cache(
+    async () => {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("status", "available")
+        .gt("quantity", 0);
 
-  if (error) throw error;
+      if (error) throw error;
 
-  return (data ?? [])
-    .filter(isPublicProduct)
-    .map((product) => toProductRecord(product as ProductRow));
+      return (data ?? [])
+        .filter(isPublicProduct)
+        .map((product) => toProductRecord(product as ProductRow));
+    },
+    ["public-products"],
+    { tags: [publicProductsCacheTag], revalidate: 300 }
+  )();
 }

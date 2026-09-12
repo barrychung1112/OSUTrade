@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   translateProductName: vi.fn(),
   translateProductDescription: vi.fn(),
   notifyMatchingWantedRequests: vi.fn(),
+  revalidatePublicProduct: vi.fn(),
 }));
 
 vi.mock("next/server", async (importOriginal) => {
@@ -42,6 +43,9 @@ vi.mock("@/app/lib/productTranslations", () => ({
 }));
 vi.mock("@/app/lib/wantedRequests", () => ({
   notifyMatchingWantedRequests: mocks.notifyMatchingWantedRequests,
+}));
+vi.mock("@/app/lib/publicProductCache", () => ({
+  revalidatePublicProduct: mocks.revalidatePublicProduct,
 }));
 
 import { POST } from "./route";
@@ -185,6 +189,7 @@ describe("product create idempotency", () => {
         name: "Desk lamp",
       }),
     });
+    expect(mocks.revalidatePublicProduct).toHaveBeenCalledWith("product-1");
   });
 
   test("still creates the product when immediate wanted matching fails", async () => {
