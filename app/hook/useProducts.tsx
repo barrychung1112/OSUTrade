@@ -5,19 +5,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchProducts,
   type Product,
+  type ProductListResponse,
   type ProductListOptions,
 } from "../lib/products";
 
 type UseProductsOptions = Omit<ProductListOptions, "signal">;
 
-export function useProducts(options: UseProductsOptions = {}) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+export function useProducts(
+  options: UseProductsOptions = {},
+  initialResponse?: ProductListResponse
+) {
+  const [products, setProducts] = useState<Product[]>(() => initialResponse?.data ?? []);
+  const [loading, setLoading] = useState<boolean>(!initialResponse);
   const [error, setError] = useState<Error | null>(null);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(options.page ?? 1);
-  const [limit, setLimit] = useState(options.limit ?? 12);
+  const [total, setTotal] = useState(initialResponse?.total ?? 0);
+  const [page, setPage] = useState(initialResponse?.page ?? options.page ?? 1);
+  const [limit, setLimit] = useState(initialResponse?.limit ?? options.limit ?? 12);
   const abortRef = useRef<AbortController | null>(null);
+  const useInitialResponse = useRef(Boolean(initialResponse));
 
   const loadPage = useCallback(async () => {
     abortRef.current?.abort();
@@ -60,6 +65,11 @@ export function useProducts(options: UseProductsOptions = {}) {
   const refetch = useCallback(() => loadPage(), [loadPage]);
 
   useEffect(() => {
+    if (useInitialResponse.current) {
+      useInitialResponse.current = false;
+      return;
+    }
+
     refetch();
     return () => {
       abortRef.current?.abort();

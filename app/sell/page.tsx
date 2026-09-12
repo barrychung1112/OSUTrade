@@ -41,6 +41,7 @@ import {
   parseCrossPostPreviewResponse,
 } from "../lib/manualCrossPost";
 import { useI18n } from "../i18n";
+import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
 
 const categories = ["general", "electronics", "clothing", "books", "home"];
 const maxProductImages = 3;
@@ -195,11 +196,11 @@ export default function SellPage() {
     if (listingMode !== "manual" || manualCrossPostStage !== "idle") return;
 
     const timer = window.setTimeout(() => {
-      router.push(`/product/${successProduct.id}`);
+      router.push(productPath(publicLocaleFromClientLocale(locale), successProduct.id));
     }, 1800);
 
     return () => window.clearTimeout(timer);
-  }, [listingMode, manualCrossPostStage, router, successProduct]);
+  }, [listingMode, locale, manualCrossPostStage, router, successProduct]);
 
   useEffect(() => {
     if (bulkImageFiles.length === 0) {
@@ -456,7 +457,7 @@ export default function SellPage() {
 
   function goToProductNow() {
     if (successProduct) {
-      router.push(`/product/${successProduct.id}`);
+      router.push(productPath(publicLocaleFromClientLocale(locale), successProduct.id));
     }
   }
 

@@ -144,11 +144,11 @@ describe("seller batch cross-post route", () => {
     expect(mocks.generateCrossPostCopies).toHaveBeenCalledWith([
       {
         product: expect.objectContaining({ id: "p-2", name: "Mini fridge" }),
-        productUrl: "https://osutrade.example/product/p-2",
+        productUrl: "https://osutrade.example/en/product/p-2",
       },
       {
         product: expect.objectContaining({ id: "p-1", name: "Desk lamp" }),
-        productUrl: "https://osutrade.example/product/p-1",
+        productUrl: "https://osutrade.example/en/product/p-1",
       },
     ]);
 
@@ -174,7 +174,7 @@ describe("seller batch cross-post route", () => {
     expect(mocks.generateCrossPostCopies).toHaveBeenCalledWith([
       {
         product: expect.objectContaining({ id: "p-1", price: 1 }),
-        productUrl: "https://osutrade.example/product/p-1",
+        productUrl: "https://osutrade.example/en/product/p-1",
       },
     ]);
   });

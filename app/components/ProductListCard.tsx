@@ -8,6 +8,7 @@ import { ArrowRight, BadgePercent } from "lucide-react";
 import { useI18n } from "../i18n";
 import { HOME_SALE_PRODUCTS_URL } from "../lib/homeSaleProducts";
 import { pickProductName } from "../lib/productTranslations";
+import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
 import type { ProductListResponse } from "../lib/products";
 
 type Listing = ProductListResponse["data"][number];
@@ -79,7 +80,7 @@ export default function ProductListCard() {
               whileHover={reduceMotion ? undefined : { y: -5 }}
               className="home-sale-card"
             >
-              <Link href={`/product/${product.id}`} className="home-sale-image">
+              <Link href={productPath(publicLocaleFromClientLocale(locale), product.id)} className="home-sale-image">
                 <Image
                   src={product.imageUrl || "/images/Bike_0.jpg"}
                   alt={pickProductName(product.name, product.nameTranslations, locale)}
@@ -92,7 +93,7 @@ export default function ProductListCard() {
                 </span>
               </Link>
               <div className="home-sale-content">
-                <Link href={`/product/${product.id}`}>
+                <Link href={productPath(publicLocaleFromClientLocale(locale), product.id)}>
                   <h3>{pickProductName(product.name, product.nameTranslations, locale)}</h3>
                 </Link>
                 <div className="home-sale-price">

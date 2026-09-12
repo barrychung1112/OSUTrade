@@ -12,6 +12,7 @@ import {
   type CrossPostPreviewItem,
 } from "./crossPostPreview";
 import type { Product } from "./products";
+import { productPath } from "./publicLocale";
 
 type ManualListingFacts = {
   name: string;
@@ -94,6 +95,6 @@ export function buildPublishedCrossPostProduct(
     clientId,
     productId,
     name: product.name,
-    productUrl: `${origin.replace(/\/$/, "")}/product/${encodeURIComponent(productId)}`,
+    productUrl: `${origin.replace(/\/$/, "")}${productPath("en", productId)}`,
   };
 }

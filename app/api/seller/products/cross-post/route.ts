@@ -4,6 +4,7 @@ import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessRespons
 import { createAdminClient } from "@/utils/supabase/admin";
 import { generateCrossPostCopies } from "@/app/lib/crossPostCopy";
 import { getProductPricing } from "@/app/lib/productDiscount";
+import { productPath } from "@/app/lib/publicLocale";
 
 type ProductRow = {
   product_id: string | number;
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
       const row = rowsById.get(id)!;
       return {
         product: toProduct(row),
-        productUrl: `${request.nextUrl.origin}/product/${encodeURIComponent(id)}`,
+        productUrl: `${request.nextUrl.origin}${productPath("en", id)}`,
       };
     });
 

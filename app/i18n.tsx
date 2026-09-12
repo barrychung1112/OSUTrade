@@ -1431,8 +1431,17 @@ export function useI18n() {
   return context;
 }
 
-export function LanguageToggle() {
+export function LanguageToggle({
+  onLocaleChange,
+}: {
+  onLocaleChange?: (locale: Locale) => void;
+}) {
   const { locale, setLocale, t } = useI18n();
+
+  function changeLocale(nextLocale: Locale) {
+    setLocale(nextLocale);
+    onLocaleChange?.(nextLocale);
+  }
 
   return (
     <div
@@ -1441,7 +1450,7 @@ export function LanguageToggle() {
     >
       <button
         type="button"
-        onClick={() => setLocale("en")}
+        onClick={() => changeLocale("en")}
         className={`min-h-10 min-w-11 rounded px-2 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 ${
           locale === "en" ? "bg-[#d73f09] text-white" : "text-gray-700"
         }`}
@@ -1450,7 +1459,7 @@ export function LanguageToggle() {
       </button>
       <button
         type="button"
-        onClick={() => setLocale("zh")}
+        onClick={() => changeLocale("zh")}
         className={`min-h-10 min-w-12 rounded px-2 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 ${
           locale === "zh" ? "bg-[#d73f09] text-white" : "text-gray-700"
         }`}
@@ -1459,7 +1468,7 @@ export function LanguageToggle() {
       </button>
       <button
         type="button"
-        onClick={() => setLocale("zhCn")}
+        onClick={() => changeLocale("zhCn")}
         className={`min-h-10 min-w-12 rounded px-2 py-1 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 ${
           locale === "zhCn" ? "bg-[#d73f09] text-white" : "text-gray-700"
         }`}

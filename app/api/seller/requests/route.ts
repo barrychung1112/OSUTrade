@@ -7,6 +7,7 @@ import { getAcceptedRequestProductStatus } from "@/app/lib/sellerRequestAcceptan
 import { buildAcceptedRequestCancellation } from "@/app/lib/sellerRequestCancellation";
 import { notifyTradeEvent } from "@/app/lib/notifications";
 import { getProductPricing } from "@/app/lib/productDiscount";
+import { revalidatePublicProduct } from "@/app/lib/publicProductCache";
 import {
   getTradeMessageAccess,
   isTradeMessagesEnabled,
@@ -214,6 +215,8 @@ async function runAtomicAction({
       recipientEmail: await safeGetEmailByUserId(declinedRequest.buyer_id),
     });
   }
+
+  revalidatePublicProduct(product.product_id);
 
   return NextResponse.json({
     request: toSellerRequest(request, product, buyerEmail),
@@ -737,6 +740,10 @@ export async function PATCH(request: Request) {
         },
         recipientEmail: buyerEmail,
       });
+    }
+
+    if (responseProduct) {
+      revalidatePublicProduct(responseProduct.product_id);
     }
 
     return NextResponse.json({

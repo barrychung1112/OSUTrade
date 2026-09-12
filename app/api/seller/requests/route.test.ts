@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   createAdminClient: vi.fn(),
   notifyTradeEvent: vi.fn(),
+  revalidatePublicProduct: vi.fn(),
   requireActiveUser: vi.fn(),
   AccountAccessError: class AccountAccessError extends Error {
     constructor(public readonly status: number, message: string) {
@@ -22,6 +23,9 @@ vi.mock("@/utils/supabase/admin", () => ({
 }));
 vi.mock("@/app/lib/notifications", () => ({
   notifyTradeEvent: mocks.notifyTradeEvent,
+}));
+vi.mock("@/app/lib/publicProductCache", () => ({
+  revalidatePublicProduct: mocks.revalidatePublicProduct,
 }));
 
 import { PATCH } from "./route";
@@ -139,6 +143,7 @@ describe("seller accepted request cancellation", () => {
         recipientEmail: "buyer@example.edu",
       })
     );
+    expect(mocks.revalidatePublicProduct).toHaveBeenCalledWith("product-1");
     expect(payload.request.status).toBe("cancelled");
   });
 
@@ -274,6 +279,7 @@ describe("atomic seller request actions", () => {
         input: expect.objectContaining({ type: "request_completed" }),
       })
     );
+    expect(mocks.revalidatePublicProduct).toHaveBeenCalledWith("product-1");
   });
 
   test("maps an invalid atomic transition to a conflict", async () => {

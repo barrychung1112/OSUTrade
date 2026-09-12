@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SHARE_DESCRIPTION,
   DEFAULT_SHARE_IMAGE,
+  buildLocalizedProductMetadata,
   buildProductMetadata,
 } from "./productMetadata";
 import type { Product } from "./products";
@@ -68,6 +69,36 @@ describe("product sharing metadata", () => {
       twitter: {
         images: [DEFAULT_SHARE_IMAGE],
       },
+    });
+  });
+
+  it("uses the localized URL, content, and reciprocal alternates", () => {
+    const metadata = buildLocalizedProductMetadata(
+      {
+        ...product,
+        nameTranslations: { en: "Computer Monitor", zhTw: "電腦螢幕", zhCn: "电脑显示器" },
+        descriptionTranslations: {
+          en: product.description,
+          zhTw: "適合書桌使用的清晰 24 吋螢幕。",
+          zhCn: "适合书桌使用的清晰 24 英寸显示器。",
+        },
+      },
+      "zh-tw"
+    );
+
+    expect(metadata).toMatchObject({
+      title: "電腦螢幕 · $30.00 | OSUTrade",
+      description: "適合書桌使用的清晰 24 吋螢幕。",
+      alternates: {
+        canonical: "/zh-tw/product/product-1",
+        languages: {
+          en: "/en/product/product-1",
+          "zh-TW": "/zh-tw/product/product-1",
+          "zh-CN": "/zh-cn/product/product-1",
+          "x-default": "/en/product/product-1",
+        },
+      },
+      openGraph: { url: "/zh-tw/product/product-1" },
     });
   });
 });

@@ -16,6 +16,7 @@ import {
   hasActiveTradeRequest,
   hasEditableProductFields,
 } from "@/app/lib/productEditLock";
+import { revalidatePublicProduct } from "@/app/lib/publicProductCache";
 
 type ProductStatus = "available" | "pending" | "sold" | "removed";
 
@@ -359,6 +360,8 @@ export async function PATCH(request: Request) {
         });
       }
     }
+
+    revalidatePublicProduct(data.product_id);
 
     return NextResponse.json({ product: toProduct(data) });
   } catch (error) {

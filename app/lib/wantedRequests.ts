@@ -20,6 +20,7 @@ import {
   type WantedMatchReviewInput,
   type WantedMatchReviewResult,
 } from "./wantedMatchReview";
+import { productPath } from "./publicLocale";
 
 export type WantedRequestStatus = "active" | "paused" | "fulfilled" | "deleted";
 
@@ -239,7 +240,7 @@ export function buildWantedRequestEmail({
 }
 
 export function buildProductUrl(productId: string | number) {
-  return `${getAppUrl()}/product/${productId}`;
+  return `${getAppUrl()}${productPath("en", productId)}`;
 }
 
 type NotifyWantedMatchesOptions = {

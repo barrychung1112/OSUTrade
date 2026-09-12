@@ -25,7 +25,9 @@ The product focuses on four things:
 | --- | --- |
 | Public marketplace | Browse `/overview` and product detail pages without logging in. Login is required only for sending requests, listing items, seller tools, and personal request data. |
 | Product listings | Create listings with name, description, category, price, quantity, status, and 1 to 3 photos. |
-| Listing localization | Product names and descriptions can be translated into English, Traditional Chinese, and Simplified Chinese, then displayed according to the selected language. |
+| Listing localization and indexing | Every eligible product has separately requestable English, Traditional Chinese, and Simplified Chinese URLs (`/en/product/:id`, `/zh-tw/product/:id`, `/zh-cn/product/:id`). Each page is server-rendered, self-canonical, and connected with `hreflang`; unavailable or out-of-stock listings are excluded from the sitemap. |
+| Public search rendering | The home discovery sections and the first `/overview` page render available listings on the server. Product updates invalidate public listing, localized product, and sitemap caches. |
+| Search boundaries | Account-specific cart, request, seller, listing, and notification pages return `noindex, nofollow`; they remain user-specific application views rather than search landing pages. |
 | AI bulk listing | Upload photos, generate AI listing drafts, edit fields, select drafts, and publish multiple listings from the Sell page. |
 | AI pricing advisor | Suggest a secondhand price using OSUTrade comparable listings, item details, and new-price context. |
 | Cross-platform copy | Generate social post copy for external promotion from listing drafts. |
@@ -182,9 +184,11 @@ npx tsc --noEmit
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Home page, product value proposition, marketplace entry, funding panel. |
-| `/overview` | Public marketplace browsing experience. |
-| `/product/[id]` | Public product detail page and add-to-cart flow. |
+| `/` | Server-rendered home page, product value proposition, and public listing discovery. |
+| `/overview` | Server-rendered first page of public marketplace browsing; filters and later pages remain interactive. |
+| `/en/product/[id]`, `/zh-tw/product/[id]`, `/zh-cn/product/[id]` | Canonical localized public product pages. |
+| `/product/[id]` | Permanent redirect to the English localized product URL. |
+| `/robots.txt`, `/sitemap.xml` | Public crawler directives and eligible localized product URLs. |
 | `/sell` | Seller listing form, AI bulk listing, image upload, pricing advisor. |
 | `/cart` | Request cart and buyer request submission. |
 | `/requests` | Buyer request tracking and wanted-item subscriptions. Shows a login prompt when signed out. |

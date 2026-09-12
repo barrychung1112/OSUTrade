@@ -27,6 +27,9 @@ describe("NewStudentWelcome", () => {
     expect(
       screen.getByRole("link", { name: "Find my move-in essentials" }).getAttribute("href")
     ).toBe("/overview");
+    expect(screen.getByRole("link", { name: "View blanket" }).getAttribute("href")).toBe(
+      "/en/product/66266358-344b-48bd-a9a4-ef931e444910"
+    );
   });
 
   it("switches to off-campus essentials and can reopen after closing", async () => {
