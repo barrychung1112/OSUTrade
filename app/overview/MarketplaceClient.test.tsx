@@ -1,5 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, test, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, test, vi } from "vitest";
+
+const productState = vi.hoisted(() => ({
+  value: {
+    products: [], loading: false, loadingMore: false, error: null,
+    total: 0, page: 1, limit: 12, refetch: vi.fn(), loadMore: vi.fn(), hasMore: false,
+  },
+}));
 
 vi.mock("../components/Header", () => ({ default: () => <header /> }));
 vi.mock("../components/EmptyState", () => ({
@@ -9,16 +16,22 @@ vi.mock("../components/ProductCard", () => ({
   default: ({ name }: { name: string }) => <article>{name}</article>,
 }));
 vi.mock("../hook/useProducts", () => ({
-  useProducts: () => ({
-    products: [], loading: false, loadingMore: false, error: null,
-    total: 0, refetch: vi.fn(), loadMore: vi.fn(), hasMore: false,
-  }),
+  useProducts: () => productState.value,
 }));
 
 import MarketplaceClient from "./MarketplaceClient";
 import { I18nProvider } from "../i18n";
 
 describe("MarketplaceClient", () => {
+  afterEach(() => {
+    cleanup();
+    productState.value = {
+      products: [], loading: false, loadingMore: false, error: null,
+      total: 0, page: 1, limit: 12, refetch: vi.fn(), loadMore: vi.fn(), hasMore: false,
+    };
+    window.history.replaceState({}, "", "/overview");
+  });
+
   test("renders a semantic marketplace H1 in the initial page markup", () => {
     render(
       <I18nProvider>
@@ -35,5 +48,31 @@ describe("MarketplaceClient", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
       "Find campus deals faster."
     );
+  });
+
+  test("removes a stale page parameter after filters reset results to page one", async () => {
+    window.history.replaceState({}, "", "/overview?page=2");
+    productState.value = { ...productState.value, page: 2 };
+
+    render(
+      <I18nProvider>
+        <MarketplaceClient
+          initialResponse={{ data: [], total: 0, page: 2, limit: 12 }}
+          initialParams={{
+            page: 2, limit: 12, name: undefined, category: undefined,
+            sort: undefined, discounted: false, clearance: false,
+          }}
+        />
+      </I18nProvider>
+    );
+
+    productState.value = { ...productState.value, page: 1 };
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "desk" } });
+
+    await waitFor(() => {
+      const url = new URL(window.location.href);
+      expect(url.searchParams.get("page")).toBeNull();
+      expect(url.searchParams.get("name")).toBe("desk");
+    });
   });
 });

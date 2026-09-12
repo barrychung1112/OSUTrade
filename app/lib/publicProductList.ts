@@ -31,7 +31,9 @@ export function parsePublicProductListParams(searchParams: SearchParams): Public
   const name = firstValue(searchParams.name)?.trim() || undefined;
   const categoryValue = firstValue(searchParams.category)?.trim();
   const sortValue = firstValue(searchParams.sort);
-  const discounted = firstValue(searchParams.sale) === "1";
+  const discounted =
+    firstValue(searchParams.sale) === "1" ||
+    firstValue(searchParams.discounted) === "true";
   const clearance = !discounted && firstValue(searchParams.clearance) === "1";
 
   return {

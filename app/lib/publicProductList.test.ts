@@ -61,6 +61,13 @@ describe("public product list parameters", () => {
     });
   });
 
+  test("keeps legacy discounted links server-rendered as sale pages", () => {
+    expect(parsePublicProductListParams({ discounted: "true" })).toMatchObject({
+      discounted: true,
+      clearance: false,
+    });
+  });
+
   test("filters, sorts, and pages public products", () => {
     expect(
       getPublicProductList(products, {

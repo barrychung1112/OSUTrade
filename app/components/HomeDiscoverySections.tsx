@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, BadgePercent, Clock3 } from "lucide-react";
 import { useI18n } from "../i18n";
 import { pickProductName } from "../lib/productTranslations";
-import { productPath } from "../lib/publicLocale";
+import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
 import { getHomePublicDiscovery } from "../lib/homePublicDiscovery";
 import type { Product } from "../lib/products";
 
@@ -32,6 +32,7 @@ function DiscoverySection({
   error: boolean;
 }) {
   const { t, locale } = useI18n();
+  const productLocale = publicLocaleFromClientLocale(locale);
 
   return (
     <section className="home-discovery-section" aria-label={title}>
@@ -48,7 +49,7 @@ function DiscoverySection({
           {products.map((product) => {
             const name = pickProductName(product.name, product.nameTranslations, locale);
             return (
-              <Link key={product.id} href={productPath("en", product.id)} className="home-discovery-card">
+              <Link key={product.id} href={productPath(productLocale, product.id)} className="home-discovery-card">
                 <span className="home-discovery-image">
                   <Image
                     src={product.imageUrl || "/images/Bike_0.jpg"}
