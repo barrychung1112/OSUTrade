@@ -13,7 +13,7 @@ describe("sitemap", () => {
     expect(dynamic).toBe("force-dynamic");
   });
 
-  test("publishes exactly three localized URLs per public product", async () => {
+  test("publishes public discovery URLs first and three localized URLs per public product", async () => {
     mocks.listPublicProducts.mockResolvedValue([
       { id: "p-1", status: "available", quantity: 1 },
     ]);
@@ -22,6 +22,8 @@ describe("sitemap", () => {
     const urls = entries.map((entry) => entry.url);
 
     expect(urls).toEqual([
+      "https://osutrade.com/",
+      "https://osutrade.com/overview",
       "https://osutrade.com/en/product/p-1",
       "https://osutrade.com/zh-tw/product/p-1",
       "https://osutrade.com/zh-cn/product/p-1",

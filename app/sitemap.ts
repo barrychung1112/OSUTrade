@@ -9,9 +9,13 @@ export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = await listPublicProducts();
 
-  return products.flatMap((product) =>
-    publicLocales.map((locale) => ({
-      url: new URL(productPath(locale, product.id), SITE_URL).toString(),
-    }))
-  );
+  return [
+    { url: new URL("/", SITE_URL).toString() },
+    { url: new URL("/overview", SITE_URL).toString() },
+    ...products.flatMap((product) =>
+      publicLocales.map((locale) => ({
+        url: new URL(productPath(locale, product.id), SITE_URL).toString(),
+      }))
+    ),
+  ];
 }
