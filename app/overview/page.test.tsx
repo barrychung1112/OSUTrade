@@ -20,6 +20,8 @@ describe("Marketplace product list page", () => {
   test("uses the canonical marketplace URL for empty search parameters", async () => {
     const metadata = await generateMetadata({ searchParams: Promise.resolve({}) });
 
+    expect(metadata.title).toContain("Oregon State Students");
+    expect(metadata.title).not.toContain("Oregon State University");
     expect(metadata.alternates?.canonical).toBe("/overview");
     expect(metadata.robots).toBeUndefined();
   });

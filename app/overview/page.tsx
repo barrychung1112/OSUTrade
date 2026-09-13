@@ -16,7 +16,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const params = await searchParams;
 
   return {
-    title: "Browse the OSUTrade Marketplace | Oregon State University",
+    title: "Browse the OSUTrade Marketplace | Oregon State Students",
     description:
       "Browse marketplace listings from Oregon State University students in Corvallis on OSUTrade.",
     alternates: { canonical: "/overview" },
