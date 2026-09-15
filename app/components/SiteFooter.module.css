@@ -1,0 +1,69 @@
+.footer {
+  border-top: 1px solid #fed7aa;
+  background: #1c1917;
+  color: #e7e5e4;
+}
+
+.inner {
+  display: grid;
+  width: min(100% - 2rem, 96rem);
+  margin: 0 auto;
+  gap: 1.25rem;
+  padding: 1.5rem 0;
+}
+
+.identity {
+  max-width: 40rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: #d6d3d1;
+}
+
+.wordmark {
+  margin-bottom: 0.25rem;
+  color: #fb923c;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.nav a,
+.email {
+  border-radius: 0.25rem;
+  color: #fdba74;
+  text-decoration: none;
+}
+
+.nav a:hover,
+.email:hover {
+  color: white;
+  text-decoration: underline;
+}
+
+.nav a:focus-visible,
+.email:focus-visible {
+  outline: 2px solid #fb923c;
+  outline-offset: 3px;
+}
+
+.email {
+  width: fit-content;
+  font-size: 0.8125rem;
+}
+
+@media (min-width: 768px) {
+  .inner {
+    grid-template-columns: minmax(0, 1.5fr) auto auto;
+    align-items: center;
+    gap: 2rem;
+  }
+}

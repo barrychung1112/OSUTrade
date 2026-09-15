@@ -111,10 +111,10 @@ export default function HomePageClient({
             </ol>
           </section>
 
-          <footer className="home-footer-band">
+          <section className="home-footer-band" aria-labelledby="home-community-title">
             <div>
               <p className="home-footer-kicker">OSUTrade</p>
-              <h2>{t("home.communityTitle")}</h2>
+              <h2 id="home-community-title">{t("home.communityTitle")}</h2>
               <p>{t("home.communityBody")}</p>
             </div>
             <div className="home-footer-links">
@@ -131,7 +131,7 @@ export default function HomePageClient({
                 {t("home.browseDeals")} <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-          </footer>
+          </section>
         </div>
       </main>
 
