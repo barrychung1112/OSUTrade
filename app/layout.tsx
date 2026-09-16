@@ -3,6 +3,7 @@ import Script from "next/script";
 import "@radix-ui/themes/styles.css";
 import "./globals.css";
 import Providers from "./providers";
+import SiteFooter from "./components/SiteFooter";
 import {
   GA_MEASUREMENT_ID,
   shouldEnableGoogleAnalytics,
@@ -47,6 +48,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
+        <SiteFooter />
         {analyticsEnabled ? (
           <>
             <Script
