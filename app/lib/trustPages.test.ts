@@ -31,4 +31,8 @@ describe("trust pages", () => {
     expect(trustPageMetadata("privacy").alternates?.canonical).toBe("/privacy");
     expect(trustPageMetadata("safety").alternates?.canonical).toBe("/safety");
   });
+
+  test("states the current publication date consistently", () => {
+    expect(JSON.stringify(trustPages)).toContain("Last updated: September 16, 2026.");
+  });
 });

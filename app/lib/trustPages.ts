@@ -24,7 +24,7 @@ export type TrustPage = {
   sections: TrustSection[];
 };
 
-const lastUpdated = "September 13, 2026";
+const lastUpdated = "September 16, 2026";
 
 export const trustPages: Record<TrustPageKey, TrustPage> = {
   privacy: {
