@@ -15,13 +15,18 @@ import LoginModal from "./components/LoginModal";
 import SignUpModal from "./components/SignUpModal";
 import { useI18n } from "./i18n";
 import { getHomeCtaAction } from "./lib/homeCtaAccess";
+import type { HomeSeason } from "./lib/homeSeason";
 import type { Product } from "./lib/products";
 
 export default function HomePageClient({
   products,
+  heroProducts,
+  season,
   discoveryError = false,
 }: {
   products: Product[];
+  heroProducts: Product[];
+  season: HomeSeason;
   discoveryError?: boolean;
 }) {
   const { t } = useI18n();
@@ -83,6 +88,8 @@ export default function HomePageClient({
         )}
 
         <HomeHero
+          products={heroProducts}
+          season={season}
           disabled={status === "loading"}
           onSell={() => handleProtectedCta("/sell")}
         />

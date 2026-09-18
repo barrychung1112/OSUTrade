@@ -2,15 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Handshake, MapPin, Plus, ShoppingBag } from "lucide-react";
 import { useI18n } from "../i18n";
-import { selectRandomHomeHeroProducts } from "../lib/homeHeroProducts";
 import { shouldBypassProductImageOptimization } from "../lib/productImageOptimization";
 import { pickProductName } from "../lib/productTranslations";
 import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
-import { fetchProducts, type Product } from "../lib/products";
+import { guidePath, homeSeasonalCopy } from "../lib/seasonalGuides";
+import type { HomeSeason } from "../lib/homeSeason";
+import type { Product } from "../lib/products";
 
 const fallbackTiles = [
   { imageUrl: "/images/DellMonitor_0.jpg" },
@@ -40,25 +40,18 @@ const currency = (value: number) =>
 export default function HomeHero({
   onSell,
   disabled,
+  products,
+  season,
 }: {
   onSell: () => void;
   disabled: boolean;
+  products: Product[];
+  season: HomeSeason;
 }) {
   const { t, locale } = useI18n();
   const reduceMotion = useReducedMotion();
-  const [products, setProducts] = useState<Product[]>([]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetchProducts({ limit: 100, signal: controller.signal })
-      .then((payload) => {
-        setProducts(selectRandomHomeHeroProducts(payload.data));
-      })
-      .catch(() => undefined);
-
-    return () => controller.abort();
-  }, []);
+  const copy = homeSeasonalCopy[locale][season];
+  const publicLocale = publicLocaleFromClientLocale(locale);
 
   const reveal = reduceMotion
     ? {}
@@ -73,7 +66,7 @@ export default function HomeHero({
       <div className="home-hero-grid" aria-hidden="true" />
       <div className="home-hero-copy">
         <motion.p {...reveal} className="home-hero-kicker">
-          {t("home.showcaseEyebrow")}
+          {copy.eyebrow}
         </motion.p>
         <motion.h1
           {...reveal}
@@ -81,14 +74,14 @@ export default function HomeHero({
           id="home-title"
           className="home-hero-title"
         >
-          {t("home.showcaseTitle")}
+          {copy.h1}
         </motion.h1>
         <motion.p
           {...reveal}
           transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.12 }}
           className="home-hero-description"
         >
-          {t("home.showcaseBody")}
+          {copy.body}
         </motion.p>
 
         <motion.div
@@ -96,9 +89,12 @@ export default function HomeHero({
           transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.18 }}
           className="home-hero-actions"
         >
-          <Link href="/overview" className="home-hero-primary">
-            {t("home.browseDeals")}
+          <Link href={guidePath(publicLocale, copy.guide)} className="home-hero-primary home-hero-guide-link">
+            {copy.browseCta}
             <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link href="/overview" className="home-hero-browse-link">
+            {t("home.browseDeals")}
           </Link>
           <button
             type="button"
@@ -163,7 +159,7 @@ export default function HomeHero({
           return liveProduct ? (
             <Link
               key={liveProduct.id}
-              href={productPath(publicLocaleFromClientLocale(locale), liveProduct.id)}
+              href={productPath(publicLocale, liveProduct.id)}
               aria-label={`${name}, $${Number(liveProduct.price).toFixed(2)}`}
             >
               {tile}
