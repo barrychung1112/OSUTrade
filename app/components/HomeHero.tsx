@@ -7,8 +7,8 @@ import { ArrowRight, Handshake, MapPin, Plus, ShoppingBag } from "lucide-react";
 import { useI18n } from "../i18n";
 import { shouldBypassProductImageOptimization } from "../lib/productImageOptimization";
 import { pickProductName } from "../lib/productTranslations";
-import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
-import { guidePath, homeSeasonalCopy } from "../lib/seasonalGuides";
+import { guidePath, productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
+import { homeSeasonalCopy } from "../lib/homeSeasonalCopy";
 import type { HomeSeason } from "../lib/homeSeason";
 import type { Product } from "../lib/products";
 

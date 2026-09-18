@@ -36,3 +36,7 @@ export function localeInfo(locale: PublicLocale) {
 export function productPath(locale: PublicLocale, id: string | number) {
   return `/${locale}/product/${encodeURIComponent(String(id))}`;
 }
+
+export function guidePath(locale: PublicLocale, guide: "move-in" | "move-out") {
+  return `/${locale}/guides/${guide}`;
+}
