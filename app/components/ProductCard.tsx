@@ -135,7 +135,7 @@ export default function ProductCard({
           onClick={saveMarketplaceScroll}
           className="min-w-0"
         >
-          <Heading size="4" weight="bold" className="line-clamp-2 min-h-[48px] text-gray-950 transition hover:text-[#d73f09]">
+          <Heading as="h2" size="4" weight="bold" className="line-clamp-2 min-h-[48px] text-gray-950 transition hover:text-[#d73f09]">
             {displayName || name}
           </Heading>
         </Link>

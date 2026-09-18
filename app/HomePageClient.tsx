@@ -9,6 +9,7 @@ import { ArrowRight, Github, Heart, MessageCircle, Search, Send, Handshake } fro
 import Header from "./components/Header";
 import NewStudentWelcome from "./components/NewStudentWelcome";
 import HomeHero from "./components/HomeHero";
+import HomeSeasonalCategories from "./components/HomeSeasonalCategories";
 import HomeDiscoverySections from "./components/HomeDiscoverySections";
 import HomeMarketSignalsCard from "./components/HomeMarketSignalsCard";
 import LoginModal from "./components/LoginModal";
@@ -95,6 +96,7 @@ export default function HomePageClient({
         />
 
         <div className="home-content-flow">
+          <HomeSeasonalCategories season={season} />
           <HomeDiscoverySections products={products} error={discoveryError} />
           <HomeMarketSignalsCard products={products} error={discoveryError} />
 

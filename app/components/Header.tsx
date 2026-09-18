@@ -15,7 +15,11 @@ import {
 import LoginModal from "./LoginModal";
 import NotificationBell from "./NotificationBell";
 import { LanguageToggle, useI18n } from "../i18n";
-import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
+import {
+  guidePath,
+  productPath,
+  publicLocaleFromClientLocale,
+} from "../lib/publicLocale";
 
 type HeaderUser = {
   name?: string | null;
@@ -116,7 +120,7 @@ function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
 }
 
 export default function Header() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -130,6 +134,10 @@ export default function Header() {
   const fallback = user?.name?.[0] || user?.email?.[0] || "U";
   const navItems = [
     { href: "/", label: t("nav.home") },
+    {
+      href: guidePath(publicLocaleFromClientLocale(locale), "move-in"),
+      label: t("nav.guides"),
+    },
     { href: "/overview", label: t("nav.marketplace") },
     { href: "/sell", label: t("nav.sell") },
     { href: "/seller", label: t("nav.seller") },
