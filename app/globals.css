@@ -114,9 +114,9 @@
   position: relative;
   isolation: isolate;
   min-height: 600px;
-  overflow: hidden;
+  overflow-x: clip;
   border-bottom: 1px solid #e7e5e4;
-  background: #faf9f7;
+  background: #f4eadb;
   color: #111827;
 }
 
@@ -126,18 +126,28 @@
   pointer-events: none;
 }
 
+.home-seasonal-layout {
+  display: grid;
+  min-height: 600px;
+  grid-template-columns: minmax(0, 1.62fr) minmax(18rem, 1fr);
+}
+
 .home-hero-copy {
   position: relative;
   z-index: 3;
-  width: min(1240px, calc(100% - 48px));
-  margin: 0 auto;
-  padding: 92px 52% 82px 0;
+  min-width: 0;
+  padding: clamp(64px, 8vw, 108px) clamp(24px, 7vw, 112px) clamp(68px, 7vw, 96px);
+}
+
+.home-seasonal-hero {
+  background: linear-gradient(135deg, #103d35 0%, #1c5b4d 100%);
+  color: #fff;
 }
 
 .home-hero-kicker,
 .home-footer-kicker {
   margin: 0 0 14px;
-  color: #ff6a2b;
+  color: #ffc18d;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: .08em;
@@ -147,6 +157,7 @@
 .home-hero-title {
   margin: 0;
   max-width: 640px;
+  color: #fff;
   font-size: clamp(52px, 5.4vw, 78px);
   font-weight: 850;
   letter-spacing: 0;
@@ -156,7 +167,7 @@
 .home-hero-description {
   max-width: 610px;
   margin: 28px 0 0;
-  color: #4b5563;
+  color: #d9eee7;
   font-size: clamp(16px, 1.5vw, 20px);
   line-height: 1.65;
 }
@@ -169,7 +180,8 @@
 }
 
 .home-hero-primary,
-.home-hero-secondary {
+.home-hero-secondary,
+.home-hero-browse-link {
   display: inline-flex;
   min-height: 48px;
   align-items: center;
@@ -183,25 +195,35 @@
 }
 
 .home-hero-primary {
-  background: #d73f09;
+  background: #e85d24;
   color: white;
 }
 
 .home-hero-secondary {
+  border: 1px solid rgba(255,255,255,.5);
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  text-decoration: none;
+}
+
+.home-hero-browse-link {
   border: 1px solid transparent;
-  background: transparent;
-  color: #374151;
+  color: #fff4e8;
   text-decoration: underline;
   text-underline-offset: 5px;
 }
 
 .home-hero-primary:hover,
-.home-hero-secondary:hover {
+.home-hero-secondary:hover,
+.home-hero-browse-link:hover {
   transform: translateY(-2px);
 }
 
 .home-hero-primary:focus-visible,
 .home-hero-secondary:focus-visible,
+.home-hero-browse-link:focus-visible,
+.home-seasonal-panel a:focus-visible .home-product-tile,
+.home-seasonal-category-card:focus-visible,
 .home-footer-links a:focus-visible {
   outline: 3px solid #fb923c;
   outline-offset: 3px;
@@ -220,7 +242,7 @@
   gap: 10px 22px;
   margin-top: 28px;
   padding: 0;
-  color: #4b5563;
+  color: #d9eee7;
   font-size: 13px;
   line-height: 1.55;
   list-style: none;
@@ -234,14 +256,26 @@
 
 .home-hero-trust svg {
   flex: 0 0 auto;
-  color: #d73f09;
+  color: #ffc18d;
 }
 
 .home-product-scene {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  inset: 0 max(22px, calc((100% - 1240px) / 2)) 0 50%;
+  min-width: 0;
+  min-height: 600px;
+  overflow: hidden;
+  background: #f4eadb;
   perspective: 1200px;
+}
+
+.home-seasonal-panel::before {
+  position: absolute;
+  inset: 24px 0 auto 14%;
+  width: 54%;
+  height: 1px;
+  background: rgba(16,61,53,.2);
+  content: "";
 }
 
 .home-product-tile {
@@ -296,35 +330,98 @@
 }
 
 .home-product-tile-monitor {
-  top: 78px;
-  right: 9%;
-  width: min(35vw, 500px);
+  top: 90px;
+  right: 8%;
+  width: min(31vw, 430px);
   aspect-ratio: 4 / 3;
 }
 
 .home-product-tile-bike {
-  top: 34px;
+  top: 42px;
   right: 0;
-  width: min(20vw, 280px);
+  width: min(16vw, 220px);
   aspect-ratio: 4 / 3;
 }
 
 .home-product-tile-lamp {
   right: 0;
-  bottom: 24px;
-  width: min(20vw, 270px);
+  bottom: 38px;
+  width: min(16vw, 210px);
   aspect-ratio: 4 / 3;
 }
 
 .home-hero-next {
   position: absolute;
   z-index: 4;
-  right: max(24px, calc((100% - 1240px) / 2));
+  right: 8%;
   bottom: 18px;
-  color: #78716c;
+  color: #315f55;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.home-seasonal-categories {
+  margin: clamp(44px, 6vw, 72px) 0 0;
+  border: 1px solid #dfd2be;
+  border-radius: 10px;
+  background: #fffaf2;
+  padding: clamp(24px, 4vw, 40px);
+}
+
+.home-seasonal-categories-heading {
+  margin-bottom: 22px;
+}
+
+.home-seasonal-categories-eyebrow {
+  margin: 0 0 7px;
+  color: #c44b1b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.home-seasonal-categories-heading h2 {
+  margin: 0;
+  color: #103d35;
+  font-size: clamp(25px, 3vw, 36px);
+  font-weight: 820;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.home-seasonal-categories-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-seasonal-category-card {
+  width: 100%;
+  min-height: 48px;
+  justify-content: center;
+  border: 1px solid #c7d8d1;
+  border-radius: 6px;
+  background: #f6fbf8;
+  padding: 10px 14px;
+  color: #103d35;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.3;
+  text-align: center;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+  overflow-wrap: anywhere;
+}
+
+.home-seasonal-category-card:hover {
+  border-color: #1c5b4d;
+  background: #1c5b4d;
+  color: #fff;
+  transform: translateY(-2px);
 }
 
 .home-content-flow {
@@ -792,14 +889,6 @@
 }
 
 @media (max-width: 900px) {
-  .home-hero-copy {
-    padding-right: 38%;
-  }
-
-  .home-product-scene {
-    left: 55%;
-  }
-
   .home-discovery-layout {
     grid-template-columns: 1fr;
   }
@@ -821,28 +910,31 @@
   }
 }
 
-@media (max-width: 640px) {
-  .home-modern-page {
-    padding-top: 70px;
+@media (max-width: 860px) {
+  .home-hero-scene,
+  .home-seasonal-layout,
+  .home-product-scene {
+    min-height: 0;
   }
 
-  .home-redirect-notice {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .home-hero-scene {
-    min-height: 740px;
+  .home-seasonal-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .home-hero-copy {
-    width: calc(100% - 32px);
-    padding: 48px 0 330px;
+    width: 100%;
+    padding: 52px max(16px, 5vw) 42px;
+  }
+
+  .home-hero-title,
+  .home-hero-description,
+  .home-hero-trust {
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .home-hero-title {
-    max-width: 100%;
-    font-size: 46px;
+    font-size: clamp(40px, 10vw, 58px);
   }
 
   .home-hero-description {
@@ -851,54 +943,59 @@
   }
 
   .home-hero-actions {
-    display: grid;
-    grid-template-columns: 1fr;
     margin-top: 24px;
   }
 
   .home-hero-primary,
-  .home-hero-secondary {
-    width: auto;
-    padding: 0 12px;
-  }
-
-  .home-hero-trust {
-    margin-top: 20px;
-    font-size: 12px;
+  .home-hero-secondary,
+  .home-hero-browse-link {
+    min-height: 48px;
   }
 
   .home-product-scene {
-    inset: auto 0 0 0;
-    display: flex;
-    height: 310px;
-    gap: 14px;
-    overflow-x: auto;
-    padding: 18px 16px 28px;
-    scroll-snap-type: x mandatory;
+    height: 350px;
   }
 
-  .home-product-tile-monitor,
+  .home-seasonal-panel::before {
+    inset: 20px 0 auto 8%;
+    width: 45%;
+  }
+
+  .home-product-tile-monitor {
+    top: 54px;
+    right: 9%;
+    width: min(73vw, 430px);
+  }
+
   .home-product-tile-bike {
-    position: relative;
-    inset: auto;
-    flex: 0 0 76vw;
-    width: 76vw;
-    scroll-snap-align: start;
+    top: 24px;
+    width: min(39vw, 225px);
   }
 
   .home-product-tile-lamp {
-    position: relative;
-    inset: auto;
-    flex: 0 0 76vw;
-    width: 76vw;
-    scroll-snap-align: start;
+    right: 0;
+    bottom: 42px;
+    width: min(39vw, 220px);
   }
 
   .home-hero-next {
-    right: 16px;
-    bottom: 14px;
-    left: auto;
-    font-size: 10px;
+    right: max(16px, 5vw);
+    bottom: 16px;
+  }
+
+  .home-seasonal-categories-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .home-modern-page {
+    padding-top: 70px;
+  }
+
+  .home-redirect-notice {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .home-sale-section,
@@ -976,6 +1073,9 @@
 
   .home-hero-primary,
   .home-hero-secondary,
+  .home-hero-browse-link,
+  .home-seasonal-category-card,
+  .home-product-tile,
   .home-sale-card,
   .home-sale-image img,
   .home-discovery-image img,
@@ -984,6 +1084,10 @@
   }
 
   .home-discovery-card:hover img {
+    transform: none;
+  }
+
+  .home-seasonal-category-card:hover {
     transform: none;
   }
 }

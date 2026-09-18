@@ -64,116 +64,117 @@ export default function HomeHero({
   return (
     <section className="home-hero-scene" aria-labelledby="home-title">
       <div className="home-hero-grid" aria-hidden="true" />
-      <div className="home-hero-copy">
-        <motion.p {...reveal} className="home-hero-kicker">
-          {copy.eyebrow}
-        </motion.p>
-        <motion.h1
-          {...reveal}
-          transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.06 }}
-          id="home-title"
-          className="home-hero-title"
-        >
-          {copy.h1}
-        </motion.h1>
-        <motion.p
-          {...reveal}
-          transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.12 }}
-          className="home-hero-description"
-        >
-          {copy.body}
-        </motion.p>
-
-        <motion.div
-          {...reveal}
-          transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.18 }}
-          className="home-hero-actions"
-        >
-          <Link href={guidePath(publicLocale, copy.guide)} className="home-hero-primary home-hero-guide-link">
-            {copy.browseCta}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link href="/overview" className="home-hero-browse-link">
-            {t("home.browseDeals")}
-          </Link>
-          <button
-            type="button"
-            onClick={onSell}
-            disabled={disabled}
-            className="home-hero-secondary"
+      <div className="home-seasonal-layout">
+        <div className="home-hero-copy home-seasonal-hero">
+          <motion.p {...reveal} className="home-hero-kicker">
+            {copy.eyebrow}
+          </motion.p>
+          <motion.h1
+            {...reveal}
+            transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.06 }}
+            id="home-title"
+            className="home-hero-title"
           >
-            <Plus className="h-4 w-4" />
-            {t("home.sellItem")}
-          </button>
-        </motion.div>
+            {copy.h1}
+          </motion.h1>
+          <motion.p
+            {...reveal}
+            transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.12 }}
+            className="home-hero-description"
+          >
+            {copy.body}
+          </motion.p>
 
-        <motion.ul
-          {...reveal}
-          transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.24 }}
-          className="home-hero-trust"
-        >
-          <li><ShoppingBag className="h-4 w-4" /><span>{t("home.freeToBrowse")}</span></li>
-          <li><MapPin className="h-4 w-4" /><span>{t("home.campusPickup")}</span></li>
-          <li><Handshake className="h-4 w-4" /><span>{t("home.directSellerContact")}</span></li>
-        </motion.ul>
-      </div>
-
-      <div className="home-product-scene">
-        {(products.length > 0 ? products : fallbackTiles).map((product, index) => {
-          const liveProduct = "id" in product ? product : null;
-          const name = liveProduct
-            ? pickProductName(
-                liveProduct.name,
-                liveProduct.nameTranslations,
-                locale
-              )
-            : "";
-          const tile = (
-            <motion.div
-              className={`home-product-tile ${tileClasses[index]}`}
-              initial={reduceMotion ? false : tileMotion[index].initial}
-              animate={{ opacity: 1, x: 0, y: 0, rotate: tileMotion[index].rotate }}
-              transition={{ duration: 0.6, delay: reduceMotion ? 0 : 0.12 + index * 0.1 }}
-              whileHover={reduceMotion ? undefined : { y: -6, rotate: 0 }}
-            >
-              <Image
-                src={product.imageUrl || fallbackTiles[index].imageUrl}
-                alt={name}
-                fill
-                sizes={index === 0 ? "360px" : index === 1 ? "280px" : "220px"}
-                unoptimized={shouldBypassProductImageOptimization(
-                  product.imageUrl || fallbackTiles[index].imageUrl
-                )}
-                priority
-              />
-              {liveProduct && (
-                <span className="home-product-meta">
-                  <strong>{name}</strong>
-                  <b>{currency(Number(liveProduct.price))}</b>
-                  <small>{t("home.available")}</small>
-                </span>
-              )}
-            </motion.div>
-          );
-
-          return liveProduct ? (
-            <Link
-              key={liveProduct.id}
-              href={productPath(publicLocale, liveProduct.id)}
-              aria-label={`${name}, $${Number(liveProduct.price).toFixed(2)}`}
-            >
-              {tile}
+          <motion.div
+            {...reveal}
+            transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.18 }}
+            className="home-hero-actions"
+          >
+            <Link href={guidePath(publicLocale, copy.guide)} className="home-hero-primary home-hero-guide-link">
+              {copy.browseCta}
+              <ArrowRight className="h-4 w-4" />
             </Link>
-          ) : (
-            <div key={product.imageUrl} aria-hidden="true">
-              {tile}
-            </div>
-          );
-        })}
-      </div>
+            <Link href="/overview" className="home-hero-browse-link">
+              {t("home.browseDeals")}
+            </Link>
+            <button
+              type="button"
+              onClick={onSell}
+              disabled={disabled}
+              className="home-hero-secondary"
+            >
+              <Plus className="h-4 w-4" />
+              {t("home.sellItem")}
+            </button>
+          </motion.div>
 
-      <div className="home-hero-next" aria-hidden="true">
-        <span>{t("home.liveMarket")}</span>
+          <motion.ul
+            {...reveal}
+            transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.24 }}
+            className="home-hero-trust"
+          >
+            <li><ShoppingBag className="h-4 w-4" /><span>{t("home.freeToBrowse")}</span></li>
+            <li><MapPin className="h-4 w-4" /><span>{t("home.campusPickup")}</span></li>
+            <li><Handshake className="h-4 w-4" /><span>{t("home.directSellerContact")}</span></li>
+          </motion.ul>
+        </div>
+
+        <div className="home-product-scene home-seasonal-panel">
+          {(products.length > 0 ? products : fallbackTiles).map((product, index) => {
+            const liveProduct = "id" in product ? product : null;
+            const name = liveProduct
+              ? pickProductName(
+                  liveProduct.name,
+                  liveProduct.nameTranslations,
+                  locale
+                )
+              : "";
+            const tile = (
+              <motion.div
+                className={`home-product-tile ${tileClasses[index]}`}
+                initial={reduceMotion ? false : tileMotion[index].initial}
+                animate={{ opacity: 1, x: 0, y: 0, rotate: tileMotion[index].rotate }}
+                transition={{ duration: 0.6, delay: reduceMotion ? 0 : 0.12 + index * 0.1 }}
+                whileHover={reduceMotion ? undefined : { y: -6, rotate: 0 }}
+              >
+                <Image
+                  src={product.imageUrl || fallbackTiles[index].imageUrl}
+                  alt={name}
+                  fill
+                  sizes={index === 0 ? "360px" : index === 1 ? "280px" : "220px"}
+                  unoptimized={shouldBypassProductImageOptimization(
+                    product.imageUrl || fallbackTiles[index].imageUrl
+                  )}
+                  priority
+                />
+                {liveProduct && (
+                  <span className="home-product-meta">
+                    <strong>{name}</strong>
+                    <b>{currency(Number(liveProduct.price))}</b>
+                    <small>{t("home.available")}</small>
+                  </span>
+                )}
+              </motion.div>
+            );
+
+            return liveProduct ? (
+              <Link
+                key={liveProduct.id}
+                href={productPath(publicLocale, liveProduct.id)}
+                aria-label={`${name}, $${Number(liveProduct.price).toFixed(2)}`}
+              >
+                {tile}
+              </Link>
+            ) : (
+              <div key={product.imageUrl} aria-hidden="true">
+                {tile}
+              </div>
+            );
+          })}
+          <div className="home-hero-next" aria-hidden="true">
+            <span>{t("home.liveMarket")}</span>
+          </div>
+        </div>
       </div>
     </section>
   );
