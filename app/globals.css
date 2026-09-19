@@ -1065,6 +1065,12 @@
   }
 }
 
+@media (min-width: 541px) and (max-width: 860px) {
+  .home-product-scene {
+    height: 420px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-sale-skeleton,
   .home-discovery-skeleton {
