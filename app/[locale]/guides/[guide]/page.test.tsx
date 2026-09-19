@@ -61,7 +61,8 @@ describe("localized seasonal guide page", () => {
     expect((html.match(/<h1/g) ?? []).length).toBe(1);
     expect(html).toContain('application/ld+json');
     expect(html).toContain('"@type":"BreadcrumbList"');
-    expect(html).toContain('"item":"https://osutrade.com/zh-tw"');
+    expect(html).toContain('"item":"https://osutrade.com/"');
+    expect(html).toContain('href="/"');
     expect(html).toContain('"item":"https://osutrade.com/zh-tw/guides/move-in"');
     expect(html).toContain('href="/overview?category=home"');
     expect(html).toContain('href="/overview"');

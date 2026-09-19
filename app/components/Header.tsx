@@ -144,8 +144,13 @@ export default function Header() {
     { href: "/requests", label: t("nav.requests") },
   ];
   const navLinkClass = (href: string) => {
+    const isGuidesNavigation = /^\/(?:en|zh-tw|zh-cn)\/guides\/move-in$/.test(href);
     const active =
-      href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+      href === "/"
+        ? pathname === "/"
+        : isGuidesNavigation
+          ? /^\/(?:en|zh-tw|zh-cn)\/guides(?:\/(?:move-in|move-out))?$/.test(pathname)
+          : pathname === href || pathname.startsWith(`${href}/`);
 
     return [
       "whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition",
@@ -163,12 +168,23 @@ export default function Header() {
   }
 
   function handleLocaleChange(locale: "en" | "zh" | "zhCn") {
+    const publicLocale = publicLocaleFromClientLocale(locale);
+    const guideMatch = pathname.match(/^\/(?:en|zh-tw|zh-cn)\/guides(?:\/(move-in|move-out))?$/);
+    if (guideMatch) {
+      router.push(
+        guideMatch[1]
+          ? guidePath(publicLocale, guideMatch[1] as "move-in" | "move-out")
+          : `/${publicLocale}/guides`
+      );
+      return;
+    }
+
     const productMatch = pathname.match(/^\/(?:en|zh-tw|zh-cn)\/product\/(.+)$/);
     if (!productMatch) return;
 
     router.push(
       productPath(
-        publicLocaleFromClientLocale(locale),
+        publicLocale,
         decodeURIComponent(productMatch[1])
       )
     );

@@ -37,7 +37,7 @@ export default async function LocalizedGuidePage({ params }: PageProps) {
   const content = getGuideContent(localeSegment, guideSegment);
   if (!content) notFound();
 
-  const homePath = `/${locale}`;
+  const homePath = "/";
   const guidesPath = `/${locale}/guides`;
   const currentPath = guidePath(locale, guideSegment);
   const breadcrumbJsonLd = {

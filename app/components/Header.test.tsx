@@ -1,7 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ locale: "zh" as "en" | "zh" }));
+const mocks = vi.hoisted(() => ({
+  locale: "zh" as "en" | "zh",
+  nextLocale: "zhCn" as "en" | "zh" | "zhCn",
+  pathname: "/",
+  push: vi.fn(),
+}));
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => (
@@ -10,8 +15,8 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => mocks.pathname,
+  useRouter: () => ({ push: mocks.push, refresh: vi.fn() }),
 }));
 
 vi.mock("next-auth/react", () => ({
@@ -20,7 +25,9 @@ vi.mock("next-auth/react", () => ({
 }));
 
 vi.mock("../i18n", () => ({
-  LanguageToggle: () => <div data-testid="language-toggle" />,
+  LanguageToggle: ({ onLocaleChange }: { onLocaleChange: (locale: "en" | "zh" | "zhCn") => void }) => (
+    <button type="button" onClick={() => onLocaleChange(mocks.nextLocale)}>Change language</button>
+  ),
   useI18n: () => ({
     locale: mocks.locale,
     t: (key: string) => key === "nav.guides"
@@ -39,8 +46,13 @@ vi.mock("framer-motion", () => ({
 import Header from "./Header";
 
 describe("Header", () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
     mocks.locale = "zh";
+    mocks.nextLocale = "zhCn";
+    mocks.pathname = "/";
+    mocks.push.mockReset();
   });
 
   test("uses the localized Guides route in both desktop and mobile navigation", () => {
@@ -67,4 +79,29 @@ describe("Header", () => {
       expect(link.getAttribute("href")).toBe("/en/guides/move-in");
     });
   });
+
+  test.each([
+    ["/zh-tw/guides", "en", "/en/guides"],
+    ["/zh-tw/guides/move-out", "zhCn", "/zh-cn/guides/move-out"],
+  ] as const)("keeps the guide route when changing language from %s", (pathname, nextLocale, expectedPath) => {
+    mocks.pathname = pathname;
+    mocks.nextLocale = nextLocale;
+    render(<Header />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Change language" })[0]);
+
+    expect(mocks.push).toHaveBeenCalledWith(expectedPath);
+  });
+
+  test.each(["/zh-tw/guides", "/zh-tw/guides/move-out"])(
+    "marks Guides as active on %s",
+    (pathname) => {
+      mocks.pathname = pathname;
+      render(<Header />);
+
+      screen.getAllByRole("link", { name: "指南" }).forEach((link) => {
+        expect(link.className.split(" ")).toContain("bg-orange-50");
+      });
+    }
+  );
 });
