@@ -9,19 +9,25 @@ import { ArrowRight, Github, Heart, MessageCircle, Search, Send, Handshake } fro
 import Header from "./components/Header";
 import NewStudentWelcome from "./components/NewStudentWelcome";
 import HomeHero from "./components/HomeHero";
+import HomeSeasonalCategories from "./components/HomeSeasonalCategories";
 import HomeDiscoverySections from "./components/HomeDiscoverySections";
 import HomeMarketSignalsCard from "./components/HomeMarketSignalsCard";
 import LoginModal from "./components/LoginModal";
 import SignUpModal from "./components/SignUpModal";
 import { useI18n } from "./i18n";
 import { getHomeCtaAction } from "./lib/homeCtaAccess";
+import type { HomeSeason } from "./lib/homeSeason";
 import type { Product } from "./lib/products";
 
 export default function HomePageClient({
   products,
+  heroProducts,
+  season,
   discoveryError = false,
 }: {
   products: Product[];
+  heroProducts: Product[];
+  season: HomeSeason;
   discoveryError?: boolean;
 }) {
   const { t } = useI18n();
@@ -83,11 +89,14 @@ export default function HomePageClient({
         )}
 
         <HomeHero
+          products={heroProducts}
+          season={season}
           disabled={status === "loading"}
           onSell={() => handleProtectedCta("/sell")}
         />
 
         <div className="home-content-flow">
+          <HomeSeasonalCategories season={season} />
           <HomeDiscoverySections products={products} error={discoveryError} />
           <HomeMarketSignalsCard products={products} error={discoveryError} />
 

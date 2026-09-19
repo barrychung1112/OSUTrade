@@ -24,6 +24,12 @@ describe("sitemap", () => {
     expect(urls).toEqual([
       "https://osutrade.com/",
       "https://osutrade.com/overview",
+      "https://osutrade.com/en/guides/move-in",
+      "https://osutrade.com/en/guides/move-out",
+      "https://osutrade.com/zh-tw/guides/move-in",
+      "https://osutrade.com/zh-tw/guides/move-out",
+      "https://osutrade.com/zh-cn/guides/move-in",
+      "https://osutrade.com/zh-cn/guides/move-out",
       "https://osutrade.com/privacy",
       "https://osutrade.com/terms",
       "https://osutrade.com/contact",

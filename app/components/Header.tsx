@@ -15,7 +15,11 @@ import {
 import LoginModal from "./LoginModal";
 import NotificationBell from "./NotificationBell";
 import { LanguageToggle, useI18n } from "../i18n";
-import { productPath, publicLocaleFromClientLocale } from "../lib/publicLocale";
+import {
+  guidePath,
+  productPath,
+  publicLocaleFromClientLocale,
+} from "../lib/publicLocale";
 
 type HeaderUser = {
   name?: string | null;
@@ -116,7 +120,7 @@ function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
 }
 
 export default function Header() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -130,14 +134,23 @@ export default function Header() {
   const fallback = user?.name?.[0] || user?.email?.[0] || "U";
   const navItems = [
     { href: "/", label: t("nav.home") },
+    {
+      href: guidePath(publicLocaleFromClientLocale(locale), "move-in"),
+      label: t("nav.guides"),
+    },
     { href: "/overview", label: t("nav.marketplace") },
     { href: "/sell", label: t("nav.sell") },
     { href: "/seller", label: t("nav.seller") },
     { href: "/requests", label: t("nav.requests") },
   ];
   const navLinkClass = (href: string) => {
+    const isGuidesNavigation = /^\/(?:en|zh-tw|zh-cn)\/guides\/move-in$/.test(href);
     const active =
-      href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+      href === "/"
+        ? pathname === "/"
+        : isGuidesNavigation
+          ? /^\/(?:en|zh-tw|zh-cn)\/guides(?:\/(?:move-in|move-out))?$/.test(pathname)
+          : pathname === href || pathname.startsWith(`${href}/`);
 
     return [
       "whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition",
@@ -155,12 +168,23 @@ export default function Header() {
   }
 
   function handleLocaleChange(locale: "en" | "zh" | "zhCn") {
+    const publicLocale = publicLocaleFromClientLocale(locale);
+    const guideMatch = pathname.match(/^\/(?:en|zh-tw|zh-cn)\/guides(?:\/(move-in|move-out))?$/);
+    if (guideMatch) {
+      router.push(
+        guideMatch[1]
+          ? guidePath(publicLocale, guideMatch[1] as "move-in" | "move-out")
+          : `/${publicLocale}/guides`
+      );
+      return;
+    }
+
     const productMatch = pathname.match(/^\/(?:en|zh-tw|zh-cn)\/product\/(.+)$/);
     if (!productMatch) return;
 
     router.push(
       productPath(
-        publicLocaleFromClientLocale(locale),
+        publicLocale,
         decodeURIComponent(productMatch[1])
       )
     );
