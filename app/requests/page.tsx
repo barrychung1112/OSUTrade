@@ -71,6 +71,19 @@ export default function RequestsPage() {
   const wantedTabLabel =
     locale === "zh" ? "想買清單" : locale === "zhCn" ? "想买清单" : "Wanted Items";
 
+  async function refreshRequests() {
+    const res = await fetch("/api/requests", { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error("Failed to load requests.");
+    }
+
+    const payload = await res.json();
+    const nextRequests = (payload.data ?? []) as BuyerRequest[];
+    setRequests(nextRequests);
+    setError(null);
+    return nextRequests;
+  }
+
   useEffect(() => {
     if (status === "loading") {
       return;
@@ -166,17 +179,20 @@ export default function RequestsPage() {
   }, [isAuthenticated, status, t]);
 
   async function cancelRequest(requestId: string) {
-    const res = await fetch("/api/requests", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ requestId, status: "cancelled" }),
-    });
+    try {
+      const res = await fetch("/api/requests", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId, status: "cancelled" }),
+      });
 
-    if (res.ok) {
-      const payload = await res.json();
-      setRequests((current) =>
-        current.map((item) => (item.id === requestId ? payload.request : item))
-      );
+      if (!res.ok) {
+        throw new Error("Failed to cancel request.");
+      }
+
+      await refreshRequests();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel request.");
     }
   }
 
