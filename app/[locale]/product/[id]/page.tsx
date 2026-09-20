@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Store } from "lucide-react";
@@ -7,7 +6,6 @@ import { Theme } from "@radix-ui/themes";
 
 import Header from "@/app/components/Header";
 import { buildLocalizedProductMetadata } from "@/app/lib/productMetadata";
-import { shouldBypassProductImageOptimization } from "@/app/lib/productImageOptimization";
 import { getPublicProduct, localizedProduct } from "@/app/lib/publicProduct";
 import {
   localeInfo,
@@ -16,6 +14,7 @@ import {
 import { getMarketplaceReturnPath } from "@/app/lib/marketplaceUrlState";
 
 import ProductRequestActions from "./ProductRequestActions";
+import ProductImageGallery from "./ProductImageGallery";
 
 const fallbackImage = "https://placehold.co/1000x750/f9fafb/d73f09?text=OSUTrade";
 
@@ -40,16 +39,28 @@ const copyByLocale = {
     contact: "Contact is handled after you send a request.",
     request: "Add the item to your request cart, then send one request with notes.",
     response: "The seller can accept or decline from their seller dashboard.",
+    viewFullImage: "View full image", imageViewer: "Image viewer",
+    closeImageViewer: "Close image viewer", previousImage: "Previous image",
+    nextImage: "Next image", viewImage: "View image {number}",
+    imageCounter: "{current} of {total}",
   },
   "zh-tw": {
     back: "回到市集", details: "商品資訊", category: "分類", availability: "狀態",
     stock: "件可交易", seller: "賣家", contact: "送出交易需求後才會處理聯絡方式。",
     request: "先將商品加入交易需求，再附上備註送出。", response: "賣家可在後台接受或拒絕需求。",
+    viewFullImage: "檢視完整圖片", imageViewer: "圖片檢視器",
+    closeImageViewer: "關閉圖片檢視器", previousImage: "上一張圖片",
+    nextImage: "下一張圖片", viewImage: "查看第 {number} 張圖片",
+    imageCounter: "第 {current} / {total} 張",
   },
   "zh-cn": {
     back: "回到市集", details: "商品信息", category: "分类", availability: "状态",
     stock: "件可交易", seller: "卖家", contact: "送出交易需求后才会处理联系方式。",
     request: "先将商品加入交易需求，再附上备注发送。", response: "卖家可在后台接受或拒绝需求。",
+    viewFullImage: "查看完整图片", imageViewer: "图片查看器",
+    closeImageViewer: "关闭图片查看器", previousImage: "上一张图片",
+    nextImage: "下一张图片", viewImage: "查看第 {number} 张图片",
+    imageCounter: "第 {current} / {total} 张",
   },
 } as const;
 
@@ -78,7 +89,6 @@ export default async function LocalizedProductPage({ params, searchParams }: Pag
   const images = product.imageUrls?.length
     ? product.imageUrls
     : [product.imageUrl || fallbackImage];
-  const primaryImage = images[0] || fallbackImage;
   const quantity = product.quantity ?? 0;
   const category = product.category || "general";
   const productJsonLd = {
@@ -110,33 +120,7 @@ export default async function LocalizedProductPage({ params, searchParams }: Pag
 
           <section className="grid gap-8 rounded-lg border border-orange-100 bg-white/90 p-4 shadow-sm md:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] md:p-6">
             <div className="space-y-3">
-              <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-100">
-                <Image
-                  src={primaryImage}
-                  alt={item.name}
-                  fill
-                  sizes="(min-width: 768px) 55vw, 100vw"
-                  unoptimized={shouldBypassProductImageOptimization(primaryImage)}
-                  className="object-cover"
-                  priority
-                />
-              </div>
-              {images.length > 1 ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {images.map((image, index) => (
-                    <div key={image} className="relative aspect-[4/3] overflow-hidden rounded-md bg-gray-100">
-                      <Image
-                        src={image}
-                        alt={`${item.name} ${index + 1}`}
-                        fill
-                        sizes="(min-width: 768px) 180px, 33vw"
-                        unoptimized={shouldBypassProductImageOptimization(image)}
-                        className="object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+              <ProductImageGallery images={images} itemName={item.name} copy={pageCopy} />
             </div>
 
             <div className="flex flex-col">
