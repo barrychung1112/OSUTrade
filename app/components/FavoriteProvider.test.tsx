@@ -79,4 +79,25 @@ describe("FavoriteProvider", () => {
       body: JSON.stringify({ productIds: ["local-1"] }),
     });
   });
+
+  test("loads account favorites without posting an empty device batch", async () => {
+    mocks.useSession.mockReturnValue({
+      data: { user: { id: "user-1" } },
+      status: "authenticated",
+    });
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: [{ id: "account-1" }] }), { status: 200 })
+    );
+
+    render(
+      <FavoriteProvider>
+        <FavoriteProbe />
+      </FavoriteProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("favorite-ids").textContent).toBe("account-1");
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

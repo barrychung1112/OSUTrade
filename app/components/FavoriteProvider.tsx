@@ -89,13 +89,16 @@ export default function FavoriteProvider({ children }: { children: ReactNode }) 
           (savedPayload?.data ?? []).map((product) => product?.id)
         );
         const deviceFavoriteIds = favoriteIdsRef.current;
-        const syncResponse = await fetch("/api/favorites", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ productIds: deviceFavoriteIds }),
-        });
+        if (deviceFavoriteIds.length > 0) {
+          const syncResponse = await fetch("/api/favorites", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ productIds: deviceFavoriteIds }),
+          });
 
-        if (!syncResponse.ok || cancelled) return;
+          if (!syncResponse.ok) return;
+        }
+        if (cancelled) return;
 
         syncedAccountIdRef.current = accountId;
         setFavoriteIds(
