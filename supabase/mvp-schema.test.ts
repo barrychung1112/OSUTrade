@@ -23,6 +23,18 @@ describe("product listing idempotency schema", () => {
   });
 });
 
+describe("product favorites schema", () => {
+  test("stores each account's favorite product once without assuming UUID product IDs", () => {
+    const schema = readFileSync("supabase/mvp-schema.sql", "utf8");
+
+    expect(schema).toContain("create table if not exists public.product_favorites");
+    expect(schema).toMatch(/user_id uuid not null references auth\.users\(id\) on delete cascade/i);
+    expect(schema).toMatch(/product_id text not null/i);
+    expect(schema).toMatch(/primary key \(user_id, product_id\)/i);
+    expect(schema).toMatch(/alter table public\.product_favorites enable row level security/i);
+  });
+});
+
 describe("disposable email domain schema", () => {
   test("stores normalized blocked domains without exposing them to clients", () => {
     const schema = readFileSync("supabase/mvp-schema.sql", "utf8");

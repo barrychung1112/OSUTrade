@@ -27,9 +27,16 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 }
 
 export default async function ProductListPage({ searchParams }: PageProps) {
-  const params = parsePublicProductListParams(await searchParams);
+  const rawParams = await searchParams;
+  const params = parsePublicProductListParams(rawParams);
   const products = await listLivePublicProducts();
   const initialResponse = getPublicProductList(products, params);
 
-  return <MarketplaceClient initialParams={params} initialResponse={initialResponse} />;
+  return (
+    <MarketplaceClient
+      initialParams={params}
+      initialResponse={initialResponse}
+      initialFavoritesOnly={rawParams.favorites === "1"}
+    />
+  );
 }

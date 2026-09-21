@@ -8,6 +8,10 @@ const productState = vi.hoisted(() => ({
   },
 }));
 
+const favoriteState = vi.hoisted(() => ({
+  favoriteIds: [] as string[],
+}));
+
 vi.mock("../components/Header", () => ({ default: () => <header /> }));
 vi.mock("../components/EmptyState", () => ({
   default: ({ title }: { title: string }) => <p>{title}</p>,
@@ -17,6 +21,9 @@ vi.mock("../components/ProductCard", () => ({
 }));
 vi.mock("../hook/useProducts", () => ({
   useProducts: () => productState.value,
+}));
+vi.mock("../components/FavoriteProvider", () => ({
+  useFavorites: () => ({ favoriteIds: favoriteState.favoriteIds }),
 }));
 
 import MarketplaceClient from "./MarketplaceClient";
@@ -34,6 +41,7 @@ describe("MarketplaceClient", () => {
       products: [], loading: false, loadingMore: false, error: null,
       total: 0, page: 1, limit: 20, refetch: vi.fn(), hasMore: false,
     };
+    favoriteState.favoriteIds = [];
     window.history.replaceState({}, "", "/overview");
   });
 
@@ -79,5 +87,51 @@ describe("MarketplaceClient", () => {
       expect(url.searchParams.get("page")).toBeNull();
       expect(url.searchParams.get("q")).toBe("desk");
     });
+  });
+
+  test("resolves the full saved list when the favorites filter is enabled", async () => {
+    favoriteState.favoriteIds = ["saved-1"];
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "saved-1",
+              name: "Saved desk",
+              price: 30,
+              category: "home",
+              imageUrl: null,
+              sellerId: "seller-1",
+              quantity: 1,
+            },
+          ],
+        }),
+        { status: 200 }
+      )
+    );
+
+    render(
+      <I18nProvider>
+        <MarketplaceClient
+          initialResponse={{ data: [], total: 0, page: 1, limit: 20 }}
+          initialParams={{
+            page: 1, limit: 20, name: undefined, category: undefined,
+            sort: undefined, discounted: false, clearance: false,
+          }}
+        />
+      </I18nProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Saved desk")).toBeTruthy();
+    });
+    expect(global.fetch).toHaveBeenCalledWith("/api/favorites/resolve", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ productIds: ["saved-1"] }),
+    });
+    expect(new URL(window.location.href).searchParams.get("favorites")).toBe("1");
   });
 });

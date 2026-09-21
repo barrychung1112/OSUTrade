@@ -21,6 +21,7 @@ describe("marketplace URL state", () => {
       sort: "asc",
       saleOnly: true,
       clearanceOnly: false,
+      favoritesOnly: false,
     });
   });
 
@@ -32,6 +33,7 @@ describe("marketplace URL state", () => {
       sort: "none",
       saleOnly: false,
       clearanceOnly: false,
+      favoritesOnly: false,
     });
   });
 
@@ -44,6 +46,7 @@ describe("marketplace URL state", () => {
         sort: "asc",
         saleOnly: true,
         clearanceOnly: false,
+        favoritesOnly: false,
       })
     ).toBe("/overview?page=3&q=desk+lamp&category=home&sort=asc&sale=1");
   });
@@ -57,6 +60,7 @@ describe("marketplace URL state", () => {
         sort: "none",
         saleOnly: false,
         clearanceOnly: false,
+        favoritesOnly: false,
       })
     ).toMatchObject({ page: 1, category: "electronics" });
   });
@@ -67,5 +71,23 @@ describe("marketplace URL state", () => {
     expect(isMarketplaceReturnPath("/seller")).toBe(false);
     expect(getMarketplaceReturnPath("/overview?page=3")).toBe("/overview?page=3");
     expect(getMarketplaceReturnPath("https://example.com")).toBe("/overview");
+  });
+
+  test("preserves the favorites filter in the marketplace URL", () => {
+    expect(readMarketplaceUrlState("?favorites=1")).toMatchObject({
+      page: 1,
+      favoritesOnly: true,
+    });
+    expect(
+      buildMarketplaceUrl({
+        page: 1,
+        name: "",
+        category: "all",
+        sort: "none",
+        saleOnly: false,
+        clearanceOnly: false,
+        favoritesOnly: true,
+      })
+    ).toBe("/overview?favorites=1");
   });
 });
