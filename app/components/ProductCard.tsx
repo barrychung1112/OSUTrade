@@ -6,7 +6,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card, Text, Heading, Button } from "@radix-ui/themes";
 import { MagnifyingGlassIcon, PlusIcon } from "@radix-ui/react-icons";
+import { Heart } from "lucide-react";
 import { useI18n } from "../i18n";
+import { useFavorites } from "./FavoriteProvider";
 import { shouldBypassProductImageOptimization } from "../lib/productImageOptimization";
 import {
   productPath,
@@ -27,6 +29,7 @@ interface ProductCardProps {
   imageUrl: string;
   category?: string | null;
   quantity?: number | null;
+  sellerId?: string | null;
   returnTo?: string;
 }
 
@@ -46,9 +49,11 @@ export default function ProductCard({
   imageUrl,
   category,
   quantity,
+  sellerId,
   returnTo,
 }: ProductCardProps) {
   const { t, locale } = useI18n();
+  const { isFavorite, toggleFavorite } = useFavorites();
   const [adding, setAdding] = useState(false);
   const [feedback, setFeedback] = useState<{
     tone: "success" | "error";
@@ -96,6 +101,7 @@ export default function ProductCard({
   const productHref = returnTo
     ? `${localizedProductPath}?returnTo=${encodeURIComponent(returnTo)}`
     : localizedProductPath;
+  const savedAsFavorite = isFavorite(productId);
 
   function saveMarketplaceScroll() {
     if (!returnTo) return;
@@ -106,7 +112,7 @@ export default function ProductCard({
   }
 
   return (
-    <Card className="app-card group flex min-h-[430px] flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md">
+    <Card className="app-card group relative flex min-h-[430px] flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md">
       <Link
         href={productHref}
         prefetch={false}
@@ -128,6 +134,24 @@ export default function ProductCard({
           {categoryLabel}
         </span>
       </Link>
+      <button
+        type="button"
+        aria-label={savedAsFavorite ? t("favorites.remove") : t("favorites.save")}
+        aria-pressed={savedAsFavorite}
+        title={savedAsFavorite ? t("favorites.remove") : t("favorites.save")}
+        onClick={() => void toggleFavorite(productId)}
+        className={`absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d73f09] focus-visible:ring-offset-2 ${
+          savedAsFavorite
+            ? "border-[#d73f09] bg-[#d73f09] text-white"
+            : "border-white/80 bg-white/95 text-gray-700 hover:border-orange-200 hover:text-[#d73f09]"
+        }`}
+      >
+        <Heart
+          aria-hidden="true"
+          className="h-5 w-5"
+          fill={savedAsFavorite ? "currentColor" : "none"}
+        />
+      </button>
       <div className="flex flex-1 flex-col p-4">
         <Link
           href={productHref}
@@ -170,6 +194,15 @@ export default function ProductCard({
           <span className="font-medium">{t("product.availability")}</span>
           <span className="text-right">{t("product.stock", { quantity: quantity ?? 1 })}</span>
         </div>
+
+        {sellerId ? (
+          <Link
+            href={`/sellers/${encodeURIComponent(sellerId)}`}
+            className="mt-3 inline-flex w-fit text-sm font-medium text-gray-700 underline-offset-4 transition hover:text-[#d73f09] hover:underline"
+          >
+            {t("product.moreFromSeller")}
+          </Link>
+        ) : null}
 
         <div className="mt-auto grid gap-2 pt-4">
           <Link
