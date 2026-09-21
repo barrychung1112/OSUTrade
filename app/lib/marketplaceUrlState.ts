@@ -16,6 +16,7 @@ export type MarketplaceUrlState = {
   sort: MarketplaceSort;
   saleOnly: boolean;
   clearanceOnly: boolean;
+  favoritesOnly: boolean;
 };
 
 function safePage(value: string | null) {
@@ -28,6 +29,7 @@ export function readMarketplaceUrlState(search: string): MarketplaceUrlState {
   const category = params.get("category") ?? "all";
   const sort = params.get("sort");
   const clearanceOnly = params.get("clearance") === "1";
+  const favoritesOnly = params.get("favorites") === "1";
 
   return {
     page: safePage(params.get("page")),
@@ -36,6 +38,7 @@ export function readMarketplaceUrlState(search: string): MarketplaceUrlState {
     sort: sort === "asc" || sort === "desc" ? sort : "none",
     saleOnly: !clearanceOnly && params.get("sale") === "1",
     clearanceOnly,
+    favoritesOnly,
   };
 }
 
@@ -47,6 +50,7 @@ export function buildMarketplaceUrl(state: MarketplaceUrlState) {
   if (state.sort !== "none") params.set("sort", state.sort);
   if (state.clearanceOnly) params.set("clearance", "1");
   else if (state.saleOnly) params.set("sale", "1");
+  if (state.favoritesOnly) params.set("favorites", "1");
 
   const query = params.toString();
   return query ? `/overview?${query}` : "/overview";
