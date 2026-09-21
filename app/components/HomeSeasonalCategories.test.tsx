@@ -14,6 +14,10 @@ vi.mock("../i18n", () => ({
   useI18n: () => ({ locale: mocks.locale, t: (key: string) => key }),
 }));
 
+vi.mock("./FavoriteProvider", () => ({
+  useFavorites: () => ({ isFavorite: () => false, toggleFavorite: vi.fn() }),
+}));
+
 import HomeSeasonalCategories from "./HomeSeasonalCategories";
 import ProductCard from "./ProductCard";
 
