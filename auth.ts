@@ -98,7 +98,12 @@ export const { auth, handlers } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile, trigger, session }) {
+      if (trigger === "update" && typeof session?.name === "string") {
+        token.name = session.name;
+        return token;
+      }
+
       if (account?.provider === "google") {
         const { upsertGoogleUserProfile } = await import(
           "@/utils/auth/googleProfile"

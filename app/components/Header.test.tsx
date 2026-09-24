@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -6,6 +6,9 @@ const mocks = vi.hoisted(() => ({
   nextLocale: "zhCn" as "en" | "zh" | "zhCn",
   pathname: "/",
   push: vi.fn(),
+  refresh: vi.fn(),
+  updateSession: vi.fn(),
+  session: null as { user: { id: string; name: string; email: string } } | null,
 }));
 
 vi.mock("next/link", () => ({
@@ -16,12 +19,16 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
-  useRouter: () => ({ push: mocks.push, refresh: vi.fn() }),
+  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
 }));
 
 vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
-  useSession: () => ({ data: null, status: "unauthenticated" }),
+  useSession: () => ({
+    data: mocks.session,
+    status: mocks.session ? "authenticated" : "unauthenticated",
+    update: mocks.updateSession,
+  }),
 }));
 
 vi.mock("../i18n", () => ({
@@ -53,6 +60,10 @@ describe("Header", () => {
     mocks.nextLocale = "zhCn";
     mocks.pathname = "/";
     mocks.push.mockReset();
+    mocks.refresh.mockReset();
+    mocks.updateSession.mockReset();
+    mocks.session = null;
+    vi.stubGlobal("fetch", vi.fn());
   });
 
   test("uses the localized Guides route in both desktop and mobile navigation", () => {
@@ -104,4 +115,44 @@ describe("Header", () => {
       });
     }
   );
+
+  test("links an authenticated seller to their own public profile", () => {
+    mocks.session = {
+      user: { id: "seller-1", name: "Campus Seller", email: "seller@example.com" },
+    };
+    render(<Header />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Campus Seller" })[0]);
+
+    expect(
+      screen.getByRole("menuitem", { name: "account.viewSellerProfile" }).getAttribute("href")
+    ).toBe("/sellers/seller-1");
+  });
+
+  test("updates the visible session name after saving a display name", async () => {
+    mocks.session = {
+      user: { id: "seller-1", name: "Old Name", email: "seller@example.com" },
+    };
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ data: { name: "New Name" } }), { status: 200 })
+    );
+    render(<Header />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Old Name" })[0]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "account.editDisplayName" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "account.displayName" }), {
+      target: { value: "New Name" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "account.saveDisplayName" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/account/display-name", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "New Name" }),
+      });
+    });
+    expect(mocks.updateSession).toHaveBeenCalledWith({ name: "New Name" });
+    expect(mocks.refresh).toHaveBeenCalled();
+  });
 });

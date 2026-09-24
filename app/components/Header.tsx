@@ -22,6 +22,7 @@ import {
 } from "../lib/publicLocale";
 
 type HeaderUser = {
+  id?: string | null;
   name?: string | null;
   email?: string | null;
 };
@@ -30,12 +31,39 @@ type UserMenuProps = {
   user: HeaderUser;
   fallback: string;
   logoutLabel: string;
+  viewSellerProfileLabel: string;
+  editDisplayNameLabel: string;
+  displayNameLabel: string;
+  saveDisplayNameLabel: string;
+  savingDisplayNameLabel: string;
+  cancelLabel: string;
+  displayNameTakenLabel: string;
+  displayNameSaveErrorLabel: string;
+  onDisplayNameUpdated: (name: string) => Promise<void>;
   onLogout: () => void;
 };
 
-function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
+function UserMenu({
+  user,
+  fallback,
+  logoutLabel,
+  viewSellerProfileLabel,
+  editDisplayNameLabel,
+  displayNameLabel,
+  saveDisplayNameLabel,
+  savingDisplayNameLabel,
+  cancelLabel,
+  displayNameTakenLabel,
+  displayNameSaveErrorLabel,
+  onDisplayNameUpdated,
+  onLogout,
+}: UserMenuProps) {
   const displayName = user.name || user.email || "Profile";
   const [open, setOpen] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState(displayName);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savingName, setSavingName] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -65,6 +93,48 @@ function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
   async function handleLogoutClick() {
     setOpen(false);
     await onLogout();
+  }
+
+  function openDisplayNameEditor() {
+    setOpen(false);
+    setDraftName(displayName);
+    setSaveError(null);
+    setEditingName(true);
+  }
+
+  async function handleDisplayNameSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingName(true);
+    setSaveError(null);
+
+    try {
+      const response = await fetch("/api/account/display-name", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: draftName }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        data?: { name?: unknown };
+      } | null;
+
+      if (!response.ok) {
+        setSaveError(response.status === 409 ? displayNameTakenLabel : displayNameSaveErrorLabel);
+        return;
+      }
+
+      const updatedName = typeof payload?.data?.name === "string" ? payload.data.name : null;
+      if (!updatedName) {
+        setSaveError(displayNameSaveErrorLabel);
+        return;
+      }
+
+      await onDisplayNameUpdated(updatedName);
+      setEditingName(false);
+    } catch {
+      setSaveError(displayNameSaveErrorLabel);
+    } finally {
+      setSavingName(false);
+    }
   }
 
   return (
@@ -104,6 +174,24 @@ function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
             {displayName}
           </div>
           <div className="my-1 h-px bg-orange-100" />
+          {user.id && (
+            <Link
+              href={`/sellers/${encodeURIComponent(user.id)}`}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex h-10 w-full items-center rounded-md px-3 font-semibold text-gray-700 transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+            >
+              {viewSellerProfileLabel}
+            </Link>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={openDisplayNameEditor}
+            className="flex h-10 w-full items-center rounded-md px-3 text-left font-semibold text-gray-700 transition hover:bg-orange-50 hover:text-[#d73f09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+          >
+            {editDisplayNameLabel}
+          </button>
           <button
             type="button"
             role="menuitem"
@@ -115,6 +203,53 @@ function UserMenu({ user, fallback, logoutLabel, onLogout }: UserMenuProps) {
           </button>
         </div>
       )}
+
+      {editingName && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={editDisplayNameLabel}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4"
+        >
+          <form
+            onSubmit={handleDisplayNameSubmit}
+            className="w-full max-w-md rounded-lg border border-orange-100 bg-white p-5 shadow-2xl"
+          >
+            <label htmlFor="display-name" className="block text-sm font-semibold text-gray-800">
+              {displayNameLabel}
+            </label>
+            <input
+              id="display-name"
+              name="display-name"
+              value={draftName}
+              onChange={(event) => setDraftName(event.target.value)}
+              autoFocus
+              minLength={2}
+              maxLength={32}
+              required
+              className="mt-2 h-11 w-full rounded-md border border-gray-300 px-3 text-gray-900 outline-none transition focus:border-[#d73f09] focus:ring-2 focus:ring-orange-100"
+            />
+            {saveError && <p className="mt-2 text-sm font-medium text-red-600">{saveError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={savingName}
+                onClick={() => setEditingName(false)}
+                className="h-10 rounded-md border border-gray-300 px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {cancelLabel}
+              </button>
+              <button
+                type="submit"
+                disabled={savingName}
+                className="h-10 rounded-md bg-[#d73f09] px-4 text-sm font-semibold text-white transition hover:bg-[#b83208] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingName ? savingDisplayNameLabel : saveDisplayNameLabel}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
@@ -123,14 +258,18 @@ export default function Header() {
   const { t, locale } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [updatedDisplayName, setUpdatedDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
-  const user = (session?.user ?? null) as HeaderUser | null;
+  const sessionUser = (session?.user ?? null) as HeaderUser | null;
+  const user = sessionUser
+    ? { ...sessionUser, name: updatedDisplayName ?? sessionUser.name }
+    : null;
   const fallback = user?.name?.[0] || user?.email?.[0] || "U";
   const navItems = [
     { href: "/", label: t("nav.home") },
@@ -167,6 +306,12 @@ export default function Header() {
     router.refresh();
   }
 
+  async function handleDisplayNameUpdated(name: string) {
+    setUpdatedDisplayName(name);
+    await updateSession({ name });
+    router.refresh();
+  }
+
   function handleLocaleChange(locale: "en" | "zh" | "zhCn") {
     const publicLocale = publicLocaleFromClientLocale(locale);
     const guideMatch = pathname.match(/^\/(?:en|zh-tw|zh-cn)\/guides(?:\/(move-in|move-out))?$/);
@@ -199,6 +344,15 @@ export default function Header() {
         user={user}
         fallback={fallback}
         logoutLabel={t("nav.logout")}
+        viewSellerProfileLabel={t("account.viewSellerProfile")}
+        editDisplayNameLabel={t("account.editDisplayName")}
+        displayNameLabel={t("account.displayName")}
+        saveDisplayNameLabel={t("account.saveDisplayName")}
+        savingDisplayNameLabel={t("account.savingDisplayName")}
+        cancelLabel={t("account.cancel")}
+        displayNameTakenLabel={t("account.displayNameTaken")}
+        displayNameSaveErrorLabel={t("account.displayNameSaveError")}
+        onDisplayNameUpdated={handleDisplayNameUpdated}
         onLogout={handleLogout}
       />
     );

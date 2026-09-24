@@ -106,7 +106,7 @@ describe("display-name API", () => {
     expect(response.status).toBe(200);
     expect(updateQuery.eq).toHaveBeenCalledWith("id", "user-1");
     expect(updateUserById).toHaveBeenCalledWith("user-1", {
-      data: { name: "Campus Seller", full_name: "Campus Seller" },
+      user_metadata: { name: "Campus Seller", full_name: "Campus Seller" },
     });
     expect(payload).toEqual({ data: { name: "Campus Seller" } });
   });

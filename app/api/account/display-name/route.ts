@@ -52,7 +52,7 @@ export async function PATCH(request: Request) {
     const { error: authError } = await admin.auth.admin.updateUserById(
       session.user.id,
       {
-        data: { name: result.value, full_name: result.value },
+        user_metadata: { name: result.value, full_name: result.value },
       }
     );
     if (authError) throw authError;
