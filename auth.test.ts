@@ -48,6 +48,19 @@ function getLoginAuthorize() {
   }) => Promise<unknown>;
 }
 
+function getJwtCallback() {
+  const authConfig = nextAuth.mock.calls[0]?.[0];
+  if (!authConfig?.callbacks?.jwt) {
+    throw new Error("JWT callback was not configured.");
+  }
+
+  return authConfig.callbacks.jwt as (params: {
+    token: { name?: string };
+    trigger?: string;
+    session?: { name?: string };
+  }) => Promise<{ name?: string }>;
+}
+
 describe("Credentials login provider", () => {
   test("propagates a safe unavailable code when strict blocklist verification fails", async () => {
     authenticateWithPassword.mockRejectedValue(
@@ -88,5 +101,17 @@ describe("Credentials login provider", () => {
         password: "password",
       })
     ).resolves.toBeNull();
+  });
+});
+
+describe("JWT session updates", () => {
+  test("uses the validated display name after the client refreshes its session", async () => {
+    await expect(
+      getJwtCallback()({
+        token: { name: "Old Name" },
+        trigger: "update",
+        session: { name: "New Name" },
+      })
+    ).resolves.toEqual({ name: "New Name" });
   });
 });

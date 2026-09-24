@@ -14,6 +14,7 @@ import {
   productPath,
   publicLocaleFromClientLocale,
 } from "../lib/publicLocale";
+import { buildSellerProfileHref } from "../lib/sellerProfileReturn";
 import type { ProductNameTranslations } from "../lib/productTranslations";
 
 interface ProductCardProps {
@@ -101,6 +102,9 @@ export default function ProductCard({
   const productHref = returnTo
     ? `${localizedProductPath}?returnTo=${encodeURIComponent(returnTo)}`
     : localizedProductPath;
+  const sellerHref = sellerId
+    ? buildSellerProfileHref(sellerId, returnTo)
+    : null;
   const savedAsFavorite = isFavorite(productId);
 
   function saveMarketplaceScroll() {
@@ -195,9 +199,9 @@ export default function ProductCard({
           <span className="text-right">{t("product.stock", { quantity: quantity ?? 1 })}</span>
         </div>
 
-        {sellerId ? (
+        {sellerHref ? (
           <Link
-            href={`/sellers/${encodeURIComponent(sellerId)}`}
+            href={sellerHref}
             className="mt-3 inline-flex w-fit text-sm font-medium text-gray-700 underline-offset-4 transition hover:text-[#d73f09] hover:underline"
           >
             {t("product.moreFromSeller")}

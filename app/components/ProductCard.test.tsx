@@ -30,6 +30,7 @@ describe("ProductCard favorites", () => {
             price={30}
             imageUrl="https://example.com/desk.jpg"
             sellerId="d4a7706c-21b9-4b39-b4f6-3d355b46c0d3"
+            returnTo="/overview?page=2"
           />
         </Theme>
       </I18nProvider>
@@ -43,7 +44,7 @@ describe("ProductCard favorites", () => {
     expect(mocks.toggleFavorite).toHaveBeenCalledWith("desk-1");
     expect(favoriteButton.getAttribute("aria-pressed")).toBe("false");
     expect(screen.getByRole("link", { name: "More from this seller" }).getAttribute("href")).toBe(
-      "/sellers/d4a7706c-21b9-4b39-b4f6-3d355b46c0d3"
+      "/sellers/d4a7706c-21b9-4b39-b4f6-3d355b46c0d3?returnTo=%2Foverview%3Fpage%3D2"
     );
   });
 });
