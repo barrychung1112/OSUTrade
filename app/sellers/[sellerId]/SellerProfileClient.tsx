@@ -22,7 +22,13 @@ type SellerProfileState =
   | { status: "error" }
   | { status: "ready"; profile: SellerProfileResponse };
 
-export default function SellerProfileClient({ sellerId }: { sellerId: string }) {
+export default function SellerProfileClient({
+  sellerId,
+  backHref = "/overview",
+}: {
+  sellerId: string;
+  backHref?: string;
+}) {
   const { t, locale } = useI18n();
   const [state, setState] = useState<SellerProfileState>({ status: "loading" });
 
@@ -78,7 +84,7 @@ export default function SellerProfileClient({ sellerId }: { sellerId: string }) 
                 <p className="app-subtitle">{t("sellerProfile.subtitle")}</p>
               ) : null}
             </div>
-            <Link href="/overview" className="app-action-secondary w-fit">
+            <Link href={backHref} className="app-action-secondary w-fit">
               <ArrowLeft className="h-4 w-4" />
               {t("sellerProfile.backToMarketplace")}
             </Link>
@@ -99,7 +105,7 @@ export default function SellerProfileClient({ sellerId }: { sellerId: string }) 
               }
               body={t("sellerProfile.backToMarketplace")}
               action={
-                <Link href="/overview" className="app-action-primary">
+                <Link href={backHref} className="app-action-primary">
                   <ArrowLeft className="h-4 w-4" />
                   {t("sellerProfile.backToMarketplace")}
                 </Link>
@@ -112,7 +118,7 @@ export default function SellerProfileClient({ sellerId }: { sellerId: string }) 
               title={t("sellerProfile.noListings")}
               body={t("sellerProfile.subtitle")}
               action={
-                <Link href="/overview" className="app-action-secondary">
+                <Link href={backHref} className="app-action-secondary">
                   <ArrowLeft className="h-4 w-4" />
                   {t("sellerProfile.backToMarketplace")}
                 </Link>
@@ -145,6 +151,7 @@ export default function SellerProfileClient({ sellerId }: { sellerId: string }) 
                   category={product.category}
                   quantity={product.quantity}
                   sellerId={product.sellerId}
+                  returnTo={backHref}
                 />
               ))}
             </section>

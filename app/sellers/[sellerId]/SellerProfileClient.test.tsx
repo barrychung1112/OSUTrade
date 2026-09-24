@@ -37,7 +37,7 @@ describe("SellerProfileClient", () => {
 
     render(
       <I18nProvider>
-        <SellerProfileClient sellerId="seller-1" />
+        <SellerProfileClient sellerId="seller-1" backHref="/overview?page=2&q=desk" />
       </I18nProvider>
     );
 
@@ -48,6 +48,9 @@ describe("SellerProfileClient", () => {
     });
     expect(screen.getByText("Desk")).toBeTruthy();
     expect(screen.queryByText("private@example.com")).toBeNull();
+    expect(screen.getByRole("link", { name: "Back to marketplace" }).getAttribute("href")).toBe(
+      "/overview?page=2&q=desk"
+    );
   });
 
   test("shows a safe not-found state for a missing seller", async () => {
