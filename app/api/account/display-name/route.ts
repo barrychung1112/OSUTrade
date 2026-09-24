@@ -7,6 +7,35 @@ import { getAccountAccessErrorResponse } from "@/utils/auth/accountAccessRespons
 import { requireActiveUser } from "@/utils/auth/requireActiveUser";
 import { createAdminClient } from "@/utils/supabase/admin";
 
+export async function GET() {
+  try {
+    const session = await requireActiveUser();
+    const { data: profile, error } = await createAdminClient()
+      .from("users")
+      .select("name")
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    if (error || !profile?.name?.trim()) {
+      throw error ?? new Error("Public user profile was not found.");
+    }
+
+    return NextResponse.json({ data: { name: profile.name } }, { status: 200 });
+  } catch (error) {
+    const accessResponse = getAccountAccessErrorResponse(
+      error,
+      "You must be logged in to read your display name."
+    );
+    if (accessResponse) return accessResponse;
+
+    console.error("Failed to read display name.", error);
+    return NextResponse.json(
+      { message: "Could not read your display name." },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PATCH(request: Request) {
   try {
     const session = await requireActiveUser();

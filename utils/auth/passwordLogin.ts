@@ -75,12 +75,14 @@ export async function authenticateWithPassword(
     );
   }
 
+  let admin: ReturnType<typeof createAdminClient>;
   let blocked: boolean;
 
   try {
+    admin = createAdminClient();
     ({ blocked } = await checkDisposableEmailStrict(
       email,
-      createAdminClient()
+      admin
     ));
   } catch {
     throw new AuthLoginError(
@@ -118,10 +120,39 @@ export async function authenticateWithPassword(
     );
   }
 
+  const metadataName =
+    user.user_metadata?.full_name ?? user.email.split("@")[0] ?? "User";
+  let name = metadataName;
+
+  try {
+    const { data: profile, error: profileError } = await admin
+      .from("users")
+      .select("name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) throw profileError;
+    if (typeof profile?.name === "string" && profile.name.trim()) {
+      name = profile.name;
+
+      if (name !== metadataName) {
+        const { error: metadataError } = await admin.auth.admin.updateUserById(
+          user.id,
+          {
+            user_metadata: { name, full_name: name },
+          }
+        );
+        if (metadataError) throw metadataError;
+      }
+    }
+  } catch (error) {
+    console.warn("Could not synchronize the public display name during login.", error);
+  }
+
   return {
     id: user.id,
     email: user.email,
-    name: user.user_metadata?.full_name ?? user.email.split("@")[0] ?? "User",
+    name,
     role: user.user_metadata?.role ?? "user",
   };
 }

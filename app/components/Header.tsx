@@ -268,6 +268,37 @@ export default function Header() {
     setMenuOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.id) return;
+
+    let cancelled = false;
+
+    async function refreshDisplayName() {
+      try {
+        const response = await fetch("/api/account/display-name", {
+          cache: "no-store",
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          data?: { name?: unknown };
+        } | null;
+        const name = typeof payload?.data?.name === "string" ? payload.data.name : null;
+
+        if (!cancelled && name && name !== session.user?.name) {
+          setUpdatedDisplayName(name);
+          await updateSession({ name });
+        }
+      } catch {
+        // Keep the JWT name as a fallback if the profile refresh is unavailable.
+      }
+    }
+
+    void refreshDisplayName();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id, session?.user?.name, status, updateSession]);
+
   const sessionUser = (session?.user ?? null) as HeaderUser | null;
   const user = sessionUser
     ? { ...sessionUser, name: updatedDisplayName ?? sessionUser.name }
