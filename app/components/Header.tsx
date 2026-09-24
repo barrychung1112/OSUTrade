@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -204,7 +205,7 @@ function UserMenu({
         </div>
       )}
 
-      {editingName && (
+      {editingName && createPortal(
         <div
           role="dialog"
           aria-modal="true"
@@ -248,7 +249,8 @@ function UserMenu({
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

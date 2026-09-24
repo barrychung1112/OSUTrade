@@ -155,4 +155,16 @@ describe("Header", () => {
     expect(mocks.updateSession).toHaveBeenCalledWith({ name: "New Name" });
     expect(mocks.refresh).toHaveBeenCalled();
   });
+
+  test("renders the display-name dialog at the document body level", () => {
+    mocks.session = {
+      user: { id: "seller-1", name: "Campus Seller", email: "seller@example.com" },
+    };
+    render(<Header />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Campus Seller" })[0]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "account.editDisplayName" }));
+
+    expect(screen.getByRole("dialog").parentElement).toBe(document.body);
+  });
 });
