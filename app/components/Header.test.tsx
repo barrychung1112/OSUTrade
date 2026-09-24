@@ -129,13 +129,32 @@ describe("Header", () => {
     ).toBe("/sellers/seller-1");
   });
 
+  test("refreshes a stale session name from the canonical public profile", async () => {
+    mocks.session = {
+      user: { id: "seller-1", name: "Old Auth Name", email: "seller@example.com" },
+    };
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ data: { name: "Canonical Profile Name" } }), { status: 200 })
+    );
+
+    render(<Header />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/account/display-name", {
+        cache: "no-store",
+      });
+    });
+    expect(mocks.updateSession).toHaveBeenCalledWith({ name: "Canonical Profile Name" });
+  });
+
   test("updates the visible session name after saving a display name", async () => {
     mocks.session = {
       user: { id: "seller-1", name: "Old Name", email: "seller@example.com" },
     };
-    const fetchMock = vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ data: { name: "New Name" } }), { status: 200 })
-    );
+    const fetchMock = vi.mocked(fetch).mockImplementation(async (_input, init) => {
+      const name = init?.method === "PATCH" ? "New Name" : "Old Name";
+      return new Response(JSON.stringify({ data: { name } }), { status: 200 });
+    });
     render(<Header />);
 
     fireEvent.click(screen.getAllByRole("button", { name: "Old Name" })[0]);

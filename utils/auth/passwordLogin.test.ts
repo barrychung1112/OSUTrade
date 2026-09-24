@@ -15,6 +15,8 @@ vi.mock("@/utils/auth/disposableEmail", () => ({
 }));
 
 const signInWithPassword = vi.fn();
+const selectPublicProfile = vi.fn();
+const syncAuthMetadata = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -25,7 +27,16 @@ beforeEach(() => {
       signInWithPassword,
     },
   } as never);
-  vi.mocked(createAdminClient).mockReturnValue({} as never);
+  selectPublicProfile.mockReturnValue({
+    eq: vi.fn().mockReturnValue({
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    }),
+  });
+  vi.mocked(createAdminClient).mockReturnValue({
+    from: vi.fn().mockReturnValue({ select: selectPublicProfile }),
+    auth: { admin: { updateUserById: syncAuthMetadata } },
+  } as never);
+  syncAuthMetadata.mockResolvedValue({ error: null });
   vi.mocked(checkDisposableEmailStrict).mockResolvedValue({ blocked: false });
 });
 
@@ -59,6 +70,38 @@ describe("authenticateWithPassword", () => {
     });
   });
 
+  test("uses the public profile name when legacy Auth metadata is stale", async () => {
+    signInWithPassword.mockResolvedValue({
+      data: {
+        user: {
+          id: "user-id",
+          email: "student@example.com",
+          user_metadata: { full_name: "old-auth-name", role: "seller" },
+        },
+      },
+      error: null,
+    });
+    selectPublicProfile.mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { name: "Canonical Profile Name" },
+          error: null,
+        }),
+      }),
+    });
+
+    await expect(
+      authenticateWithPassword("student@example.com", "password")
+    ).resolves.toMatchObject({ name: "Canonical Profile Name" });
+
+    expect(syncAuthMetadata).toHaveBeenCalledWith("user-id", {
+      user_metadata: {
+        full_name: "Canonical Profile Name",
+        name: "Canonical Profile Name",
+      },
+    });
+  });
+
   test("rejects a blocklisted email before sending credentials to Supabase", async () => {
     vi.mocked(checkDisposableEmailStrict).mockResolvedValue({ blocked: true });
 
@@ -81,6 +124,22 @@ describe("authenticateWithPassword", () => {
     vi.mocked(checkDisposableEmailStrict).mockRejectedValue(
       new Error("blocklist unavailable")
     );
+
+    await expect(
+      authenticateWithPassword("student@example.com", "password")
+    ).rejects.toMatchObject({
+      code: "LOGIN_FAILED",
+      status: 503,
+      message: "Login is temporarily unavailable. Please try again later.",
+    });
+
+    expect(signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  test("keeps login unavailable when the admin client cannot be created", async () => {
+    vi.mocked(createAdminClient).mockImplementation(() => {
+      throw new Error("Supabase admin credentials are not configured.");
+    });
 
     await expect(
       authenticateWithPassword("student@example.com", "password")

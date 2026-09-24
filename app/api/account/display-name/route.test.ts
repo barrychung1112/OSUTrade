@@ -18,7 +18,7 @@ vi.mock("@/utils/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
 }));
 
-import { PATCH } from "./route";
+import { GET, PATCH } from "./route";
 
 const currentUser = { id: "user-1" };
 
@@ -69,6 +69,30 @@ describe("display-name API", () => {
 
     expect(response.status).toBe(401);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
+  });
+
+  test("returns the canonical public display name for an active account", async () => {
+    const profileQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { name: "Canonical Profile Name" },
+        error: null,
+      }),
+    };
+    profileQuery.select.mockReturnValue(profileQuery);
+    profileQuery.eq.mockReturnValue(profileQuery);
+    mocks.createAdminClient.mockReturnValue({
+      from: vi.fn().mockReturnValue(profileQuery),
+    });
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: { name: "Canonical Profile Name" },
+    });
+    expect(profileQuery.eq).toHaveBeenCalledWith("id", "user-1");
   });
 
   test("rejects invalid display names before reading the database", async () => {
